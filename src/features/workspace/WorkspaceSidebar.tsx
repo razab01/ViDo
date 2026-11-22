@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Calendar,
   CheckCircle2,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { Team } from '../teams/types';
@@ -59,6 +60,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const tasksPath = `${basePath}/tasks`;
   const calendarPath = `${basePath}/calendar`;
   const analyticsPath = `${basePath}/analytics`;
+  const mlLabPath = `${basePath}/ml-lab`;
 
   const isTaskRoute =
     location.pathname === tasksPath ||
@@ -262,6 +264,18 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             <div className="flex items-center gap-2.5">
               <BarChart3 className="w-4 h-4 text-emerald-400" />
               <span>Analytics</span>
+            </div>
+          </NavLink>
+        </nav>
+
+        <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 mt-6 px-2.5">
+          Intelligence
+        </div>
+        <nav className="space-y-1">
+          <NavLink to={mlLabPath} className={linkClass}>
+            <div className="flex items-center gap-2.5">
+              <FlaskConical className="w-4 h-4 text-purple-400" />
+              <span>ML Lab</span>
             </div>
           </NavLink>
         </nav>

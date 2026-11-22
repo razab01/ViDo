@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   Routes,
   Route,
@@ -20,6 +20,13 @@ import { getTodayDateString } from '../../utils/dateUtils';
 import { todayISO } from '../../data/calendar';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
+import { MLLabPage } from '../ml-lab/MLLabPage';
+import {
+  predictTask,
+  requestRestore,
+  subscribeActiveResult,
+} from '../ml-lab/mlStore';
+import type { TaskPredictionInput } from '../ml-lab/mlStore';
 import { HomeView } from './views/HomeView';
 import { ListView } from './views/ListView';
 import { CalendarView } from './views/CalendarView';
@@ -68,6 +75,7 @@ export const isKnownWorkspacePath = (pathname: string, basePath: string): boolea
     'archived',
     'calendar',
     'analytics',
+    'ml-lab',
   ]);
 
   if (exactKnownSubPaths.has(subPath)) return true;
@@ -132,6 +140,20 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   // users and in localStorage for the shareable preview.
   const calendar = useCalendar(authUser?.uid, isLive ? 'live' : 'demo');
   const planningTargets = usePlanningTargets(authUser?.uid, isLive ? 'live' : 'demo');
+
+  // Saved ML models are scoped to the active user. Rebuild the in-memory
+  // artifact quietly when the user returns on a fresh page load.
+  const [modelRevision, setModelRevision] = useState(0);
+  useEffect(() => {
+    const unsubscribe = subscribeActiveResult(user.id, () => setModelRevision((value) => value + 1));
+    void requestRestore(user.id);
+    return unsubscribe;
+  }, [user.id]);
+
+  const predictForTask = useCallback(
+    (input: TaskPredictionInput) => predictTask(user.id, input),
+    [user.id, modelRevision]
+  );
 
   // Task state: for preview, use SAMPLE_TASKS. For authenticated users, scope to user ID.
   const userStorageKey = authUser
@@ -233,7 +255,19 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
 
   const handleCreateTask = (newTask: SampleTask) => {
     setTasks((prev) => [newTask, ...prev]);
-    setToastMessage(`Task "${newTask.title}" added to your workspace.`);
+    const estimate = predictForTask({
+      title: newTask.title,
+      description: newTask.description,
+      priority: newTask.priority,
+      category: newTask.category,
+      startDate: newTask.startDate,
+      dueDate: newTask.dueDate,
+      dueTime: newTask.dueTime,
+    });
+    const estimateText = estimate
+      ? ` Best-model estimate: ${Math.round(estimate.probability * 100)}% ${estimate.label}.`
+      : '';
+    setToastMessage(`Task "${newTask.title}" added to your workspace.${estimateText}`);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -325,6 +359,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       return {
         title: 'Completion Analytics',
         subtitle: 'Weekly completion, targets, and monthly goal progress',
+      };
+    }
+    if (path.endsWith('/ml-lab')) {
+      return {
+        title: 'ML Lab',
+        subtitle: 'Dataset-driven classifiers, GPT tokenizers, and schema-aware RAG',
       };
     }
     if (path.includes('/team/')) {
@@ -441,6 +481,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     isPreview={isPreview}
                     basePath={basePath}
                     user={user}
+                    userId={user.id}
                     tasks={tasks}
                     dashboard={dashboard}
                     initialTab="dashboard"
@@ -461,6 +502,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     isPreview={isPreview}
                     basePath={basePath}
                     user={user}
+                    userId={user.id}
                     tasks={tasks}
                     dashboard={dashboard}
                     initialTab="tasks"
@@ -574,6 +616,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                   />
                 }
               />
+              <Route path="ml-lab" element={<MLLabPage userId={user.id} />} />
               <Route path="*" element={<Navigate to={basePath} replace />} />
             </Routes>
           </main>
@@ -590,12 +633,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         }}
         onToggleTask={handleToggleTask}
         isPreview={isPreview}
+        userId={user.id}
       />
 
       <TaskCreateModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onCreateTask={handleCreateTask}
+        predictTask={predictForTask}
       />
 
       <CreateTeamModal

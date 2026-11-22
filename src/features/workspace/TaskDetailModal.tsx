@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { SampleTask } from '../../data/sampleTasks';
 import { Badge, Button } from '../../components/ui';
+import { TaskRagPanel } from '../ml-lab/TaskRagPanel';
 import { X, Clock, Calendar, CheckCircle2, AlertCircle, History, Tag } from 'lucide-react';
 import { getTodayDateString, getCurrentTimeString } from '../../utils/dateUtils';
 
@@ -10,6 +11,7 @@ export interface TaskDetailModalProps {
   onClose: () => void;
   onToggleTask?: (task: SampleTask) => void;
   isPreview?: boolean;
+  userId?: string;
 }
 
 export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
@@ -18,6 +20,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   onClose,
   onToggleTask,
   isPreview = true,
+  userId,
 }) => {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -200,6 +203,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             </p>
           )}
         </div>
+
+        <TaskRagPanel task={task} userId={userId} />
 
         {/* Footer Actions */}
         <div className="mt-6 pt-4 border-t border-[var(--line)] flex items-center justify-between gap-3">

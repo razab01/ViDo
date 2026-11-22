@@ -8,6 +8,7 @@ import {
 import { BENCHMARK_DATE_STR } from '../../../data/sampleTasks';
 import { getTodayDateString, formatTopBarDate } from '../../../utils/dateUtils';
 import { TaskRow } from '../TaskRow';
+import { DashboardRagCard } from '../../ml-lab/DashboardRagCard';
 import { Button } from '../../../components/ui';
 import {
   CheckSquare,
@@ -31,6 +32,7 @@ export interface HomeViewProps {
   };
   tasks?: SampleTask[];
   dashboard?: HomeDashboardTasks;
+  userId?: string;
   initialTab?: 'dashboard' | 'tasks';
   initialStatus?: 'today' | 'needsAttention' | 'upcoming' | 'completed' | 'all';
   onTaskClick: (task: SampleTask) => void;
@@ -48,6 +50,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   user,
   tasks,
   dashboard,
+  userId,
   initialTab = 'dashboard',
   initialStatus = 'today',
   onTaskClick,
@@ -350,6 +353,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </div>
           </section>
+
+          <DashboardRagCard userId={userId} basePath={basePath} />
 
           {/* Active Category Tasks Preview on Dashboard */}
           <section className="space-y-4">

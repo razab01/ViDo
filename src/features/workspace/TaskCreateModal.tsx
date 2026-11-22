@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Button, Input } from '../../components/ui';
+import { Badge, Button, Input } from '../../components/ui';
 import { SampleTask } from '../../data/sampleTasks';
-import { X, Tag, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Tag, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { formatTaskProbability } from '../ml-lab/mlStore';
+import type { TaskPrediction, TaskPredictionInput } from '../ml-lab/mlStore';
 import {
   getTodayDateString,
   getSevenDaysAgoDateString,
@@ -17,6 +19,7 @@ export interface TaskCreateModalProps {
   initialStartDate?: string;
   initialDueDate?: string;
   initialDueTime?: string;
+  predictTask?: (input: TaskPredictionInput) => TaskPrediction | null;
 }
 
 export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
@@ -26,6 +29,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   initialStartDate,
   initialDueDate,
   initialDueTime,
+  predictTask,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -52,6 +56,20 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   }, [startDate, dueDate, dueTime]);
 
   const isFormValid = Boolean(title.trim()) && validation.isValid;
+
+  const probability = useMemo(
+    () =>
+      predictTask?.({
+        title,
+        description,
+        priority,
+        category,
+        startDate,
+        dueDate,
+        dueTime,
+      }) ?? null,
+    [predictTask, title, description, priority, category, startDate, dueDate, dueTime]
+  );
 
   const isSelectedDateToday = dueDate === todayStr;
 
@@ -95,9 +113,16 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
         {
           id: `cp-${Date.now()}`,
           timestamp: validation.effectiveCreatedAt,
-          note: startDate.trim()
-            ? `Task initialized in workspace (started on ${startDate.trim()}).`
-            : 'Task initialized in workspace.',
+          note: [
+            startDate.trim()
+              ? `Task initialized in workspace (started on ${startDate.trim()}).`
+              : 'Task initialized in workspace.',
+            probability
+              ? `Best-model estimate: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label} · ${probability.model}.`
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
         },
       ],
     };
@@ -187,6 +212,31 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] text-[var(--ink)] placeholder-[var(--faint)] border border-[var(--line)] rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-1 resize-none"
             />
+          </div>
+
+          <div className="rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-3.5 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
+              <span className="text-xs font-bold text-[var(--ink)]">
+                {probability?.isCompletion ? 'Completion probability' : 'Best-model estimate'}
+              </span>
+              {probability && (
+                <Badge size="sm" variant="accent">
+                  {formatTaskProbability(probability.probability, probability.kind)}
+                </Badge>
+              )}
+            </div>
+            {probability ? (
+              <p className="text-[11px] text-[var(--muted)] mt-1.5 leading-relaxed">
+                Predicted <strong className="text-[var(--ink)]">{probability.label}</strong> for{' '}
+                {probability.target} · {probability.model} · {probability.kind}
+                {title.trim() ? '' : ' — add a title to refine this estimate.'}
+              </p>
+            ) : (
+              <p className="text-[11px] text-[var(--muted)] mt-1.5 leading-relaxed">
+                Train a model in ML Lab to see this task&apos;s predicted outcome and probability.
+              </p>
+            )}
           </div>
 
           {/* Date & Time Selection */}
