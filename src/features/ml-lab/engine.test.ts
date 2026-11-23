@@ -70,6 +70,34 @@ describe('dynamic ingestion and schema inference', () => {
     expect(prepared.dataset.cols).toContain('text_length');
   });
 
+  it('derives three outcome classes from completion and deadline dates', () => {
+    const cases = [
+      { completed_date: '2026-02-04', expected: 'completed' },
+      { completed_date: '2026-02-07', expected: 'completed after deadline' },
+      { completed_date: '', expected: 'not completed' },
+      { completed_date: '2026-02-05', expected: 'completed' },
+    ];
+    const rows: Row[] = Array.from({ length: 12 }, (_, i) => {
+      const c = cases[i % cases.length];
+      return {
+        task: 'Task ' + i,
+        added_date: '2026-02-01',
+        deadline_date: '2026-02-05',
+        completed_date: c.completed_date,
+      };
+    });
+    const prepared = prepareDataset(['task', 'added_date', 'deadline_date', 'completed_date'], rows);
+    expect(prepared.valid).toBe(true);
+    expect(prepared.dataset.target).toBe('completed');
+    expect(prepared.profile.targetSource).toBe('completed_date');
+    cases.forEach((c, i) => {
+      expect(prepared.dataset.rows[i].completed).toBe(c.expected);
+    });
+    expect(new Set(prepared.dataset.rows.map((r) => String(r.completed)))).toEqual(
+      new Set(['completed', 'completed after deadline', 'not completed'])
+    );
+  });
+
   it('respects an explicitly selected target column', () => {
     const rows = trainingRows(20);
     const prepared = prepareDataset(Object.keys(rows[0]), rows, { target: 'priority' });

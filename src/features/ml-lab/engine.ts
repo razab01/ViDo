@@ -591,9 +591,23 @@ export function prepareDataset(
   }
   let meta = profileData(cols, rows);
   const comp = cols.find((c) => /complet.*date|finished.*date|closed.*date/i.test(c));
+  const due = cols.find(
+    (c) => c !== comp && /(deadline|due[_\s-]?date|^due$|target[_\s-]?date)/i.test(c)
+  );
   let target = opts.target || meta.outcome || cols[cols.length - 1];
   if (comp && cols.filter((c) => meta.P[c].isDate).length > 1 && !cols.some((c) => /^completed$/i.test(c))) {
-    rows = rows.map((r) => ({ ...r, completed: String(r[comp] ?? '').trim() ? 'yes' : 'no' }));
+    rows = rows.map((r) => {
+      const completedText = String(r[comp] ?? '').trim();
+      if (!completedText) return { ...r, completed: 'not completed' };
+      if (due) {
+        const completedAt = dateNum(completedText);
+        const dueAt = dateNum(r[due]);
+        if (!isNaN(completedAt) && !isNaN(dueAt) && completedAt > dueAt) {
+          return { ...r, completed: 'completed after deadline' };
+        }
+      }
+      return { ...r, completed: 'completed' };
+    });
     cols = cols.concat('completed');
     meta.targetSource = comp;
     target = 'completed';
