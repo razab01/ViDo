@@ -21,6 +21,7 @@ import { todayISO } from '../../data/calendar';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { MLLabPage } from '../ml-lab/MLLabPage';
+import { ChatLabPage } from '../chat-lab/ChatLabPage';
 import {
   predictTask,
   requestRestore,
@@ -76,6 +77,7 @@ export const isKnownWorkspacePath = (pathname: string, basePath: string): boolea
     'calendar',
     'analytics',
     'ml-lab',
+    'chat-lab',
   ]);
 
   if (exactKnownSubPaths.has(subPath)) return true;
@@ -367,6 +369,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         subtitle: 'Dataset-driven classifiers, GPT tokenizers, and schema-aware RAG',
       };
     }
+    if (path.endsWith('/chat-lab')) {
+      return {
+        title: 'Chat Lab',
+        subtitle: 'Ask anything — maths, world facts, and answers from your data',
+      };
+    }
     if (path.includes('/team/')) {
       const activeTeamId = path.split('/team/')[1]?.split('/')[0];
       const currentTeam = teams.find((t) => t.id === activeTeamId);
@@ -617,6 +625,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 }
               />
               <Route path="ml-lab" element={<MLLabPage userId={user.id} />} />
+              <Route path="chat-lab" element={<ChatLabPage userId={user.id} />} />
               <Route path="*" element={<Navigate to={basePath} replace />} />
             </Routes>
           </main>

@@ -25,6 +25,8 @@ describe('WorkspaceSidebar', () => {
     expect(screen.getByRole('link', { name: /tasks 15/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /analytics/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /ml lab/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /chat lab/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /themes/i })).toBeInTheDocument();
   });
 

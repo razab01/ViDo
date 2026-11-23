@@ -15,6 +15,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/style-lab" element={<StyleLab />} />
             <Route path="/ml-lab" element={<Navigate to="/workspace/ml-lab" replace />} />
+            <Route path="/chat-lab" element={<Navigate to="/workspace/chat-lab" replace />} />
             <Route path="/preview/*" element={<WorkspaceLayout isPreview={true} />} />
             <Route path="/workspace/*" element={<WorkspaceLayout isPreview={false} />} />
             <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
