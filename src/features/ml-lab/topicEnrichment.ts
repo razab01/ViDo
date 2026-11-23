@@ -1,8 +1,16 @@
 import { composeAnswer, type ComposeAnswerOptions } from './answerEngine';
-import { subjectKeywords } from './topicLanguage';
-import { lookupTopic, readCachedTopic, type TopicSummary } from './topicLookup';
+import { topicWords } from './topicLanguage';
+import { lookupTopic, lookupTopicWord, readCachedTopic, type TopicSummary } from './topicLookup';
 
 const LOOKUP_TIMEOUT = 1600;
+
+/** Task wording is not a subject, so it should never trigger a Wikipedia search. */
+const TASK_WORDS = new Set([
+  'about', 'action', 'again', 'also', 'class', 'completion', 'deadline', 'describe', 'details',
+  'due', 'explain', 'help', 'latest', 'lesson', 'mark', 'next', 'please', 'planned', 'probability',
+  'question', 'schedule', 'scheduled', 'show', 'step', 'task', 'tell', 'today', 'update', 'what',
+  'when', 'where', 'which', 'while', 'with', 'your',
+]);
 
 /**
  * Improve an already-displayed answer with a cached or freshly fetched
@@ -23,10 +31,14 @@ export function enrichAnswerWithTopic(
     if (improved && improved !== currentAnswer) onUpdate(improved);
   };
 
-  const keywords = subjectKeywords(subject);
-  const queries = [subject, ...(keywords.length > 3 ? [keywords.slice(0, 2).join(' ')] : [])].filter(Boolean);
+  const cleanSubject = String(subject || '').trim();
+  // Keep real topic words in their original form: "calculus", not the stemmed
+  // "calculu" used by the offline matcher.
+  const wordQueries = topicWords(cleanSubject).filter(
+    (word) => word.length > 2 && !TASK_WORDS.has(word)
+  );
 
-  const cached = queries.map(readCachedTopic).find(Boolean);
+  const cached = [cleanSubject, ...wordQueries].map(readCachedTopic).find(Boolean);
   if (cached) {
     apply(cached);
     return () => {
@@ -38,18 +50,28 @@ export function enrichAnswerWithTopic(
   const timer = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT);
 
   const run = async () => {
-    for (const query of queries) {
-      try {
-        const topic = await lookupTopic(query, controller.signal);
-        if (cancelled || controller.signal.aborted) return;
-        if (topic) {
-          apply(topic);
-          return;
-        }
-      } catch {
-        // Network is optional: keep the instant local answer.
+    try {
+      const exact = await lookupTopic(cleanSubject, controller.signal);
+      if (cancelled || controller.signal.aborted) return;
+      if (exact) {
+        apply(exact);
         return;
       }
+
+      // Word-by-word fallback: a long task title rarely has its own page, but
+      // each meaningful word can still be checked quickly and in parallel.
+      const results = await Promise.allSettled(
+        wordQueries.map((word) => lookupTopicWord(word, controller.signal))
+      );
+      if (cancelled || controller.signal.aborted) return;
+
+      const found = results.find(
+        (result): result is PromiseFulfilledResult<TopicSummary | null> =>
+          result.status === 'fulfilled' && Boolean(result.value)
+      )?.value;
+      if (found) apply(found);
+    } catch {
+      // Network is optional: keep the instant local answer.
     }
   };
 

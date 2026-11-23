@@ -1,5 +1,5 @@
 import type { RAGResult } from './engine';
-import { findKnowledge, type KnowledgeEntry } from './knowledge';
+import { bestKnowledgeWord, findKnowledge, type KnowledgeEntry } from './knowledge';
 import { describeSubject } from './topicLanguage';
 import type { TopicSummary } from './topicLookup';
 
@@ -177,7 +177,8 @@ const aboutParts = (
   knowledge: KnowledgeEntry | null,
   intentKnowledge: boolean,
   subject: string,
-  topic: TopicSummary | null
+  topic: TopicSummary | null,
+  wordKnowledge: KnowledgeEntry | null
 ): string[] => {
   const title = findFact(facts, 'Task title') || rag.ranked[0]?.title || '';
   const description = findFact(facts, 'Description');
@@ -201,6 +202,19 @@ const aboutParts = (
   }
 
   if (description) parts.push(detailSentence(description));
+
+  // A specific word inside a longer title still deserves its own explanation:
+  // "Schedule for calculus class" must explain calculus, not just scheduling.
+  const wordSentence = wordKnowledge ? firstSentence(wordKnowledge.text) : '';
+  if (
+    wordSentence &&
+    wordKnowledge !== knowledge &&
+    !intentKnowledge &&
+    !topic &&
+    !parts.some((part) => part.includes(wordSentence))
+  )
+    parts.push(`In particular, ${lowerFirst(wordSentence)}`);
+
   if (priority) parts.push(`It is marked ${priority.toLowerCase()} priority.`);
   if (due) parts.push(`It is planned for ${due}.`);
   if (checkpoint) parts.push(`The latest update was ${lowerFirst(checkpoint)}.`);
@@ -265,6 +279,7 @@ export function composeAnswer({ question, rag, facts = [], topic = null }: Compo
   const intentKnowledge = Boolean(
     INTENT_KNOWLEDGE[intent] && knowledge && findKnowledge(primarySubject) !== knowledge
   );
+  const wordKnowledge = intent === 'about' ? bestKnowledgeWord(primarySubject) : null;
 
   let parts: string[];
   switch (intent) {
@@ -278,7 +293,15 @@ export function composeAnswer({ question, rag, facts = [], topic = null }: Compo
       parts = nextStepParts(safeFacts, rag, knowledge);
       break;
     case 'about':
-      parts = aboutParts(safeFacts, rag, knowledge, intentKnowledge, primarySubject, topic);
+      parts = aboutParts(
+        safeFacts,
+        rag,
+        knowledge,
+        intentKnowledge,
+        primarySubject,
+        topic,
+        wordKnowledge
+      );
       break;
     case 'compare':
       parts = compareParts(rag, knowledge);

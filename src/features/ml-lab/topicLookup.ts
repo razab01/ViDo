@@ -83,3 +83,39 @@ export async function lookupTopic(subject: string, signal?: AbortSignal): Promis
   writeCachedTopic(title, summary);
   return summary;
 }
+
+/**
+ * Word-level Wikipedia search for long-tail topics.
+ *
+ * A full title such as "Schedule for calculus class" has no Wikipedia page,
+ * so we search for each meaningful word ("calculus"), take the top result and
+ * fetch its short summary. The result is cached under the original word.
+ */
+export async function lookupTopicWord(
+  word: string,
+  signal?: AbortSignal
+): Promise<TopicSummary | null> {
+  const query = String(word || '').trim();
+  if (!query) return null;
+
+  const cached = readCachedTopic(query);
+  if (cached) return cached;
+
+  const searchUrl =
+    'https://en.wikipedia.org/w/api.php?action=query&list=search&srnamespace=0' +
+    '&srlimit=1&format=json&origin=*&srsearch=' +
+    encodeURIComponent(query);
+
+  const response = await fetch(searchUrl, { signal, headers: { Accept: 'application/json' } });
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as {
+    query?: { search?: Array<{ title?: string }> };
+  };
+  const title = payload.query?.search?.find((item) => Boolean(item.title))?.title;
+  if (!title) return null;
+
+  const summary = await lookupTopic(title, signal);
+  if (summary) writeCachedTopic(query, summary);
+  return summary;
+}

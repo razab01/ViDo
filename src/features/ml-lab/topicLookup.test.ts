@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { lookupTopic, readCachedTopic } from './topicLookup';
+import { lookupTopic, lookupTopicWord, readCachedTopic } from './topicLookup';
 
 const payload = {
   query: {
@@ -35,6 +35,34 @@ describe('topic lookup', () => {
     expect(second).toEqual(first);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(readCachedTopic('Boating')?.title).toBe('Boating');
+  });
+
+  it('searches an individual word, fetches the top result and caches it', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const json = url.includes('list=search')
+        ? { query: { search: [{ title: 'Calculus' }] } }
+        : {
+            query: {
+              pages: {
+                '5176': {
+                  title: 'Calculus',
+                  extract:
+                    'Calculus is the branch of mathematics that studies continuous change, and is the principal precursor of modern mathematical analysis.',
+                },
+              },
+            },
+          };
+      return { ok: true, json: async () => json } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await lookupTopicWord('calculus');
+    expect(summary?.title).toBe('Calculus');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('list=search');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('srsearch=calculus');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('titles=Calculus');
+    expect(readCachedTopic('calculus')?.title).toBe('Calculus');
   });
 
   it('returns null when the network is unavailable so local answers still work', async () => {

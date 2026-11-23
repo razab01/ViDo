@@ -146,4 +146,59 @@ describe('TaskRagPanel', () => {
     expect(screen.getByText(/three-month period/i)).toBeInTheDocument();
     expect(screen.queryByText(/a good status report/i)).not.toBeInTheDocument();
   });
+
+  it('checks individual words on Wikipedia when a task title has no exact page', async () => {
+    const calculus: SampleTask = {
+      id: 'calculus-task',
+      title: 'Schedule for calculus class',
+      priority: 'medium',
+      state: 'active',
+      category: 'personal',
+      createdAt: '2026-11-20T09:00:00Z',
+      dueDate: '2026-11-23',
+      dueTime: '23:59',
+    };
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('list=search')) {
+        return {
+          ok: true,
+          json: async () => ({ query: { search: [{ title: 'Calculus' }] } }),
+        } as unknown as Response;
+      }
+      if (url.includes('titles=Calculus')) {
+        return {
+          ok: true,
+          json: async () => ({
+            query: {
+              pages: {
+                '5176': {
+                  title: 'Calculus',
+                  extract:
+                    'Calculus is the branch of mathematics that studies continuous change, and is the principal precursor of modern mathematical analysis.',
+                },
+              },
+            },
+          }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({ query: { pages: { '-1': { extract: '' } } } }),
+      } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TaskRagPanel task={calculus} userId="task-rag-user" />);
+
+    fireEvent.change(screen.getByLabelText('Ask about this task'), {
+      target: { value: 'What is this task about?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText(/the branch of mathematics that studies continuous change/i)).toBeInTheDocument();
+    expect(await screen.findByText(/principal precursor of modern mathematical analysis/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('srsearch=calculus'))).toBe(true);
+  });
 });

@@ -48,6 +48,22 @@ describe('answerEngine', () => {
     expect(answer).not.toMatch(/status report/i);
   });
 
+  it('explains a specific subject word inside a longer task title', () => {
+    const answer = composeAnswer({
+      question: 'What is this task about?',
+      rag: { ...rag, ranked: [], answer: 'No relevant context found' },
+      facts: [
+        'Task title: Schedule for calculus class.',
+        'Priority: medium.',
+        'Due date: 2026-11-23.',
+      ],
+    });
+
+    expect(answer).toMatch(/the branch of mathematics that studies continuous change/i);
+    expect(answer).toMatch(/calculus is the branch of mathematics/i);
+    expect(answer).not.toMatch(/^Schedule for calculus class is choosing the time for something\.$/);
+  });
+
   it('uses a supplied Wikipedia summary when one is available', () => {
     const answer = composeAnswer({
       question: 'What is quantum computing?',

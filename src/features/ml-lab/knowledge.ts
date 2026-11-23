@@ -8,6 +8,7 @@
  */
 
 import type { RAGDoc } from './engine';
+import { EXTRA_KNOWLEDGE_ENTRIES } from './knowledgeExtra';
 
 export interface KnowledgeEntry {
   id: string;
@@ -17,7 +18,7 @@ export interface KnowledgeEntry {
   topic: string;
 }
 
-export const KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
+const CORE_KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
   // ---------------------------------------------------------------- work
   {
     id: 'kb-prioritisation',
@@ -386,6 +387,15 @@ export const KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
   },
 ];
 
+/**
+ * Full bundled library: the original work/task articles plus a broad offline
+ * encyclopedia of short explainers across many subjects.
+ */
+export const KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
+  ...CORE_KNOWLEDGE_ENTRIES,
+  ...EXTRA_KNOWLEDGE_ENTRIES,
+];
+
 /** Stable document array so RAG indexes are built once. */
 export const KNOWLEDGE_DOCS: RAGDoc[] = KNOWLEDGE_ENTRIES.map((entry) => ({
   id: entry.id,
@@ -405,7 +415,7 @@ const words = (value: string): string[] =>
 const STOP_WORDS = new Set([
   'a', 'about', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'do', 'does', 'for', 'from',
   'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'our', 'that', 'the', 'this',
-  'to', 'was', 'what', 'when', 'which', 'who', 'why', 'with', 'you', 'your',
+  'to', 'task', 'was', 'what', 'when', 'which', 'who', 'why', 'with', 'you', 'your',
 ]);
 
 /** Small, conservative stemmer so "planning" and "plan" compare as one word. */
@@ -483,6 +493,47 @@ export function findKnowledge(subject: string): KnowledgeEntry | null {
       best = KNOWLEDGE_ENTRIES[index];
     }
   });
+
+  return best;
+}
+
+/** Words that are too general to explain a topic on their own. */
+const GENERIC_SINGLE_WORDS = new Set([
+  'about', 'action', 'activity', 'answer', 'area', 'base', 'class', 'date', 'day', 'event',
+  'feature', 'file', 'financial', 'finance', 'form', 'game', 'goal', 'group', 'help', 'item', 'level', 'line', 'list',
+  'match', 'model', 'name', 'note', 'number', 'order', 'part', 'plan', 'point', 'price',
+  'priority', 'problem', 'process', 'project', 'question', 'record', 'report', 'result',
+  'risk', 'role', 'room', 'rule', 'scale', 'schedule', 'score', 'service', 'state', 'step',
+  'story', 'system', 'task', 'team', 'term', 'test', 'time', 'title', 'topic', 'track',
+  'training', 'type', 'update', 'use', 'value', 'word', 'work',
+]);
+
+/**
+ * Find one genuinely specific word in a longer subject.
+ *
+ * `findKnowledge` deliberately needs whole-phrase coverage, so "Schedule for
+ * calculus class" will not match the Calculus article. This helper is the
+ * word-level fallback: rare words such as "calculus" still contribute bundled
+ * evidence, while generic words such as "schedule" or "class" never do.
+ */
+export function bestKnowledgeWord(subject: string): KnowledgeEntry | null {
+  let best: KnowledgeEntry | null = null;
+  let bestScore = 0;
+
+  for (const token of tokens(subject)) {
+    if (token.length < 5 || GENERIC_SINGLE_WORDS.has(token)) continue;
+    const score = weight(token);
+    // Shared common words need several other words to look specific; a rare
+    // single word such as "calculus" clears this bar on its own.
+    if (score < 4.6 || score <= bestScore) continue;
+
+    for (let index = 0; index < KNOWLEDGE_ENTRIES.length; index += 1) {
+      const entry = KNOWLEDGE_ENTRIES[index];
+      if (!KEY_TOKENS[index].includes(token)) continue;
+      best = entry;
+      bestScore = score;
+    }
+  }
 
   return best;
 }

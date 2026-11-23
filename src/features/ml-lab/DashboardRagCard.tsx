@@ -98,7 +98,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-[var(--muted)] max-w-xl">
-            ViDo answers instantly from built-in knowledge and anything you saved in ML Lab, then refines the topic with a cached Wikipedia summary when online.
+            ViDo answers instantly from built-in knowledge and anything you saved in ML Lab, then checks individual words with Wikipedia when online and caches the result.
             {snapshot?.upload && (
               <span className="block text-[11px] text-[var(--faint)] mt-0.5">
                 Auto-detected source: {snapshot.upload.name}

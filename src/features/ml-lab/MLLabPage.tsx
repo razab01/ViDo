@@ -921,7 +921,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
             {showAdvanced && (
               <p className="text-[10px] text-[var(--faint)] mb-3">
-                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, answers instantly, then quietly refines the topic with a cached Wikipedia summary when you are online.
+                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, answers instantly, then quietly checks individual words with Wikipedia and caches what it finds when you are online.
               </p>
             )}
 

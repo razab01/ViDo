@@ -64,6 +64,8 @@ const WORD_SENSES: Record<string, Sense> = {
   bill: n('a request for payment'), blog: n('a short article published online'),
   book: n('a written work you read'), brief: n('a short summary of what is needed'),
   budget: n('a plan for expected income and spending'), bug: n('a fault in a program'),
+  calculus: n('the branch of mathematics that studies continuous change'),
+  class: n('a lesson or group of learners studying together'),
   campaign: n('a planned effort to reach a goal'), checklist: n('a short list of steps not to forget'),
   code: n('the instructions that tell a program what to do'), content: n('the written or visual material in something'),
   contract: n('a written agreement between parties'), data: n('the facts and figures collected for analysis'),
@@ -198,6 +200,11 @@ const normalize = (value: string): string[] =>
     .toLowerCase()
     .match(/[a-z0-9]+/g) || [];
 
+/** Container words should support the subject, not become the subject itself. */
+const GENERIC_MAIN_WORDS = new Set([
+  'class', 'date', 'item', 'note', 'plan', 'schedule', 'step', 'task', 'time', 'work',
+]);
+
 /** Content words only, with connectors and one-letter noise removed. */
 export const subjectKeywords = (subject: string): string[] =>
   Array.from(
@@ -207,6 +214,12 @@ export const subjectKeywords = (subject: string): string[] =>
         .map((word) => word.replace(/(ies)$/, 'y').replace(/(ing|ed|es|s)$/, ''))
         .filter(Boolean)
     )
+  );
+
+/** Original content words, kept unstemmed so Wikipedia searches use real terms. */
+export const topicWords = (subject: string): string[] =>
+  Array.from(
+    new Set(normalize(subject).filter((word) => !CONNECTORS.has(word) && word.length > 2))
   );
 
 const lookupSense = (word: string): Sense | undefined => {
@@ -246,11 +259,23 @@ export function describeSubject(subject: string): string {
   const title = String(subject || '').replace(/\s+/g, ' ').trim();
   if (!title) return '';
 
-  const words = normalize(title).filter((word) => !CONNECTORS.has(word) && word.length > 1);
-  const senses = words.map(lookupSense).filter((sense): sense is Sense => Boolean(sense));
-  if (!senses.length) return '';
+  const understood = normalize(title)
+    .filter((word) => !CONNECTORS.has(word) && word.length > 1)
+    .map((word, index) => ({ word, index, sense: lookupSense(word) }))
+    .filter((item): item is { word: string; index: number; sense: Sense } => Boolean(item.sense));
+  if (!understood.length) return '';
 
+  const senses = understood.map((item) => item.sense);
   const mainIndex = (() => {
+    const specific = understood
+      .filter(
+        (item) =>
+          !GENERIC_MAIN_WORDS.has(item.word) &&
+          (item.sense.kind === 'action' || item.sense.kind === 'thing' || item.sense.kind === 'event')
+      )
+      .map((item) => item.index);
+    if (specific.length) return specific[specific.length - 1];
+
     for (let index = senses.length - 1; index >= 0; index -= 1) {
       if (senses[index].kind === 'action' || senses[index].kind === 'thing' || senses[index].kind === 'event')
         return index;

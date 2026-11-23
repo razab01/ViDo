@@ -20,6 +20,12 @@ describe('offline topic language', () => {
     expect(answer).toMatch(/three-month period/i);
   });
 
+  it('lets a specific subject word lead a longer task title', () => {
+    const answer = describeSubject('Schedule for calculus class');
+    expect(answer).toMatch(/the branch of mathematics that studies continuous change/i);
+    expect(answer).not.toMatch(/^Schedule for calculus class is choosing the time for something\.$/);
+  });
+
   it('returns nothing when no word is understood', () => {
     expect(describeSubject('xyzzy qwerty')).toBe('');
     expect(describeSubject('')).toBe('');
