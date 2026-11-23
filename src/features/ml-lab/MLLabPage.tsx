@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, BarChart3, CheckCircle2, Database, Search, Sparkles, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input } from '../../components/ui';
 import {
+  dateNum,
   demoRows,
+  findDeadlineColumn,
+  formatConfidence,
   loadUploadedFile,
   pct,
   predictWith,
@@ -90,8 +93,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [tokenizer, setTokenizer] = useState<TokenizerChoice>(initialSnapshot?.tokenizer ?? 'cl100k');
   const [split, setSplit] = useState<SplitChoice>(initialSnapshot?.split ?? 'auto');
   const [vocab, setVocab] = useState(initialSnapshot?.vocab ?? 2048);
-  // Every model now trains for exactly three epochs; this is not adjustable.
-  const epochs = 3;
+  // Every model now trains for exactly five epochs; this is not adjustable.
+  const epochs = 5;
 
   const [result, setResult] = useState<TrainingResult | null>(() =>
     resultFromStored(initialSnapshot?.result ?? null, getActiveResult(userId))
@@ -99,6 +102,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [modelReady, setModelReady] = useState(() => Boolean(getActiveResult(userId)));
   const [predictionValues, setPredictionValues] = useState<Row>(initialSnapshot?.predictionValues ?? {});
   const [prediction, setPrediction] = useState<{ label: string; confidence: string; model: string } | null>(null);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [deadlineTask, setDeadlineTask] = useState('');
+  const [deadlineDate, setDeadlineDate] = useState('');
 
   const [ragQuery, setRagQuery] = useState('');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
@@ -124,6 +130,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setModelReady(Boolean(active));
     setPredictionValues(snapshot?.predictionValues ?? {});
     setPrediction(null);
+    setSelectedModel('');
+    setDeadlineTask('');
+    setDeadlineDate('');
     setRagResult(null);
     setRagNotice('');
     setRagBusy(false);
@@ -157,6 +166,22 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       }),
     [userId]
   );
+
+  useEffect(() => {
+    if (!result) {
+      setSelectedModel('');
+      setDeadlineTask('');
+      setDeadlineDate('');
+      return;
+    }
+    setSelectedModel((current) =>
+      result.metrics.some((metric) => metric.n === current) ? current : result.best.n
+    );
+    const sample = result.sample ?? {};
+    setDeadlineTask(String(sample[result.textCol] ?? ''));
+    const deadlineCol = findDeadlineColumn(result.dataset.cols);
+    setDeadlineDate(deadlineCol ? String(sample[deadlineCol] ?? '').slice(0, 10) : '');
+  }, [result]);
 
   useEffect(() => {
     if (!dataset && !upload) return;
@@ -427,6 +452,38 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const metricText = (value: number) => (datasetLoaded ? pct(value) : '—');
   const lossMax = result ? Math.max(0.1, ...result.history.lt, ...result.history.le) : 1;
   const accuracyMax = result ? Math.max(0.1, ...result.history.at, ...result.history.ae) : 1;
+
+  const deadlineColumn = result ? findDeadlineColumn(result.dataset.cols) : undefined;
+  const selectableMetrics = result ? result.metrics.filter((metric) => !metric.err) : [];
+  const completionLabelIndex = result
+    ? result.labels.findIndex((label) => /^(completed|yes)$/i.test(label))
+    : -1;
+  const selectedArtifact =
+    result?.models.find((model) => model.metric.n === selectedModel)?.artifact ?? result?.artifact;
+  const deadlineProbability = useMemo(() => {
+    if (!datasetLoaded || !result || !selectedArtifact?.proba || completionLabelIndex < 0) return null;
+    const row: Row = { ...(result.sample ?? {}) };
+    row[result.textCol] = deadlineTask;
+    if (deadlineColumn && deadlineDate) row[deadlineColumn] = deadlineDate;
+    try {
+      const synced = syncPredictionRow(result, row);
+      if (deadlineColumn && deadlineDate) {
+        const derived = 'days_to_' + (deadlineColumn.replace(/_date$/, '') || 'event');
+        const startCol = (result.profile.dates || []).find(
+          (dateCol) => dateCol !== deadlineColumn && dateCol !== result.profile.targetSource
+        );
+        if (result.dataset.cols.includes(derived) && startCol) {
+          const start = dateNum(row[startCol]);
+          const end = dateNum(row[deadlineColumn]);
+          if (!isNaN(start) && !isNaN(end)) synced[derived] = String(Math.round(end - start));
+        }
+      }
+      const values = selectedArtifact.proba(synced);
+      return Number.isFinite(values[completionLabelIndex]) ? values[completionLabelIndex] : null;
+    } catch {
+      return null;
+    }
+  }, [datasetLoaded, result, selectedArtifact, completionLabelIndex, deadlineTask, deadlineColumn, deadlineDate]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto space-y-5">
@@ -727,6 +784,29 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   </div>
                 </div>
 
+                {datasetLoaded && (
+                  <div className="mt-4">
+                    <div className="text-xs font-semibold mb-2">All model scores</div>
+                    <div className="max-h-48 overflow-auto pr-1 space-y-1.5">
+                      {result.metrics.map((metric) => (
+                        <div
+                          key={metric.n}
+                          className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] ${
+                            metric.n === result.best.n
+                              ? 'border-[var(--green)] bg-[var(--green-soft)]'
+                              : 'border-[var(--line)] bg-[var(--canvas)]'
+                          }`}
+                        >
+                          <span className="font-medium truncate">{metric.err ? '⚠ ' : ''}{metric.n}</span>
+                          <span className="font-mono whitespace-nowrap">
+                            {metric.err ? 'failed' : `${metricText(metric.acc)} · F1 macro ${metricText(metric.F)}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {showAdvanced && (
                   <div className="mt-4 space-y-3">
                     <div className="text-xs font-semibold">
@@ -742,7 +822,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                         <div className="font-bold">{metricText(result.best.R)}</div>
                       </div>
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                        <div className="text-[var(--faint)]">F1 score</div>
+                        <div className="text-[var(--faint)]">F1 macro</div>
                         <div className="font-bold">{metricText(result.best.F)}</div>
                       </div>
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
@@ -757,7 +837,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                           <tr>
                             <th className="px-2.5 py-2 font-semibold">Model</th>
                             <th className="px-2.5 py-2 font-semibold">Accuracy</th>
-                            <th className="px-2.5 py-2 font-semibold">F1</th>
+                            <th className="px-2.5 py-2 font-semibold">F1 macro</th>
                             <th className="px-2.5 py-2 font-semibold">Time</th>
                           </tr>
                         </thead>
@@ -777,6 +857,73 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                       </table>
                     </div>
                   </div>
+                )}
+              </Card>
+
+              <Card>
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h2 className="text-sm font-bold">Model probability</h2>
+                    <p className="text-xs text-[var(--muted)] mt-1">
+                      Pick any trained model and a deadline to see its chance of finishing on time.
+                    </p>
+                  </div>
+                  <Badge size="sm" variant="neutral">{selectedArtifact?.name ?? result.best.n}</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  <label className="block text-xs font-semibold text-[var(--muted)]">
+                    Model
+                    <select
+                      aria-label="Model"
+                      value={selectedModel}
+                      onChange={(event) => setSelectedModel(event.target.value)}
+                      className="w-full mt-1.5 rounded-lg border border-[var(--line)] bg-[var(--canvas)] px-2.5 py-2 text-xs"
+                    >
+                      {(selectableMetrics.length ? selectableMetrics : result.metrics).map((metric) => (
+                        <option key={metric.n} value={metric.n}>{metric.n}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-semibold text-[var(--muted)]">
+                    Task
+                    <input
+                      aria-label="Task for deadline probability"
+                      value={deadlineTask}
+                      onChange={(event) => setDeadlineTask(event.target.value)}
+                      placeholder="Describe the task"
+                      className="w-full mt-1.5 rounded-lg border border-[var(--line)] bg-[var(--canvas)] px-2.5 py-2 text-xs"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold text-[var(--muted)]">
+                    Deadline
+                    <input
+                      type="date"
+                      aria-label="Deadline"
+                      value={deadlineDate}
+                      onChange={(event) => setDeadlineDate(event.target.value)}
+                      className="w-full mt-1.5 rounded-lg border border-[var(--line)] bg-[var(--canvas)] px-2.5 py-2 text-xs"
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-3">
+                  <div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      Chance of completing within {deadlineDate || 'the selected deadline'}
+                    </div>
+                    <div className="text-[11px] text-[var(--faint)] mt-0.5">
+                      {datasetLoaded
+                        ? `Using ${selectedArtifact?.name ?? result.best.n}`
+                        : 'Load a dataset to see estimates'}
+                    </div>
+                  </div>
+                  <div data-testid="deadline-probability" className="text-2xl font-black text-[var(--green)]">
+                    {deadlineProbability === null ? '—' : formatConfidence(deadlineProbability)}
+                  </div>
+                </div>
+                {datasetLoaded && completionLabelIndex < 0 && (
+                  <p className="text-[11px] text-[var(--amber)] mt-2">
+                    This dataset has no completed-on-time label to estimate.
+                  </p>
                 )}
               </Card>
 

@@ -37,7 +37,13 @@ const result: TrainingResult = {
   tokenizerWarning: '',
   tokenizer: { example: 'task 0', raw: [1], compact: [1], subwords: 'task', decoded: 'task' },
   history: { lt: [], le: [], at: [], ae: [] },
-  metrics: [],
+  metrics: [{ n: 'Fake best', acc: 0.8, P: 0.8, R: 0.8, F: 0.8, ms: 1 }],
+  models: [
+    {
+      metric: { n: 'Fake best', acc: 0.8, P: 0.8, R: 0.8, F: 0.8, ms: 1 },
+      artifact: { name: 'Fake best', predict: () => 1, proba: () => [0.12, 0.88] },
+    },
+  ],
   best: { n: 'Fake best', acc: 0.8, P: 0.8, R: 0.8, F: 0.8, ms: 1 },
   artifact: { name: 'Fake best', predict: () => 1, proba: () => [0.12, 0.88] },
   suggestions: [],

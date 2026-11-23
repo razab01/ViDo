@@ -1009,8 +1009,8 @@ export function trainDeepModels(
   onEpoch?: (name: string, epoch: number, total: number) => void
 ): DeepTrainedModel[] {
   const trained: DeepTrainedModel[] = [];
-  // Training is fixed at exactly three epochs for every model.
-  const ep = 3;
+  // Training is fixed at exactly five epochs for every model.
+  const ep = 5;
   const evalIdx = stratifiedSample(testIdx, y, K, MAX_EVAL_SAMPLES);
 
   for (let m = 0; m < DEEP_MODEL_NAMES.length; m++) {

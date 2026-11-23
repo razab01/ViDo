@@ -85,6 +85,11 @@ export interface Artifact {
   proba?: (row: Row) => number[];
 }
 
+export interface ModelCandidate {
+  metric: ModelMetric;
+  artifact: Artifact;
+}
+
 export interface TrainingOptions {
   target: string;
   textCol: string;
@@ -119,6 +124,7 @@ export interface TrainingResult {
   };
   history: { lt: number[]; le: number[]; at: number[]; ae: number[] };
   metrics: ModelMetric[];
+  models: ModelCandidate[];
   best: ModelMetric;
   artifact: Artifact;
   suggestions: Suggestion[];
@@ -564,6 +570,11 @@ function deriveFeatures(meta: Profile, exclude: string | undefined, rows: Row[])
   return out;
 }
 
+/** Find a deadline/due-date column without matching derived names like days_to_deadline. */
+export function findDeadlineColumn(cols: string[]): string | undefined {
+  return cols.find((c) => /^(deadline|due|target)[_\s-]?(date|time)?$/i.test(c));
+}
+
 export function prepareDataset(
   rawCols: string[],
   rawRows: Row[],
@@ -591,9 +602,7 @@ export function prepareDataset(
   }
   let meta = profileData(cols, rows);
   const comp = cols.find((c) => /complet.*date|finished.*date|closed.*date/i.test(c));
-  const due = cols.find(
-    (c) => c !== comp && /(deadline|due[_\s-]?date|^due$|target[_\s-]?date)/i.test(c)
-  );
+  const due = cols.find((c) => c !== comp && findDeadlineColumn([c]));
   let target = opts.target || meta.outcome || cols[cols.length - 1];
   if (comp && cols.filter((c) => meta.P[c].isDate).length > 1 && !cols.some((c) => /^completed$/i.test(c))) {
     rows = rows.map((r) => {
@@ -1924,6 +1933,10 @@ export async function trainAll(
       proba: (row) => model.proba(String(row[textCol] ?? '')),
     },
   }));
+  const models: ModelCandidate[] = results.map(({ art, ...metric }) => ({
+    metric,
+    artifact: art as Artifact,
+  }));
   const ranked = rankModels(results);
   const best = ranked[0];
   if (!best || !best.art) throw new Error('No deep model produced a usable prediction.');
@@ -1988,7 +2001,8 @@ export async function trainAll(
       decoded: enc.decode(compactSample),
     },
     history,
-    metrics: results.map(({ art: _art, ...rest }) => rest),
+    metrics: models.map((model) => model.metric),
+    models,
     best,
     artifact,
     suggestions,

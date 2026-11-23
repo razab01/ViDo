@@ -23,6 +23,9 @@ const rows: Row[] = Array.from({ length: 12 }, (_, index) => ({
   completed: index % 3 ? 'yes' : 'no',
 }));
 
+const bestArtifact = { name: 'Fake best', predict: () => 1, proba: () => [0.2, 0.88] };
+const bestMetric = { n: 'Fake best', acc: 0.75, P: 0.75, R: 0.75, F: 0.75, ms: 1 };
+
 const fakeResult: TrainingResult = {
   dataset: { cols, rows, target: 'completed' },
   profile: { ...profileData(cols, rows), target: 'completed', textCol: 'task_text' },
@@ -38,9 +41,10 @@ const fakeResult: TrainingResult = {
   tokenizerWarning: '',
   tokenizer: { example: 'task 1', raw: [1], compact: [1], subwords: 'task', decoded: 'task' },
   history: { lt: [], le: [], at: [], ae: [] },
-  metrics: [],
-  best: { n: 'Fake best', acc: 0.75, P: 0.75, R: 0.75, F: 0.75, ms: 1 },
-  artifact: { name: 'Fake best', predict: () => 1, proba: () => [0.2, 0.88] },
+  metrics: [bestMetric],
+  models: [{ metric: bestMetric, artifact: bestArtifact }],
+  best: bestMetric,
+  artifact: bestArtifact,
   suggestions: [],
   sample: { task_text: 'sample task', priority: 'Medium', completed: 'yes' },
   baseline: 0.5,

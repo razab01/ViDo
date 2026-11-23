@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
+  findDeadlineColumn,
   formatConfidence,
   normalizeTable,
   parseCSV,
@@ -90,6 +91,7 @@ describe('dynamic ingestion and schema inference', () => {
     expect(prepared.valid).toBe(true);
     expect(prepared.dataset.target).toBe('completed');
     expect(prepared.profile.targetSource).toBe('completed_date');
+    expect(findDeadlineColumn(prepared.dataset.cols)).toBe('deadline_date');
     cases.forEach((c, i) => {
       expect(prepared.dataset.rows[i].completed).toBe(c.expected);
     });
@@ -150,11 +152,13 @@ describe('unified training, prediction and RAG', () => {
 
   it('trains ten models and keeps the best artifact usable for prediction', () => {
     expect(trained.metrics).toHaveLength(10);
+    expect(trained.models).toHaveLength(10);
+    expect(trained.models.map((m) => m.metric.n)).toEqual(trained.metrics.map((m) => m.n));
     expect(trained.best.n.length).toBeGreaterThan(0);
     expect(trained.suggestions.length).toBeGreaterThan(0);
     expect(trained.suggestions.length).toBeLessThanOrEqual(8);
     expect(trained.tokenizer.compact.length).toBeGreaterThan(0);
-    expect(trained.history.ae.length).toBe(3);
+    expect(trained.history.ae.length).toBe(5);
 
     // Mixed classes must not produce a suspicious perfect score, and
     // clipping/regularisation must keep all reported metrics finite.
