@@ -7,6 +7,7 @@
  */
 import type { Dataset, Profile, Suggestion } from '../ml-lab/engine';
 import { lookupTopic, lookupTopicWord } from '../ml-lab/topicLookup';
+import { documentAnswer, type ChatDocument } from './documentAnswer';
 import { localFallbackAnswer, normalizeQuestion } from './localFallback';
 
 export interface ChatTurn {
@@ -18,6 +19,7 @@ interface BrainContext {
   dataset: Dataset | null;
   profile: Profile | null;
   suggestions: Suggestion[];
+  document?: ChatDocument | null;
 }
 
 // Pattern order is intent order: "task_text" should beat "has_desc".
@@ -227,6 +229,9 @@ export async function answerLocally(question: string, context: BrainContext): Pr
   const normalized = normalizeQuestion(question);
   const quick = localFallbackAnswer(normalized);
   if (quick) return quick;
+
+  const docAnswer = documentAnswer(normalized, context.document);
+  if (docAnswer) return docAnswer;
 
   const dataAnswer = datasetAnswer(normalized, context);
   if (dataAnswer) return dataAnswer;

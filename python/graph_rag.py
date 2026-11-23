@@ -8,10 +8,11 @@ graph before the TypeScript fallback is ever needed.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import networkx as nx
 
+from smart_answers import answer as smart_answer
 from vido_math import handle_query
 from wikipedia import answer as wikipedia_answer
 from wikipedia import strip_leading_fillers
@@ -168,6 +169,59 @@ def _world_fact_answer(question: str) -> Optional[str]:
     if re.search(r"\b(what does|what is|meaning of|define)\b.*\bpresident\b", low) or "president mean" in low:
         return PRESIDENT_MEANING
     return None
+
+
+# ---------------------------------------------------------------------------
+# Loaded document answers
+# ---------------------------------------------------------------------------
+
+def _document_chunks(text: str) -> List[str]:
+    chunks: List[str] = []
+    for paragraph in re.split(r"\n\s*\n+", str(text or "")):
+        clean = re.sub(r"\s+", " ", paragraph).strip()
+        if not clean:
+            continue
+        if len(clean) <= 1200:
+            chunks.append(clean)
+            continue
+        for index in range(0, len(clean), 1000):
+            piece = clean[index:index + 1200].strip()
+            if piece:
+                chunks.append(piece)
+    return chunks
+
+
+def _document_answer(question: str, documents: Optional[Sequence[dict]]) -> Optional[str]:
+    """Answer from the document loaded in Chat Lab, before generic Wikipedia."""
+    if not documents:
+        return None
+
+    wanted = set(tokens(question))
+    wanted.update(token.lower() for token in re.findall(r"[A-Za-z]*-?\d+", question))
+    if not wanted:
+        return None
+
+    hits: List[Tuple[int, int, str, str]] = []
+    for document in documents:
+        name = str(document.get("name") or "document")
+        for index, chunk in enumerate(_document_chunks(document.get("text") or "")):
+            chunk_tokens = set(tokens(chunk))
+            score = sum(
+                1 for token in wanted
+                if token in chunk_tokens or re.search(rf"\b{re.escape(token)}\b", chunk, re.I)
+            )
+            if score:
+                hits.append((score, index, name, chunk))
+
+    if not hits:
+        return None
+
+    hits.sort(key=lambda item: (-item[0], item[1]))
+    excerpts: List[str] = []
+    for _, _, name, chunk in hits[:2]:
+        excerpts.append(f'From "{name}": {chunk}')
+    answer = " ".join(excerpts)
+    return answer[:1600].rstrip() + ("…" if len(answer) > 1600 else "")
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +420,7 @@ def answer(
     profile: Optional[dict] = None,
     suggestions: Optional[Sequence[dict]] = None,
     trained: Optional[dict] = None,
+    documents: Optional[Sequence[dict]] = None,
 ) -> str:
     # "ok so what is X" is the same question as "what is X". Strip the lead-in
     # once here so routing, Wikipedia lookup and graph retrieval all agree.
@@ -377,9 +432,21 @@ def answer(
     if math_answer:
         return math_answer
 
+    # Answer the question the person meant before searching Wikipedia for its
+    # last few words. This fixes "capital of India", "NCR vs NCT", typos and
+    # subjective follow-ups without touching dataset routing.
+    direct_answer = smart_answer(question)
+    if direct_answer:
+        return direct_answer
+
     world_answer = _world_fact_answer(question)
     if world_answer:
         return world_answer
+
+    # A loaded document is active chat context, so it beats generic Wikipedia.
+    doc_answer = _document_answer(question, documents)
+    if doc_answer:
+        return doc_answer
 
     # Explicit general-knowledge questions should not be answered from an
     # incidental dataset keyword match. Search Wikipedia through HF first.

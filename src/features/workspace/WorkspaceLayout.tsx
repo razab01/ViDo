@@ -273,6 +273,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const handleUpdateTask = (updatedTask: SampleTask) => {
+    setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
+    if (selectedTask?.id === updatedTask.id) setSelectedTask(updatedTask);
+  };
+
   const handleToggleTask = (taskToToggle: SampleTask) => {
     const isNowCompleted = taskToToggle.state !== 'completed';
     const nowIso = new Date().toISOString();
@@ -625,7 +630,16 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 }
               />
               <Route path="ml-lab" element={<MLLabPage userId={user.id} />} />
-              <Route path="chat-lab" element={<ChatLabPage userId={user.id} />} />
+              <Route
+                path="chat-lab"
+                element={
+                  <ChatLabPage
+                    userId={user.id}
+                    onCreateTask={handleCreateTask}
+                    onUpdateTask={handleUpdateTask}
+                  />
+                }
+              />
               <Route path="*" element={<Navigate to={basePath} replace />} />
             </Routes>
           </main>

@@ -79,6 +79,31 @@ CONCEPT_EXPLANATIONS: Dict[str, str] = {
     ),
 }
 
+NULL_MATRIX_EIGENVALUES = (
+    "All eigenvalues of a null (zero) matrix are 0. For an n×n zero matrix, 0 is the only "
+    "eigenvalue, with algebraic multiplicity n, and every nonzero vector is an eigenvector."
+)
+
+NILPOTENT_EIGENVALUES = (
+    "All eigenvalues of a nilpotent matrix are 0. If N^k = 0 and Nv = λv, then λ^k = 0, "
+    "so every eigenvalue λ must be 0."
+)
+
+SKEW_ODD_DETERMINANT = (
+    "The determinant of an odd-order skew-symmetric matrix is 0. Since Aᵀ = -A, "
+    "det(A) = det(Aᵀ) = det(-A) = (-1)^n det(A); for odd n this gives det(A) = -det(A), hence det(A) = 0."
+)
+
+SKEW_EVEN_DETERMINANT = (
+    "For an even-order skew-symmetric matrix the determinant is not forced to be 0. "
+    "It equals the square of the Pfaffian, so a real example can have a positive determinant."
+)
+
+SKEW_GENERAL_DETERMINANT = (
+    "For a skew-symmetric matrix A, det(A) = det(-A) = (-1)^n det(A). "
+    "So an odd-order matrix always has determinant 0; an even-order matrix may have a non-zero determinant."
+)
+
 _INTEGRATION_PATTERN = re.compile(
     r"(?:integrat(?:e|ion|ing)|integral|antiderivative|∫)\s*(?:of\s*)?(.*?)"
     r"(?:\s+with\s+respect\s+to\s+([a-z]))?\s*$",
@@ -325,6 +350,50 @@ def _sympy_answer(label: str, expression, value) -> str:
     return f"{label} {expression} = {rendered}."
 
 
+def _named_matrix_answer(q: str) -> Optional[str]:
+    """Answer questions about named matrices without requiring literal entries."""
+    if re.search(r"\bnilpotent\b", q) and re.search(r"\beigen\s*-?\s*values?\b|\beigenvalues?\b", q):
+        return NILPOTENT_EIGENVALUES
+
+    if re.search(r"\b(?:skew[\s-]*symmetric|antisymmetric)\b", q) and re.search(
+        r"\b(?:determinant|det)\b", q
+    ):
+        if re.search(r"\bodd\b", q):
+            return SKEW_ODD_DETERMINANT
+        if re.search(r"\beven\b", q):
+            return SKEW_EVEN_DETERMINANT
+        return SKEW_GENERAL_DETERMINANT
+
+    if re.search(r"\b(?:null|zero)\s+matrix\b", q):
+        if re.search(r"\beigen\s*-?\s*vectors?\b|\beigenvectors?\b", q):
+            return (
+                "For a null (zero) matrix, every nonzero vector is an eigenvector, because "
+                "A·v = 0 = 0·v for every vector v. The only eigenvalue is 0."
+            )
+        if re.search(r"\beigen\s*-?\s*values?\b|\beigenvalues?\b", q):
+            return NULL_MATRIX_EIGENVALUES
+    return None
+
+
+def _normalize_math_question(question: str) -> str:
+    """Fix the common 'dd shape' typo before semantic math routing."""
+    value = str(question or "").strip()
+    value = re.sub(r"\bdd\s+(shape|order|sized?)\b", "odd \\1", value, flags=re.I)
+    value = re.sub(r"\bdd\s+matrix\b", "odd matrix", value, flags=re.I)
+    return value
+
+
+def _split_combined_questions(question: str) -> List[str]:
+    """Split 'X and also tell me Y' into independent math questions."""
+    value = _normalize_math_question(question)
+    parts = re.split(
+        r"\s+\band\s+(?:also\s+)?(?:tell\s+me\s+)?|\s+\balso\s+tell\s+me\s+",
+        value,
+        flags=re.I,
+    )
+    return [part.strip(" .?!") for part in parts if part.strip(" .?!")]
+
+
 def handle_advanced(question: str) -> Optional[str]:
     """Return an answer for advanced math questions, or None if not applicable."""
     q = question.lower().strip()
@@ -332,6 +401,12 @@ def handle_advanced(question: str) -> Optional[str]:
     concept = _concept_explanation(q)
     if concept:
         return concept
+
+    # Named matrices such as null, nilpotent and skew-symmetric are common
+    # questions; the user should not have to type a literal matrix.
+    named = _named_matrix_answer(q)
+    if named:
+        return named
 
     matrix_text = _matrix_text(q)
     if re.search(r"\b(determinant|det)\b", q) and matrix_text:
@@ -458,12 +533,24 @@ def handle_query(question: str) -> Optional[str]:
     if not question or not question.strip():
         return None
 
-    advanced = handle_advanced(question)
+    parts = _split_combined_questions(question)
+    if len(parts) > 1:
+        answers: List[str] = []
+        for part in parts:
+            answer = handle_advanced(part)
+            if not answer:
+                break
+            answers.append(answer)
+        if len(answers) == len(parts):
+            return "\n\n".join(answers)
+
+    value = _normalize_math_question(question)
+    advanced = handle_advanced(value)
     if advanced:
         return advanced
 
-    expression = _extract_expression(question)
-    ok, value = evaluate_basic(expression)
+    expression = _extract_expression(value)
+    ok, number = evaluate_basic(expression)
     if ok:
-        return f"{expression} = {_format_number(value)}."
+        return f"{expression} = {_format_number(number)}."
     return None

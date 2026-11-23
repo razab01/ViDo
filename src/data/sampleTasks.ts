@@ -1,3 +1,5 @@
+import type { TaskFlowchart } from './flowchart';
+
 export type TaskPriority = 'high' | 'medium' | 'low';
 export type TaskCategory = 'personal' | 'home' | 'work';
 export type TaskState = 'active' | 'completed';
@@ -22,6 +24,7 @@ export interface SampleTask {
   completedAt?: string;
   isArchived?: boolean;
   checkpoints?: TaskCheckpoint[];
+  flowchart?: TaskFlowchart;
 }
 
 export const BENCHMARK_DATE_STR = '2026-11-17';

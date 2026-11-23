@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 import sys
 from typing import Dict, Optional
@@ -17,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import ml
+from document_text import DocumentError, extract_text
 from graph_rag import answer as answer_with_graph
 from ml import RunBundle
 
@@ -56,6 +59,12 @@ class AnswerBody(BaseModel):
     profile: dict = {}
     suggestions: list = []
     trained: Optional[dict] = None
+    documents: list = []
+
+
+class DocumentBody(BaseModel):
+    name: str
+    content: str
 
 
 @app.get("/api/python/health")
@@ -106,10 +115,26 @@ def answer(body: AnswerBody):
                 body.profile,
                 body.suggestions,
                 body.trained,
+                body.documents,
             )
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/python/document")
+def document(body: DocumentBody):
+    try:
+        data = base64.b64decode(body.content, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="That document could not be decoded.") from exc
+    try:
+        text, truncated = extract_text(body.name, data)
+    except DocumentError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"name": body.name, "text": text, "truncated": truncated}
 
 
 if __name__ == "__main__":

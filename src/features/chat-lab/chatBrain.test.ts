@@ -106,6 +106,13 @@ describe('chatBrain', () => {
     expect(mockedLookup).toHaveBeenCalledWith('Nash Equilibrium');
   });
 
+  it('answers smart follow-ups before searching Wikipedia', async () => {
+    const answer = await answerLocally('which oart are located in NCT', context);
+    expect(answer).toContain('11 districts');
+    expect(mockedLookup).not.toHaveBeenCalled();
+    expect(mockedLookupWord).not.toHaveBeenCalled();
+  });
+
   it('uses Wikipedia for general topics and keeps pronoun answers locally reliable', async () => {
     mockedLookup.mockResolvedValueOnce({
       title: 'Quantum computing',

@@ -179,6 +179,11 @@ export async function trainWithPython(
   };
 }
 
+export interface PythonDocumentInput {
+  name: string;
+  text: string;
+}
+
 export interface PythonAnswerInput {
   question: string;
   rows: Row[];
@@ -191,6 +196,31 @@ export interface PythonAnswerInput {
     target: string;
     textCol: string;
   } | null;
+  documents?: PythonDocumentInput[];
+}
+
+export interface PythonDocumentResponse {
+  name: string;
+  text: string;
+  truncated: boolean;
+}
+
+const toBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+};
+
+/** Extract text from PDF/Word files through the optional Python bridge. */
+export async function extractDocumentWithPython(file: File): Promise<PythonDocumentResponse> {
+  return post<PythonDocumentResponse>(
+    '/document',
+    { name: file.name, content: toBase64(new Uint8Array(await file.arrayBuffer())) },
+    60000
+  );
 }
 
 export async function answerWithPython(input: PythonAnswerInput): Promise<string> {

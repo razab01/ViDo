@@ -5,11 +5,19 @@
  * the chat page and the workspace sidebar stay in sync without prop drilling.
  */
 
+import type { TaskFlowchart } from '../../data/flowchart';
+import type { SampleTask } from '../../data/sampleTasks';
+import type { TaskDraft } from '../../data/taskCreation';
+import type { ChatDocument } from './documentAnswer';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
   pending?: boolean;
+  flowchart?: TaskFlowchart;
+  /** Document posted into the conversation by the user. */
+  attachment?: ChatDocument;
 }
 
 export interface ChatThread {
@@ -17,6 +25,11 @@ export interface ChatThread {
   title: string;
   updatedAt: number;
   messages: ChatMessage[];
+  taskDraft?: TaskDraft;
+  /** Most recent task created from this chat, so "graph for this" has context. */
+  lastTask?: SampleTask;
+  /** Document loaded in this chat, used as context for answers. */
+  document?: ChatDocument;
 }
 
 const STORAGE_PREFIX = 'vido_chat_lab_v1_';
@@ -36,7 +49,66 @@ const newId = () =>
 const cleanMessages = (messages: ChatMessage[]): ChatMessage[] =>
   messages
     .filter((message) => !message.pending && Boolean(message.text))
-    .map(({ id, role, text }) => ({ id, role, text }));
+    .map(({ id, role, text, flowchart, attachment }) => ({
+      id,
+      role,
+      text,
+      ...(flowchart ? { flowchart } : {}),
+      ...(attachment ? { attachment } : {}),
+    }));
+
+const documentMime = (name: string): string => {
+  const extension = String(name).toLowerCase().split('.').pop() ?? '';
+  const types: Record<string, string> = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    markdown: 'text/markdown',
+    csv: 'text/csv',
+    json: 'application/json',
+  };
+  return types[extension] ?? 'application/octet-stream';
+};
+
+/** Old threads predate the attachment size/mime fields. */
+const normalizeDocument = (document: ChatDocument | undefined): ChatDocument | undefined => {
+  if (!document) return undefined;
+  const estimatedSize = new TextEncoder().encode(document.text || '').length;
+  return {
+    ...document,
+    size: Number.isFinite(document.size) ? document.size : estimatedSize,
+    mime: document.mime || documentMime(document.name),
+  };
+};
+
+/** Older threads loaded a document but never posted it into the conversation. */
+const backfillDocumentMessage = (thread: ChatThread): ChatThread => {
+  const document = normalizeDocument(thread.document);
+  if (!document) return thread;
+
+  const alreadyPosted = (thread.messages ?? []).some(
+    (message) => message.attachment?.name === document.name
+  );
+  if (alreadyPosted) return { ...thread, document };
+
+  const attachmentMessage: ChatMessage = {
+    id: newId(),
+    role: 'user',
+    text: `Attached "${document.name}"`,
+    attachment: document,
+  };
+  const messages = [...(thread.messages ?? [])];
+  const loadedIndex = messages.findIndex(
+    (message) =>
+      message.role === 'assistant' &&
+      message.text === `Loaded "${document.name}". Ask me anything about it.`
+  );
+  if (loadedIndex >= 0) messages.splice(loadedIndex, 0, attachmentMessage);
+  else messages.push(attachmentMessage);
+
+  return { ...thread, document, messages };
+};
 
 function persist(userId: string, threads: ChatThread[]) {
   const trimmed = threads.slice(0, MAX_THREADS);
@@ -65,7 +137,12 @@ export function readThreads(userId: string): ChatThread[] {
       if (parsed.version === 1 && Array.isArray(parsed.threads)) {
         const threads = parsed.threads
           .filter((thread) => thread && typeof thread.id === 'string')
-          .map((thread) => ({ ...thread, messages: cleanMessages(thread.messages ?? []) }));
+          .map((thread) =>
+            backfillDocumentMessage({
+              ...thread,
+              messages: cleanMessages(thread.messages ?? []),
+            })
+          );
         threadsByUser.set(userId, threads);
         return threads;
       }
@@ -176,6 +253,60 @@ export function patchMessage(
           messages: thread.messages.map((message) =>
             message.id === messageId ? { ...message, ...patch } : message
           ),
+        }
+      : thread
+  );
+  persist(userId, threads);
+}
+
+/** Persist the in-progress conversational task draft for one chat thread. */
+export function setThreadTaskDraft(
+  userId: string,
+  threadId: string,
+  draft: TaskDraft | null
+) {
+  const threads = readThreads(userId).map((thread) =>
+    thread.id === threadId
+      ? {
+          ...thread,
+          updatedAt: Date.now(),
+          ...(draft ? { taskDraft: draft } : { taskDraft: undefined }),
+        }
+      : thread
+  );
+  persist(userId, threads);
+}
+
+/** Remember the last task created in a chat for follow-up requests. */
+export function setThreadLastTask(
+  userId: string,
+  threadId: string,
+  task: SampleTask | null
+) {
+  const threads = readThreads(userId).map((thread) =>
+    thread.id === threadId
+      ? {
+          ...thread,
+          updatedAt: Date.now(),
+          ...(task ? { lastTask: task } : { lastTask: undefined }),
+        }
+      : thread
+  );
+  persist(userId, threads);
+}
+
+/** Attach or remove the document used as answer context in one chat. */
+export function setThreadDocument(
+  userId: string,
+  threadId: string,
+  document: ChatDocument | null
+) {
+  const threads = readThreads(userId).map((thread) =>
+    thread.id === threadId
+      ? {
+          ...thread,
+          updatedAt: Date.now(),
+          ...(document ? { document } : { document: undefined }),
         }
       : thread
   );

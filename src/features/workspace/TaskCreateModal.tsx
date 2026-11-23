@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Badge, Button, Input } from '../../components/ui';
 import { SampleTask } from '../../data/sampleTasks';
+import type { TaskFlowchart } from '../../data/flowchart';
+import { buildSampleTask } from '../../data/taskFactory';
+import { FlowchartEditor } from './FlowchartEditor';
 import { X, Tag, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { formatTaskProbability } from '../ml-lab/mlStore';
 import type { TaskPrediction, TaskPredictionInput } from '../ml-lab/mlStore';
@@ -19,6 +22,7 @@ export interface TaskCreateModalProps {
   initialStartDate?: string;
   initialDueDate?: string;
   initialDueTime?: string;
+  initialFlowchart?: TaskFlowchart | null;
   predictTask?: (input: TaskPredictionInput) => TaskPrediction | null;
 }
 
@@ -29,6 +33,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   initialStartDate,
   initialDueDate,
   initialDueTime,
+  initialFlowchart,
   predictTask,
 }) => {
   const [title, setTitle] = useState('');
@@ -38,6 +43,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   const [dueTime, setDueTime] = useState(() => initialDueTime ?? getDefaultDueTime());
   const [priority, setPriority] = useState<'high' | 'medium' | 'low' | ''>('medium');
   const [category, setCategory] = useState<'personal' | 'home' | 'work'>('personal');
+  const [flowchart, setFlowchart] = useState<TaskFlowchart | null>(initialFlowchart ?? null);
   const [submittedNotice, setSubmittedNotice] = useState(false);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -98,36 +104,23 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !validation.isValid) return;
 
-    const newTask: SampleTask = {
-      id: `task-${Date.now()}`,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      startDate: startDate.trim() || undefined,
-      dueDate: validation.effectiveDueDate,
-      dueTime: validation.effectiveDueTime,
+    const probabilityNote = probability
+      ? probability.isCompletion
+        ? `Estimated completion chance: ${formatTaskProbability(probability.probability, probability.kind)}.`
+        : `Estimated outcome: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label}.`
+      : '';
+
+    const newTask: SampleTask = buildSampleTask({
+      title,
+      description,
+      startDate,
+      dueDate,
+      dueTime,
       priority: (priority as 'high' | 'medium' | 'low') || undefined,
-      state: 'active',
       category,
-      createdAt: validation.effectiveCreatedAt,
-      checkpoints: [
-        {
-          id: `cp-${Date.now()}`,
-          timestamp: validation.effectiveCreatedAt,
-          note: [
-            startDate.trim()
-              ? `Task initialized in workspace (started on ${startDate.trim()}).`
-              : 'Task initialized in workspace.',
-            probability
-              ? probability.isCompletion
-                ? `Estimated completion chance: ${formatTaskProbability(probability.probability, probability.kind)}.`
-                : `Estimated outcome: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label}.`
-              : '',
-          ]
-            .filter(Boolean)
-            .join(' '),
-        },
-      ],
-    };
+      flowchart,
+      checkpointNote: probabilityNote || undefined,
+    });
 
     setSubmittedNotice(true);
     onCreateTask?.(newTask);
@@ -140,6 +133,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
     setDueTime(getDefaultDueTime());
     setPriority('medium');
     setCategory('personal');
+    setFlowchart(null);
 
     onClose();
   };
@@ -215,6 +209,8 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
               className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] text-[var(--ink)] placeholder-[var(--faint)] border border-[var(--line)] rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-1 resize-none"
             />
           </div>
+
+          <FlowchartEditor value={flowchart} onChange={setFlowchart} />
 
           <div className="rounded-xl border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-3.5 py-3">
             <div className="flex flex-wrap items-center gap-2">

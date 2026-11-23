@@ -82,6 +82,7 @@ Instead of relying on constant status meetings or ambiguous binary to-do lists, 
 | `/preview\|workspace/analytics` | Completion analytics with editable weekly/monthly targets and cumulative progress. |
 | `/preview\|workspace/team/:teamId` | Shared team workspace with milestones, member roster, and collaborative task backlog (demo data in preview). |
 | `/workspace/team/:teamId` | Authenticated team workspace with lead permissions, member assignments, and progress tracking. |
+| `/preview/chat-lab` | Offline-capable conversational lab for questions, task creation, flowcharts, and document context. |
 | `/style-lab` | Interactive sandbox for `Cobalt Blue`, `Deep Indigo`, and `Forest Green` accent palettes. |
 
 ---
@@ -116,6 +117,32 @@ Instead of relying on constant status meetings or ambiguous binary to-do lists, 
 - Weekly completion percentage and progress against a user-set weekly target.
 - Monthly goal tracking with cumulative totals contributed by each week.
 - Editable targets persisted per user in Firestore (live) or in `localStorage` (preview), with progress bars and roll-up charts.
+
+### 💬 Chat Lab
+
+Chat Lab is a separate conversational surface (`/preview/chat-lab`) that keeps its own thread history, task draft, last created task, and loaded document in browser storage. It stays independent from ML Lab but can reuse the user's uploaded dataset when available.
+
+**Message flow, in order:**
+
+1. **Normalise and resolve** — conversational fillers are stripped, common typos are corrected, and pronouns such as `he`, `she`, or `it` are resolved against earlier turns.
+2. **Special intents first** — `process graph for this` reuses the last task created in chat; task-creation messages parse titles, relative dates/times, ask for a flowchart when needed, collect steps, and call the workspace task creator.
+3. **Python-first answers** — when the optional Python service is running, questions go through maths/SymPy, curated smart answers, world facts, Graph-RAG over the dataset, loaded-document context, and Wikipedia topic selection.
+4. **Browser fallback** — if Python is unavailable, the same common paths run locally: arithmetic (Shunting Yard), maths concepts, dataset answers, document answers, and Wikipedia lookups.
+5. **Render cleanly** — answers are shown without engine/source badges, and flowcharts render inline as SVG.
+
+**Task examples understood by chat:**
+
+- `hey create a task for tomorrow morning 4 am for walk.` → title `walk`, due tomorrow `04:00`, start today, then a flowchart prompt.
+- `yes, steps: plan route, pack shoes, go for walk` → creates the workspace task with inline flowchart steps.
+- `ok can u show me a process graph for this` → attaches a flowchart to the most recently created chat task.
+
+**Document context:**
+
+- **Attach document** accepts TXT, MD, CSV, JSON, PDF, and DOCX. PDF/DOCX extraction uses the Python bridge; text formats are read in-browser.
+- Images and legacy `.doc` files are rejected with a clear message. Files are capped at 5 MB and extracted text at 200,000 characters.
+- An attached file is posted into the conversation as an attachment card and stays active for follow-up questions in that thread. Questions are answered from the document before generic Wikipedia/dataset fallback.
+
+---
 
 ### 🎨 Living Design System
 - Desktop-first, contrast-compliant UI with semantic CSS custom properties.
@@ -156,6 +183,12 @@ Instead of relying on constant status meetings or ambiguous binary to-do lists, 
      npm run dev
      ```
      *(Runs Vite; in frontend-only mode team data can use the mock repository/dev bridge, and Firebase emulators may be auto-started when available.)*
+   - **Frontend + Python answer engine**:
+     ```bash
+     pip install -r python/requirements.txt
+     npm run dev:python
+     ```
+     *(Enables Python-first maths, Graph-RAG, smart answers, and PDF/DOCX extraction. Chat Lab still works without it via the browser fallback.)*
 
 4. **(Optional) Start the full emulator suite manually in a separate terminal:**
    ```bash
@@ -230,6 +263,9 @@ For teams preferring a managed PostgreSQL BaaS:
 | `npm run typecheck` | Validates TypeScript types across the frontend (`tsc -b --noEmit`). |
 | `npm run build` | Compiles an optimized production frontend build into `dist/`. |
 | `npm run preview` | Locally previews the compiled production build from `dist/`. |
+| `npm run python:api` | Starts the optional Python ML/Graph-RAG API on `127.0.0.1:8000`. |
+| `npm run dev:python` / `npm run preview:python` | Runs the frontend together with the Python API for the full Chat Lab answer path. |
+| `npm run test:python` | Runs the Python answer-engine checks. |
 | `npm run emulators` / `npm run emu` | Starts the Firebase emulator suite for `demo-vido` (Auth + Firestore + UI). |
 | `npm run emu:export` | Exports emulator data to `./firebase-export-local`. |
 | `npm run emu:import` | Starts emulators importing/exporting local data. |

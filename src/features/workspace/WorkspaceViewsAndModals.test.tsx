@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { SAMPLE_TASKS } from '../../data/sampleTasks';
+import { parseFlowchartSteps } from '../../data/flowchart';
 import { getHomeDashboardTasks } from '../../data/taskFilters';
 import { HomeView } from './views/HomeView';
 import { ListView } from './views/ListView';
@@ -178,6 +179,18 @@ describe('Workspace Views and Modals', () => {
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(handleClose).toHaveBeenCalled();
     });
+
+    it('renders a flowchart attached to the task', () => {
+      const task = {
+        ...SAMPLE_TASKS[0],
+        flowchart: parseFlowchartSteps('Plan -> Build -> Review') ?? undefined,
+      };
+
+      render(<TaskDetailModal task={task} isOpen={true} onClose={vi.fn()} />);
+
+      expect(screen.getByText(/task flowchart/i)).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: /flowchart preview/i })).toBeInTheDocument();
+    });
   });
 
   describe('TaskCreateModal', () => {
@@ -215,6 +228,35 @@ describe('Workspace Views and Modals', () => {
       expect(new Date(createdCall.createdAt).getTime()).toBeGreaterThan(0);
       expect(createdCall.dueTime).toBe('23:59');
       expect(handleClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('attaches a flowchart created in the New Task modal', () => {
+      const handleCreate = vi.fn();
+
+      render(<TaskCreateModal isOpen={true} onClose={vi.fn()} onCreateTask={handleCreate} />);
+
+      fireEvent.change(screen.getByLabelText(/task title \*/i), {
+        target: { value: 'Launch rollout' },
+      });
+      fireEvent.change(screen.getByLabelText(/flowchart steps/i), {
+        target: { value: 'Research -> Build -> Review' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^create task$/i }));
+
+      expect(handleCreate).toHaveBeenCalledTimes(1);
+      expect(handleCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Launch rollout',
+          flowchart: expect.objectContaining({
+            nodes: [
+              expect.objectContaining({ label: 'Research' }),
+              expect.objectContaining({ label: 'Build' }),
+              expect.objectContaining({ label: 'Review' }),
+            ],
+          }),
+        })
+      );
     });
 
     it('initializes default due time to 23:59 in the modal form', () => {

@@ -33,6 +33,38 @@ describe('localFallbackAnswer', () => {
     expect(localFallbackAnswer('president of Spain')).toContain('no president');
   });
 
+  it('answers contextual questions without a Wikipedia article', () => {
+    expect(localFallbackAnswer('Tell me about capital of india')).toContain('New Delhi');
+    expect(localFallbackAnswer('which oart are located in NCT')).toContain('11 districts');
+    expect(localFallbackAnswer('so NCR and NCT both are different')).toContain('union territory');
+    expect(localFallbackAnswer('ok tell me about best city to explore in this world')).toContain(
+      'depends on what you enjoy'
+    );
+    expect(localFallbackAnswer('so new york is best city in world')).toContain('subjective');
+  });
+
+  it('answers semantic math questions about named objects', () => {
+    expect(localFallbackAnswer('what is eigenvalue of null matrix')).toContain('only eigenvalue');
+    expect(localFallbackAnswer('ok but what is eigenvalues of null matrix')).toContain('multiplicity n');
+    expect(localFallbackAnswer('what is eigenvalue of nilpotent matrix')).toContain(
+      'All eigenvalues'
+    );
+    expect(
+      localFallbackAnswer('tell me determinant of a skew symmetric matrix which is in odd shape')
+    ).toContain('determinant of an odd-order skew-symmetric matrix is 0');
+    expect(
+      localFallbackAnswer('determinant of a skew symmetric matrix which is in dd shape')
+    ).toContain('odd-order');
+  });
+
+  it('answers both halves of a combined math question', () => {
+    const answer = localFallbackAnswer(
+      'what is eigenvalue of nilpotent matrix and also tell me determinant of a skew symmetric matrix which is in dd shape'
+    );
+    expect(answer).toContain('nilpotent matrix are 0');
+    expect(answer).toContain('odd-order skew-symmetric matrix is 0');
+  });
+
   it('returns null for questions it cannot handle', () => {
     expect(localFallbackAnswer('What patterns predict completed?')).toBeNull();
     expect(localFallbackAnswer('tell me about quantum tunnelling')).toBeNull();

@@ -3,6 +3,7 @@
  * It covers the common questions that the dataset RAG engine cannot answer,
  * so a missing backend never produces an unrelated task-management snippet.
  */
+import { smartAnswer } from './smartAnswers';
 
 const WORLD_FACTS: Array<{ keys: string[]; about: string; president: string }> = [
   {
@@ -51,7 +52,13 @@ const PEOPLE_FACTS: Array<{ keys: string[]; about: string; works: string }> = [
 
 const PRECEDENCE: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
 
-const FILLER_PREFIX = /^(?:ok(?:ay)?|so|and|now|well|yeah|yes|please|also)\b[\s,.!]*/i;
+const FILLER_PREFIX = /^(?:ok(?:ay)?|so|and|now|well|yeah|yes|but|please|also)\b[\s,.!]*/i;
+const COMMON_TYPOS: Array<[RegExp, string]> = [
+  [/\boart\b/gi, 'part'],
+  [/\bthus\b/gi, 'this'],
+  [/\bdd\s+(shape|order|sized?)\b/gi, 'odd $1'],
+  [/\bdd\s+matrix\b/gi, 'odd matrix'],
+];
 
 const MATH_CONCEPTS: Record<string, string> = {
   integration:
@@ -62,10 +69,23 @@ const MATH_CONCEPTS: Record<string, string> = {
     'Calculus is the branch of mathematics that studies continuous change. Differential calculus measures rates of change, while integral calculus adds up small pieces to find totals such as areas.',
 };
 
+const NILPOTENT_EIGENVALUES =
+  'All eigenvalues of a nilpotent matrix are 0. If N^k = 0 and Nv = λv, then λ^k = 0, so every eigenvalue λ must be 0.';
+
+const SKEW_ODD_DETERMINANT =
+  'The determinant of an odd-order skew-symmetric matrix is 0. Since Aᵀ = -A, det(A) = det(Aᵀ) = det(-A) = (-1)^n det(A); for odd n this gives det(A) = -det(A), hence det(A) = 0.';
+
+const SKEW_EVEN_DETERMINANT =
+  'For an even-order skew-symmetric matrix the determinant is not forced to be 0. It equals the square of the Pfaffian, so a real example can have a positive determinant.';
+
+const SKEW_GENERAL_DETERMINANT =
+  'For a skew-symmetric matrix A, det(A) = det(-A) = (-1)^n det(A). So an odd-order matrix always has determinant 0; an even-order matrix may have a non-zero determinant.';
+
 /** Remove conversational lead-ins so "ok so what is X" routes like "what is X". */
 export function normalizeQuestion(raw: string): string {
   let value = String(raw || '').trim();
   while (FILLER_PREFIX.test(value)) value = value.replace(FILLER_PREFIX, '').trim();
+  for (const [pattern, replacement] of COMMON_TYPOS) value = value.replace(pattern, replacement);
   return value;
 }
 
@@ -125,6 +145,25 @@ const derivativeTerm = ({ coefficient, exponent }: Power): string => {
 /** Explanatory answers for concept questions and simple powers. */
 function localMathAnswer(question: string): string | null {
   const low = normalizeQuestion(question).toLowerCase();
+
+  if (/\bnilpotent\b/.test(low) && /\beigen\s*-?\s*values?\b|\beigenvalues?\b/.test(low)) {
+    return NILPOTENT_EIGENVALUES;
+  }
+
+  if (/\b(?:skew[\s-]*symmetric|antisymmetric)\b/.test(low) && /\b(?:determinant|det)\b/.test(low)) {
+    if (/\bodd\b/.test(low)) return SKEW_ODD_DETERMINANT;
+    if (/\beven\b/.test(low)) return SKEW_EVEN_DETERMINANT;
+    return SKEW_GENERAL_DETERMINANT;
+  }
+
+  if (/\b(?:null|zero)\s+matrix\b/.test(low)) {
+    if (/\beigen\s*-?\s*vectors?\b|\beigenvectors?\b/.test(low)) {
+      return 'For a null (zero) matrix, every nonzero vector is an eigenvector, because A·v = 0 = 0·v for every vector v. The only eigenvalue is 0.';
+    }
+    if (/\beigen\s*-?\s*values?\b|\beigenvalues?\b/.test(low)) {
+      return 'All eigenvalues of a null (zero) matrix are 0. For an n×n zero matrix, 0 is the only eigenvalue, with algebraic multiplicity n, and every nonzero vector is an eigenvector.';
+    }
+  }
 
   if (/\bcalculus\b/.test(low) && !/\d|[+\-*/^]/.test(low)) return MATH_CONCEPTS.calculus;
 
@@ -229,9 +268,28 @@ function evaluateArithmetic(question: string): string | null {
   return `${expression} = ${value}`;
 }
 
+/** Answer "X and also tell me Y" when both halves are math questions. */
+function combinedMathAnswer(question: string): string | null {
+  const parts = normalizeQuestion(question)
+    .split(/\s+\band\s+(?:also\s+)?(?:tell\s+me\s+)?|\s+\balso\s+tell\s+me\s+/gi)
+    .map((part) => part.trim().replace(/^[.!?]+|[.!?]+$/g, ''))
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const answers = parts.map((part) => localMathAnswer(part));
+  if (answers.some((answer) => !answer)) return null;
+  return answers.join('\n\n');
+}
+
 /** Return a reliable local answer for common general questions, else null. */
 export function localFallbackAnswer(question: string): string | null {
   const trimmed = normalizeQuestion(question);
+  const combined = combinedMathAnswer(trimmed);
+  if (combined) return combined;
+
+  const direct = smartAnswer(trimmed);
+  if (direct) return direct;
+
   const math = localMathAnswer(trimmed);
   if (math) return math;
 

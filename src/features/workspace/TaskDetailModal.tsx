@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { SampleTask } from '../../data/sampleTasks';
 import { Badge, Button } from '../../components/ui';
 import { TaskRagPanel } from '../ml-lab/TaskRagPanel';
-import { X, Clock, Calendar, CheckCircle2, AlertCircle, History, Tag } from 'lucide-react';
+import { FlowchartPreview } from './FlowchartPreview';
+import { X, Clock, Calendar, CheckCircle2, AlertCircle, History, Tag, Workflow } from 'lucide-react';
 import { getTodayDateString, getCurrentTimeString } from '../../utils/dateUtils';
 
 export interface TaskDetailModalProps {
@@ -125,6 +126,16 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <p className="mt-3 text-sm text-[var(--muted)] leading-relaxed bg-[var(--canvas)] p-3.5 rounded-xl border border-[var(--line)]">
             {task.description}
           </p>
+        )}
+
+        {/* Attached Flowchart */}
+        {task.flowchart && (
+          <div className="mt-5">
+            <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--muted)] flex items-center gap-1.5 mb-2">
+              <Workflow className="w-3.5 h-3.5 text-[var(--accent)]" /> Task Flowchart
+            </h3>
+            <FlowchartPreview flowchart={task.flowchart} />
+          </div>
         )}
 
         {/* Metadata Details Grid */}

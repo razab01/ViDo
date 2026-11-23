@@ -9,6 +9,8 @@ import {
   readThreads,
   resetChatStore,
   selectThread,
+  setThreadDocument,
+  setThreadTaskDraft,
   subscribeThreads,
 } from './chatStore';
 
@@ -73,5 +75,78 @@ describe('chatStore', () => {
     expect(readThreads(USER).map((thread) => thread.id)).toEqual([second.id]);
     expect(getActiveChatId(USER)).toBe(second.id);
     unsubscribe();
+  });
+
+  it('persists and clears an in-progress task draft', () => {
+    const thread = createThread(USER);
+    const draft = { title: 'Draft task', wantsFlowchart: false };
+
+    setThreadTaskDraft(USER, thread.id, draft);
+    resetChatStore();
+    expect(readThreads(USER)[0].taskDraft).toEqual(draft);
+
+    setThreadTaskDraft(USER, thread.id, null);
+    expect(readThreads(USER)[0].taskDraft).toBeUndefined();
+  });
+
+  it('persists and removes a loaded document', () => {
+    const thread = createThread(USER);
+    const document = {
+      id: 'doc-1',
+      name: 'notes.txt',
+      text: 'Useful notes',
+      loadedAt: 1,
+      size: 12,
+      mime: 'text/plain',
+    };
+
+    setThreadDocument(USER, thread.id, document);
+    resetChatStore();
+    expect(readThreads(USER)[0].document).toEqual(document);
+
+    setThreadDocument(USER, thread.id, null);
+    expect(readThreads(USER)[0].document).toBeUndefined();
+  });
+
+  it('backfills an attachment card for legacy loaded documents once', () => {
+    localStorage.setItem(
+      'vido_chat_lab_v1_chat-store-user',
+      JSON.stringify({
+        version: 1,
+        threads: [
+          {
+            id: 'legacy-thread',
+            title: 'question',
+            updatedAt: 1,
+            messages: [
+              {
+                id: 'a1',
+                role: 'assistant',
+                text: 'Loaded "old.pdf". Ask me anything about it.',
+              },
+            ],
+            document: {
+              id: 'doc-old',
+              name: 'old.pdf',
+              text: 'Old report text',
+              loadedAt: 1,
+            },
+          },
+        ],
+      })
+    );
+
+    const migrated = readThreads(USER)[0];
+    expect(migrated.messages[0]).toMatchObject({
+      role: 'user',
+      text: 'Attached "old.pdf"',
+      attachment: expect.objectContaining({ name: 'old.pdf' }),
+    });
+    expect(migrated.messages[1].text).toMatch(/Loaded "old.pdf"/);
+    expect(migrated.document?.size).toBeGreaterThan(0);
+    expect(migrated.document?.mime).toBe('application/pdf');
+
+    resetChatStore();
+    expect(readThreads(USER)[0].messages.filter((message) => message.attachment)).toHaveLength(1);
   });
 });

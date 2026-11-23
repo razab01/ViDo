@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Dict, List, Optional, Sequence
@@ -24,8 +26,12 @@ CACHE: Dict[str, str] = {}
 # answers. They are filtered out before ranking so chat replies stay useful.
 DISAMBIGUATION = re.compile(r"\b(?:may refer to|could refer to|disambiguation|redirects here)\b", re.I)
 FILLER_PREFIX = re.compile(
-    r"^(?:ok(?:ay)?|so|and|now|well|yeah|yes|please|also)\b[\s,!.]*",
+    r"^(?:ok(?:ay)?|so|and|now|well|yeah|yes|but|please|also)\b[\s,!.]*",
     re.I,
+)
+COMMON_TYPOS = (
+    (re.compile(r"\boart\b", re.I), "part"),
+    (re.compile(r"\bthus\b", re.I), "this"),
 )
 # A few common terms have a disambiguation page with the exact title. Prefer
 # the article that matches the meaning people usually ask about.
@@ -33,16 +39,22 @@ TOPIC_ALIASES = {"blue chip": "Blue chip (stock market)"}
 
 _TOKENIZER = None
 _TOKENIZER_TRIED = False
+_JSON_CACHE: Dict[str, dict] = {}
+_LAST_REQUEST_AT = 0.0
+MIN_REQUEST_INTERVAL = 1.2
 
 
 def strip_leading_fillers(question: str) -> str:
-    """Remove conversational lead-ins such as 'ok so' before routing a question."""
+    """Remove conversational lead-ins and fix common typos before routing."""
     value = str(question or "").strip()
     while True:
         updated = FILLER_PREFIX.sub("", value).lstrip()
         if updated == value:
-            return value
+            break
         value = updated
+    for pattern, replacement in COMMON_TYPOS:
+        value = pattern.sub(replacement, value)
+    return value
 
 
 def _normalize_title(text: str) -> str:
@@ -94,13 +106,37 @@ def topic_phrase(question: str) -> str:
 
 
 def _get_json(params: Dict[str, str]) -> Optional[dict]:
+    """Fetch Wikipedia JSON with light throttling and 429 retry/backoff."""
+    global _LAST_REQUEST_AT
     url = API + "?" + urllib.parse.urlencode(params)
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            return json.load(response)
-    except Exception:
-        return None
+    if url in _JSON_CACHE:
+        return _JSON_CACHE[url]
+
+    for attempt in range(2):
+        wait = MIN_REQUEST_INTERVAL - (time.monotonic() - _LAST_REQUEST_AT)
+        if wait > 0:
+            time.sleep(wait)
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+                payload = json.load(response)
+            _LAST_REQUEST_AT = time.monotonic()
+            _JSON_CACHE[url] = payload
+            return payload
+        except urllib.error.HTTPError as exc:
+            _LAST_REQUEST_AT = time.monotonic()
+            if exc.code == 429 and attempt == 0:
+                try:
+                    delay = min(20, max(1, int(exc.headers.get("Retry-After", "2"))))
+                except (TypeError, ValueError):
+                    delay = 2
+                time.sleep(delay)
+                continue
+            return None
+        except Exception:
+            _LAST_REQUEST_AT = time.monotonic()
+            return None
+    return None
 
 
 def _search(topic: str, limit: int = 10) -> List[dict]:
@@ -158,6 +194,16 @@ def _best_extract(question: str, topic: str, candidates: Sequence[dict]) -> Opti
     query_tokens = set(_hf_tokens(question)) | set(_hf_tokens(topic))
     if not query_tokens:
         return None
+
+    # When Wikipedia has the exact article, it beats shorter parenthetical
+    # pages such as "Photosynthesis (board game)". Disambiguation pages were
+    # already filtered out by _search, so this is the meaning people asked for.
+    for candidate in candidates:
+        candidate_key = _normalize_title(candidate["title"])
+        if (topic_key and candidate_key == topic_key) or (
+            preferred_key and candidate_key == preferred_key
+        ):
+            return candidate["extract"]
 
     best: Optional[str] = None
     best_score = float("-inf")
