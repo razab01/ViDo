@@ -42,6 +42,7 @@ import {
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import { scheduleLocalModelWarmup } from './languageModel';
 import { RagWorking, TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
@@ -137,6 +138,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       );
     }
     if (snapshot?.result && !active) void requestRestore(userId);
+    if (snapshot?.result || snapshot?.dataset) scheduleLocalModelWarmup();
   }, [userId]);
 
   useEffect(
@@ -249,6 +251,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setTarget(trained.target);
       setTextCol(trained.textCol);
       setStatus('Ready. Ask your data anything.');
+      scheduleLocalModelWarmup();
       const initial: Row = {};
       Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
         initial[column] = String(trained.sample[column] ?? '');

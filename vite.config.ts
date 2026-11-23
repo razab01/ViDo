@@ -397,6 +397,10 @@ function localTeamSyncPlugin(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), firebaseEmulatorPlugin(), localTeamSyncPlugin()],
+  // The local SLM worker lazily imports Transformers.js, so it needs ESM workers.
+  worker: {
+    format: 'es',
+  },
   server: {
     proxy: {
       '/api': {

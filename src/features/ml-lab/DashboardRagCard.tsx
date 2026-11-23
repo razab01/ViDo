@@ -6,6 +6,7 @@ import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import { scheduleLocalModelWarmup } from './languageModel';
 import { RagWorking } from './WorkingIndicator';
 
 export interface DashboardRagCardProps {
@@ -42,6 +43,10 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
     () => ragDocs(snapshot?.dataset ?? null, profile, suggestions),
     [snapshot, profile, suggestions]
   );
+
+  useEffect(() => {
+    if (docs.length > 0) scheduleLocalModelWarmup();
+  }, [docs.length]);
 
   const handleAsk = async (event: React.FormEvent) => {
     event.preventDefault();
