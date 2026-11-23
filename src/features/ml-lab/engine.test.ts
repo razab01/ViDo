@@ -1,10 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
+  formatConfidence,
   normalizeTable,
   parseCSV,
   predictWith,
   prepareDataset,
   profileData,
+  rankModels,
   ragDocs,
   runRAG,
   syncPredictionRow,
@@ -72,6 +74,32 @@ describe('dynamic ingestion and schema inference', () => {
     const prepared = prepareDataset(Object.keys(rows[0]), rows, { target: 'priority' });
     expect(prepared.dataset.target).toBe('priority');
     expect(prepared.profile.target).toBe('priority');
+  });
+});
+
+describe('confidence formatting', () => {
+  it('keeps saturated probabilities just below 100%', () => {
+    expect(formatConfidence(0.88)).toBe('88%');
+    expect(formatConfidence(0.999999)).toBe('99.9%');
+  });
+});
+
+describe('model ranking', () => {
+  it('prefers the LSTM when the top models have identical scores', () => {
+    const tied = [
+      { n: 'Logistic Regression', acc: 0.9, F: 0.9 },
+      { n: 'Decision Tree', acc: 0.9, F: 0.9 },
+      { n: 'LSTM · GPT token IDs', acc: 0.9, F: 0.9 },
+    ];
+    expect(rankModels(tied)[0].n).toBe('LSTM · GPT token IDs');
+  });
+
+  it('still lets a strictly better non-LSTM model win', () => {
+    const models = [
+      { n: 'LSTM · GPT token IDs', acc: 0.9, F: 0.9 },
+      { n: 'Logistic Regression', acc: 0.94, F: 0.94 },
+    ];
+    expect(rankModels(models)[0].n).toBe('Logistic Regression');
   });
 });
 

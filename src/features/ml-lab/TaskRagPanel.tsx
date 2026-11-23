@@ -19,13 +19,6 @@ export interface TaskRagPanelProps {
   userId?: string;
 }
 
-const MODE_LABELS: Record<string, string> = {
-  rag: 'RAG',
-  agentic: 'Agentic',
-  graph: 'Graph',
-  task: 'Task',
-};
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const formatTaskDate = (value?: string): string => {
@@ -67,8 +60,11 @@ const directTaskAnswer = (
 
   if (/probab|likelihood|chance|\bscore\b/.test(q)) {
     if (!prediction) return 'No trained model probability is available for this task yet.';
-    const label = prediction.isCompletion ? 'Completion probability' : 'Model probability';
-    return `${label}: ${formatTaskProbability(prediction.probability, prediction.kind)} ${prediction.label} by ${prediction.model}.`;
+    const label = prediction.isCompletion ? 'Completion probability' : 'Estimated outcome';
+    const chance = formatTaskProbability(prediction.probability, prediction.kind);
+    return prediction.isCompletion
+      ? `${label}: ${chance}.`
+      : `${label}: ${chance} ${prediction.label}.`;
   }
 
   if (/what should i do next|\bnext step\b|\bnext\b/.test(q)) {
@@ -94,10 +90,10 @@ const taskToRagDoc = (task: SampleTask, prediction: TaskPrediction | null): RAGD
     task.dueTime ? `Due time: ${task.dueTime}.` : '',
     task.createdAt ? `Created: ${task.createdAt}.` : '',
     prediction
-      ? `${prediction.isCompletion ? 'Completion' : 'Model'} probability: ${formatTaskProbability(
+      ? `${prediction.isCompletion ? 'Completion probability' : 'Estimated outcome'}: ${formatTaskProbability(
           prediction.probability,
           prediction.kind
-        )} ${prediction.label} for ${prediction.target} by ${prediction.model} (${prediction.kind}).`
+        )}${prediction.isCompletion ? '' : ` ${prediction.label}`}.`
       : '',
     ...(task.checkpoints || []).map((checkpoint) => `Checkpoint: ${checkpoint.note}.`),
   ];
@@ -230,9 +226,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
           <Badge size="sm" variant="accent">
             {formatTaskProbability(prediction.probability, prediction.kind)}
           </Badge>
-          <span className="text-[var(--muted)]">
-            {prediction.label} · {prediction.model}
-          </span>
+          <span className="text-[var(--muted)]">based on your saved data</span>
         </div>
       )}
 
@@ -277,7 +271,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
-              Answer · {MODE_LABELS[answer.mode] ?? answer.mode}
+              Answer
             </span>
           </div>
           {answerLines.length ? (

@@ -79,12 +79,12 @@ describe('DashboardRagCard', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/best model · fake best/i)).toBeInTheDocument();
+    expect(screen.getByText(/model ready/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Ask your data'), {
       target: { value: 'Which tasks look likely to be completed?' },
     });
     fireEvent.click(screen.getByRole('button', { name: /ask rag/i }));
 
-    expect(await screen.findByText(/answer ·/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^answer$/i)).toBeInTheDocument();
   });
 });

@@ -102,6 +102,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [ragMode, setRagMode] = useState<RAGMode>('auto');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
   const [ragNotice, setRagNotice] = useState('');
+  const [showTechnical, setShowTechnical] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
     setUpload((snapshot?.upload as UploadedData | null) ?? null);
@@ -146,7 +147,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
         if (!active) return;
         setResult(active);
         setModelReady(true);
-        setStatus(`Saved model ready: ${active.best.n} (${pct(active.best.acc)}).`);
+        setStatus('Saved model ready.');
       }),
     [userId]
   );
@@ -310,7 +311,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setProfile(trained.profile);
       setTarget(trained.target);
       setTextCol(trained.textCol);
-      setStatus(`Saved for this account · best model: ${trained.best.n} (${pct(trained.best.acc)}).`);
+      setStatus('Saved for this account · model ready.');
       const initial: Row = {};
       Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
         initial[column] = String(trained.sample[column] ?? '');
@@ -396,9 +397,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--ink)]">ML Lab</h1>
           <p className="text-sm text-[var(--muted)] max-w-3xl">
-            Upload a CSV, TSV or spreadsheet. Columns, targets, text fields and dates are inferred from your file.
-            Ten in-browser classifiers share one split, a real GPT tokenizer feeds the LSTM, and the winning model
-            powers predictions and RAG suggestions.
+            Upload a CSV or spreadsheet. ML Lab learns from your data, then powers predictions and answers
+            across your workspace.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -672,100 +672,115 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="success">Winner</Badge>
-                      <Badge variant="neutral" size="sm">{result.metrics.length} models</Badge>
                       {result.binned && <Badge variant="accent" size="sm">Target auto-binned</Badge>}
                       {result.capped && <Badge variant="warning" size="sm">Capped at 1,200 rows</Badge>}
                     </div>
-                    <h2 className="text-lg font-bold">{result.best.n}</h2>
+                    <h2 className="text-lg font-bold">Model ready</h2>
                     <p className="text-xs text-[var(--muted)] mt-1">
-                      {pretty(result.textCol)} → {pretty(result.target)} · {result.labels.map((label) => pretty(label)).join(' / ')}
+                      Trained on your saved data. Use it for predictions and answers.
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-black text-[var(--green)]">{pct(result.best.acc)}</div>
-                    <div className="text-[11px] text-[var(--muted)]">test accuracy · baseline {pct(result.baseline)}</div>
+                    <div className="text-[11px] text-[var(--muted)]">accuracy on test rows</div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-xs">
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Precision</div>
-                    <div className="font-bold">{pct(result.best.P)}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Recall</div>
-                    <div className="font-bold">{pct(result.best.R)}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">F1 score</div>
-                    <div className="font-bold">{pct(result.best.F)}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Split</div>
-                    <div className="font-bold">{result.trainSize}/{result.testSize}</div>
-                  </div>
-                </div>
-                <p className="text-[11px] text-[var(--muted)] mt-3">{result.splitNote}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowTechnical((value) => !value)}
+                  className="mt-4 text-[11px] font-semibold text-[var(--accent)] hover:underline cursor-pointer"
+                >
+                  {showTechnical ? 'Hide technical details' : 'Show technical details'}
+                </button>
 
-                <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-[var(--line)]">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="sticky top-0 bg-[var(--canvas)] text-[var(--muted)]">
-                      <tr>
-                        <th className="px-2.5 py-2 font-semibold">Model</th>
-                        <th className="px-2.5 py-2 font-semibold">Accuracy</th>
-                        <th className="px-2.5 py-2 font-semibold">F1</th>
-                        <th className="px-2.5 py-2 font-semibold">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.metrics.map((metric) => (
-                        <tr
-                          key={metric.n}
-                          className={`border-t border-[var(--line)] ${metric.n === result.best.n ? 'bg-[var(--green-soft)]' : ''}`}
-                        >
-                          <td className="px-2.5 py-1.5 font-medium">{metric.err ? '⚠ ' : ''}{metric.n}</td>
-                          <td className="px-2.5 py-1.5 font-mono">{metric.err ? 'failed' : pct(metric.acc)}</td>
-                          <td className="px-2.5 py-1.5 font-mono">{metric.err ? '—' : pct(metric.F)}</td>
-                          <td className="px-2.5 py-1.5 font-mono">{metric.ms} ms</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
-              <Card>
-                <h2 className="text-sm font-bold mb-3">Tokenizer verification</h2>
-                <p className="text-xs text-[var(--muted)] mb-3">{result.tokenizerNote}</p>
-                {result.tokenizerWarning && (
-                  <p className="text-[11px] text-[var(--amber)] mb-3">{result.tokenizerWarning}</p>
+                {showTechnical && (
+                  <div className="mt-4 space-y-3">
+                    <div className="text-xs font-semibold">
+                      {result.best.n} · {result.metrics.length} models compared
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
+                        <div className="text-[var(--faint)]">Precision</div>
+                        <div className="font-bold">{pct(result.best.P)}</div>
+                      </div>
+                      <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
+                        <div className="text-[var(--faint)]">Recall</div>
+                        <div className="font-bold">{pct(result.best.R)}</div>
+                      </div>
+                      <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
+                        <div className="text-[var(--faint)]">F1 score</div>
+                        <div className="font-bold">{pct(result.best.F)}</div>
+                      </div>
+                      <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
+                        <div className="text-[var(--faint)]">Split</div>
+                        <div className="font-bold">{result.trainSize}/{result.testSize}</div>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--muted)]">{result.splitNote}</p>
+                    <div className="max-h-72 overflow-auto rounded-lg border border-[var(--line)]">
+                      <table className="w-full text-left text-[11px]">
+                        <thead className="sticky top-0 bg-[var(--canvas)] text-[var(--muted)]">
+                          <tr>
+                            <th className="px-2.5 py-2 font-semibold">Model</th>
+                            <th className="px-2.5 py-2 font-semibold">Accuracy</th>
+                            <th className="px-2.5 py-2 font-semibold">F1</th>
+                            <th className="px-2.5 py-2 font-semibold">Time</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.metrics.map((metric) => (
+                            <tr
+                              key={metric.n}
+                              className={`border-t border-[var(--line)] ${metric.n === result.best.n ? 'bg-[var(--green-soft)]' : ''}`}
+                            >
+                              <td className="px-2.5 py-1.5 font-medium">{metric.err ? '⚠ ' : ''}{metric.n}</td>
+                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? 'failed' : pct(metric.acc)}</td>
+                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? '—' : pct(metric.F)}</td>
+                              <td className="px-2.5 py-1.5 font-mono">{metric.ms} ms</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-[var(--line)] p-3 text-[11px] space-y-2">
-                    <div><span className="font-semibold">Example:</span> {result.tokenizer.example.slice(0, 160) || '—'}</div>
-                    <div className="font-mono break-all"><span className="font-sans font-semibold">Raw IDs:</span> {result.tokenizer.raw.join(' ') || '—'}</div>
-                    <div className="font-mono break-all"><span className="font-sans font-semibold">Compact IDs:</span> {result.tokenizer.compact.join(' ') || '—'}</div>
-                    <div className="break-words"><span className="font-semibold">Subwords:</span> {result.tokenizer.subwords || '—'}</div>
-                    <div className="break-words"><span className="font-semibold">Decoded:</span> {result.tokenizer.decoded || '—'}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="rounded-lg border border-[var(--line)] p-2.5">
-                      <div className="text-[11px] font-semibold mb-1">LSTM loss</div>
-                      <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM loss chart">
-                        <polyline points={sparkline(result.history.lt, lossMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
-                        <polyline points={sparkline(result.history.le, lossMax)} fill="none" stroke="var(--amber)" strokeWidth="2" />
-                      </svg>
-                    </div>
-                    <div className="rounded-lg border border-[var(--line)] p-2.5">
-                      <div className="text-[11px] font-semibold mb-1">LSTM accuracy</div>
-                      <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM accuracy chart">
-                        <polyline points={sparkline(result.history.at, accuracyMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
-                        <polyline points={sparkline(result.history.ae, accuracyMax)} fill="none" stroke="var(--green)" strokeWidth="2" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
               </Card>
+
+              {showTechnical && (
+                <Card>
+                  <h2 className="text-sm font-bold mb-3">Tokenizer verification</h2>
+                  <p className="text-xs text-[var(--muted)] mb-3">{result.tokenizerNote}</p>
+                  {result.tokenizerWarning && (
+                    <p className="text-[11px] text-[var(--amber)] mb-3">{result.tokenizerWarning}</p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-[var(--line)] p-3 text-[11px] space-y-2">
+                      <div><span className="font-semibold">Example:</span> {result.tokenizer.example.slice(0, 160) || '—'}</div>
+                      <div className="font-mono break-all"><span className="font-sans font-semibold">Raw IDs:</span> {result.tokenizer.raw.join(' ') || '—'}</div>
+                      <div className="font-mono break-all"><span className="font-sans font-semibold">Compact IDs:</span> {result.tokenizer.compact.join(' ') || '—'}</div>
+                      <div className="break-words"><span className="font-semibold">Subwords:</span> {result.tokenizer.subwords || '—'}</div>
+                      <div className="break-words"><span className="font-semibold">Decoded:</span> {result.tokenizer.decoded || '—'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="rounded-lg border border-[var(--line)] p-2.5">
+                        <div className="text-[11px] font-semibold mb-1">LSTM loss</div>
+                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM loss chart">
+                          <polyline points={sparkline(result.history.lt, lossMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
+                          <polyline points={sparkline(result.history.le, lossMax)} fill="none" stroke="var(--amber)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                      <div className="rounded-lg border border-[var(--line)] p-2.5">
+                        <div className="text-[11px] font-semibold mb-1">LSTM accuracy</div>
+                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM accuracy chart">
+                          <polyline points={sparkline(result.history.at, accuracyMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
+                          <polyline points={sparkline(result.history.ae, accuracyMax)} fill="none" stroke="var(--green)" strokeWidth="2" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               <Card>
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -782,9 +797,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                         <Badge size="sm" variant="success">{suggestion.label}</Badge>
                       </div>
                       <div className="text-[11px] text-[var(--muted)] mt-1.5">
-                        {suggestion.conf} confidence · {suggestion.model}
+                        {suggestion.conf} chance
                       </div>
-                      {suggestion.fields && (
+                      {showTechnical && suggestion.fields && (
                         <div className="text-[10px] text-[var(--faint)] mt-1 line-clamp-1">{suggestion.fields}</div>
                       )}
                       <button
@@ -800,7 +815,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               </Card>
 
               <Card>
-                <h2 className="text-sm font-bold mb-3">Predict with the winning model</h2>
+                <h2 className="text-sm font-bold mb-3">Try a prediction</h2>
                 <div className="space-y-3">
                   {predictionFields.map((column) =>
                     column === result.textCol ? (
@@ -843,8 +858,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--green)]/30 bg-[var(--green-soft)] px-3 py-2.5">
                       <CheckCircle2 className="w-4 h-4 text-[var(--green)]" />
                       <span className="text-sm font-bold">{prediction.label}</span>
-                      <Badge size="sm" variant="success">{prediction.confidence} confidence</Badge>
-                      <span className="text-[11px] text-[var(--muted)]">{prediction.model}</span>
+                      <Badge size="sm" variant="success">{prediction.confidence} chance</Badge>
                     </div>
                   )}
                 </div>
@@ -886,9 +900,11 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-[var(--faint)] mb-3">
-              {RAG_MODES.find((mode) => mode.id === ragMode)?.hint}
-            </p>
+            {showTechnical && (
+              <p className="text-[10px] text-[var(--faint)] mb-3">
+                {RAG_MODES.find((mode) => mode.id === ragMode)?.hint}
+              </p>
+            )}
 
             <textarea
               rows={3}
@@ -924,12 +940,14 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
             {ragResult && (
               <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
-                  <Badge size="sm" variant="accent">{ragModeLabel} mode</Badge>
-                  <span className="text-[11px] text-[var(--muted)]">
-                    {ragResult.why.charAt(0).toLowerCase() + ragResult.why.slice(1)}
-                  </span>
-                </div>
+                {showTechnical && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
+                    <Badge size="sm" variant="accent">{ragModeLabel} mode</Badge>
+                    <span className="text-[11px] text-[var(--muted)]">
+                      {ragResult.why.charAt(0).toLowerCase() + ragResult.why.slice(1)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
                   <div className="flex items-center gap-2 mb-2">

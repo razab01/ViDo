@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Badge, Button, Card } from '../../components/ui';
-import { pct, profileData, ragDocs, runRAG } from './engine';
+import { profileData, ragDocs, runRAG } from './engine';
 import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
 
@@ -10,13 +10,6 @@ export interface DashboardRagCardProps {
   userId?: string;
   basePath?: string;
 }
-
-const RAG_MODE_LABELS: Record<string, string> = {
-  auto: 'Auto',
-  rag: 'RAG',
-  agentic: 'Agentic',
-  graph: 'Graph',
-};
 
 export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   userId = 'demo-user-uid',
@@ -91,9 +84,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
       <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-[var(--muted)]">
         {snapshot?.result ? (
           <>
-            <Badge size="sm" variant="success">Best model · {snapshot.result.best.n}</Badge>
-            <span>{pct(snapshot.result.best.acc)} test accuracy</span>
-            <span>·</span>
+            <Badge size="sm" variant="success">Model ready</Badge>
             <span>{docs.length} searchable sources</span>
           </>
         ) : (
@@ -123,7 +114,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
-              Answer · {RAG_MODE_LABELS[answer.mode] ?? answer.mode}
+              Answer
             </span>
           </div>
           {answerLines.length ? (

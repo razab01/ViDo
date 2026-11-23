@@ -5,7 +5,7 @@
  * from the saved dataset/options when a page is reloaded. Everything else is
  * serialized to localStorage under a key scoped to the signed-in user.
  */
-import { syncPredictionRow, trainAll } from './engine';
+import { formatConfidence, syncPredictionRow, trainAll } from './engine';
 import type {
   Dataset,
   PreparedData,
@@ -251,11 +251,9 @@ export const isCompletionTarget = (target: string): boolean =>
  * should not be presented as absolutely certain.
  */
 export function formatTaskProbability(value: number, kind: TaskPrediction['kind'] = 'confidence'): string {
+  if (kind === 'confidence') return formatConfidence(value);
   if (!Number.isFinite(value)) return '—';
-  const bounded = Math.min(Math.max(value, 0), 1);
-  const display = kind === 'confidence' ? Math.min(bounded, 0.999) : bounded;
-  const percent = Math.round(display * 1000) / 10;
-  return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1)}%`;
+  return `${Math.round(Math.min(Math.max(value, 0), 1) * 100)}%`;
 }
 
 /** Build a probability estimate for a task from the user's winning model. */

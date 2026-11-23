@@ -31,12 +31,12 @@ describe('TaskCreateModal best-model probability', () => {
 
     expect(screen.getByText('Completion probability')).toBeInTheDocument();
     expect(screen.getByText('91%')).toBeInTheDocument();
-    expect(screen.getByText(/Predicted/)).toBeInTheDocument();
+    expect(screen.getByText(/completion chance based on your saved data/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
 
     expect(predictTask).toHaveBeenCalled();
     expect(onCreateTask).toHaveBeenCalledTimes(1);
-    expect(onCreateTask.mock.calls[0][0].checkpoints[0].note).toContain('Best-model estimate: 91% yes');
+    expect(onCreateTask.mock.calls[0][0].checkpoints[0].note).toContain('Estimated completion chance: 91%.');
   });
 });

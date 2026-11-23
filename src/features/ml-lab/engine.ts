@@ -217,6 +217,14 @@ export function pct(v: number): string {
   return (Number(v) * 100).toFixed(1) + '%';
 }
 
+/** Format a classifier probability without claiming absolute certainty. */
+export function formatConfidence(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  const capped = Math.min(Math.max(v, 0), 0.999);
+  const percent = Math.round(capped * 1000) / 10;
+  return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1)}%`;
+}
+
 export function fmtNum(v: string | number): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return String(v);
@@ -227,6 +235,36 @@ export function argmax(a: ArrayLike<number>): number {
   let b = 0;
   for (let i = 1; i < a.length; i++) if (a[i] > a[b]) b = i;
   return b;
+}
+
+export interface RankableModel {
+  n: string;
+  acc: number;
+  F: number;
+  err?: boolean;
+}
+
+/**
+ * Rank models by quality, then prefer the LSTM when their scores are identical.
+ * On near-constant datasets every classifier can land on the same accuracy and
+ * F1; in that case the text-aware LSTM is the more useful default winner.
+ */
+export function rankModels<T extends RankableModel>(models: T[]): T[] {
+  const isLSTM = (model: T) => /^LSTM\b/i.test(model.n);
+  return models
+    .map((model, index) => ({ model, index }))
+    .sort((a, b) => {
+      const first = a.model;
+      const second = b.model;
+      return (
+        (first.err ? 1 : 0) - (second.err ? 1 : 0) ||
+        second.acc - first.acc ||
+        second.F - first.F ||
+        Number(isLSTM(second)) - Number(isLSTM(first)) ||
+        a.index - b.index
+      );
+    })
+    .map(({ model }) => model);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1908,8 +1946,8 @@ export async function trainAll(
     proba: (row) => Array.from(net.forward(seqFor(row)) as Float32Array),
   };
   results.push({ n: lname, ...mm, ms: 0, art: lstmArtifact });
-  results.sort((a, b) => (a.err ? 1 : 0) - (b.err ? 1 : 0) || b.acc - a.acc || b.F - a.F);
-  const best = results[0];
+  const ranked = rankModels(results);
+  const best = ranked[0];
   if (!best || !best.art) throw new Error('No model produced a usable prediction.');
   const artifact = best.art;
 
@@ -1921,7 +1959,7 @@ export async function trainAll(
   const suggestions: Suggestion[] = pickIdx.map((idx) => {
     const row = data[idx];
     const p = artifact.predict(row);
-    const conf = artifact.proba ? pct(artifact.proba(row)[p]) : '—';
+    const conf = artifact.proba ? formatConfidence(artifact.proba(row)[p]) : '—';
     const fields = labelCols.map((c) => c + '=' + String(row[c] ?? '')).join(', ');
     return {
       id: idx,
@@ -1978,7 +2016,7 @@ export async function trainAll(
 
 export function predictWith(result: TrainingResult, row: Row): { label: string; confidence: string; model: string } {
   const p = result.artifact.predict(row);
-  const confidence = result.artifact.proba ? pct(result.artifact.proba(row)[p]) : '—';
+  const confidence = result.artifact.proba ? formatConfidence(result.artifact.proba(row)[p]) : '—';
   return { label: result.labels[p] ?? String(p), confidence, model: result.artifact.name };
 }
 

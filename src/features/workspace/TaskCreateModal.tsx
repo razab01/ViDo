@@ -118,7 +118,9 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
               ? `Task initialized in workspace (started on ${startDate.trim()}).`
               : 'Task initialized in workspace.',
             probability
-              ? `Best-model estimate: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label} · ${probability.model}.`
+              ? probability.isCompletion
+                ? `Estimated completion chance: ${formatTaskProbability(probability.probability, probability.kind)}.`
+                : `Estimated outcome: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label}.`
               : '',
           ]
             .filter(Boolean)
@@ -228,9 +230,10 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
             </div>
             {probability ? (
               <p className="text-[11px] text-[var(--muted)] mt-1.5 leading-relaxed">
-                Predicted <strong className="text-[var(--ink)]">{probability.label}</strong> for{' '}
-                {probability.target} · {probability.model} · {probability.kind}
-                {title.trim() ? '' : ' — add a title to refine this estimate.'}
+                {probability.isCompletion
+                  ? 'Completion chance based on your saved data.'
+                  : `Estimated outcome: ${probability.label}.`}
+                {title.trim() ? '' : ' Add a title to refine this estimate.'}
               </p>
             ) : (
               <p className="text-[11px] text-[var(--muted)] mt-1.5 leading-relaxed">

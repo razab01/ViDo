@@ -17,6 +17,8 @@ describe('MLLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /train 10 models/i }));
 
     expect(await screen.findByText(/winner/i, {}, { timeout: 30000 })).toBeInTheDocument();
+    expect(screen.queryByText(/tokenizer verification/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /show technical details/i }));
     expect(screen.getByText(/tokenizer verification/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /suggestions/i })).toBeInTheDocument();
 
