@@ -128,6 +128,10 @@ describe('unified training, prediction and RAG', () => {
     expect(trained.tokenizer.compact.length).toBeGreaterThan(0);
     expect(trained.history.ae.length).toBe(2);
 
+    // Mixed classes must not produce a suspicious perfect score.
+    expect(trained.best.acc).toBeLessThan(1);
+    expect(trained.metrics.some((m) => !m.err && m.acc < 1)).toBe(true);
+
     const prediction = predictWith(trained, trained.sample);
     expect(trained.labels).toContain(prediction.label);
     expect(prediction.model).toBe(trained.best.n);

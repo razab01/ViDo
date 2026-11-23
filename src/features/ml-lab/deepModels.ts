@@ -36,10 +36,10 @@ export const DEEP_MODEL_NAMES = [
 
 // Pretrained MiniLM vectors are 384-wide; we downsample them into a compact
 // working space so ten architectures can be trained quickly in the browser.
-const DIM = 96;
-const MAX_TOKENS = 8;
-const MAX_TRAIN_SAMPLES = 48;
-const MAX_EVAL_SAMPLES = 20;
+const DIM = 64;
+const MAX_TOKENS = 6;
+const MAX_TRAIN_SAMPLES = 32;
+const MAX_EVAL_SAMPLES = 32;
 
 /* ------------------------------------------------------------------ */
 /* Small dynamic-graph autograd engine (2-D Float32 tensors)            */
@@ -86,7 +86,10 @@ class Tensor {
   }
 
   backward(seed?: Float32Array): void {
+    // A scalar loss is the only backward root used here; default its upstream
+    // gradient to 1 so a missing seed cannot silently freeze all weights.
     if (seed) this.g.set(seed);
+    else this.g.fill(1);
     const order: Tensor[] = [];
     const seen = new Set<Tensor>();
     const visit = (t: Tensor) => {
@@ -96,7 +99,11 @@ class Tensor {
       order.push(t);
     };
     visit(this);
-    for (const t of order) for (const { back } of t.parents) back(t.g);
+    // `order` is parents-first; gradients must flow output -> inputs.
+    for (let i = order.length - 1; i >= 0; i--) {
+      const t = order[i];
+      for (const { back } of t.parents) back(t.g);
+    }
   }
 
   add(b: Tensor): Tensor {
@@ -863,6 +870,26 @@ function classificationMetrics(yt: number[], p: number[], K: number) {
   return { acc, P: c ? P / c : 0, R: c ? R / c : 0, F: c ? F / c : 0 };
 }
 
+/** Pick a class-balanced evaluation subset so a lucky homogeneous slice
+ * cannot report a misleading 100% accuracy. */
+function stratifiedSample(idx: number[], y: number[], K: number, max: number): number[] {
+  if (idx.length <= max) return idx.slice();
+  const buckets: number[][] = Array.from({ length: K }, () => []);
+  for (const i of idx) if (y[i] >= 0 && y[i] < K) buckets[y[i]].push(i);
+  const per = Math.max(1, Math.floor(max / K));
+  const chosen: number[] = [];
+  const seen = new Set<number>();
+  const add = (i: number) => {
+    if (chosen.length < max && !seen.has(i)) {
+      chosen.push(i);
+      seen.add(i);
+    }
+  };
+  for (const bucket of buckets) for (const i of bucket.slice(0, per)) add(i);
+  for (const bucket of buckets) for (const i of bucket) add(i);
+  return chosen;
+}
+
 function shuffled(idx: number[], seed: number): number[] {
   const rnd = mulberry(seed);
   const a = idx.slice();
@@ -886,6 +913,7 @@ export function trainDeepModels(
 ): DeepTrainedModel[] {
   const trained: DeepTrainedModel[] = [];
   const ep = Math.max(1, Math.min(6, epochs));
+  const evalIdx = stratifiedSample(testIdx, y, K, MAX_EVAL_SAMPLES);
 
   for (let m = 0; m < DEEP_MODEL_NAMES.length; m++) {
     const name = DEEP_MODEL_NAMES[m];
@@ -910,7 +938,8 @@ export function trainDeepModels(
           const logits = arch.build(E);
           const loss = logits.logSoftmax().nll(y[i]);
           params.forEach((p) => p.zeroGrad());
-          loss.backward();
+          // The scalar loss needs an explicit upstream gradient of 1.
+          loss.backward(new Float32Array([1]));
           step++;
           const b1 = 0.9;
           const b2 = 0.999;
@@ -947,19 +976,19 @@ export function trainDeepModels(
           }
           return { loss: loss / Math.max(1, idx.length), preds };
         };
-        const evalTrainIdx = trainOrder.slice(0, MAX_EVAL_SAMPLES);
+        const evalTrainIdx = trainOrder;
         const trEval = evaluate(evalTrainIdx);
-        const teEval = evaluate(testIdx.slice(0, MAX_EVAL_SAMPLES));
+        const teEval = evaluate(evalIdx);
         history.lt.push(trEval.loss);
         history.le.push(teEval.loss);
         history.at.push(classificationMetrics(evalTrainIdx.map((i) => y[i]), trEval.preds, K).acc);
-        history.ae.push(classificationMetrics(testIdx.slice(0, MAX_EVAL_SAMPLES).map((i) => y[i]), teEval.preds, K).acc);
+        history.ae.push(classificationMetrics(evalIdx.map((i) => y[i]), teEval.preds, K).acc);
         onEpoch?.(name, e, ep);
       }
 
       const final = (() => {
         const out: number[] = [];
-        for (const i of testIdx.slice(0, MAX_EVAL_SAMPLES)) {
+        for (const i of evalIdx) {
           const seq = features.seqs[i];
           const E = seqTensor(seq, features.dim);
           const prob = softmaxArray(arch.build(E).d);
@@ -978,7 +1007,7 @@ export function trainDeepModels(
         name,
         metric: {
           n: name,
-          ...classificationMetrics(testIdx.slice(0, MAX_EVAL_SAMPLES).map((i) => y[i]), final.preds, K),
+          ...classificationMetrics(evalIdx.map((i) => y[i]), final.preds, K),
           ms: Math.round(performance.now() - t0),
         },
         history,
