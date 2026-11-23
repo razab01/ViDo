@@ -126,7 +126,7 @@ describe('unified training, prediction and RAG', () => {
     expect(trained.suggestions.length).toBeGreaterThan(0);
     expect(trained.suggestions.length).toBeLessThanOrEqual(8);
     expect(trained.tokenizer.compact.length).toBeGreaterThan(0);
-    expect(trained.history.ae.length).toBe(2);
+    expect(trained.history.ae.length).toBe(3);
 
     // Mixed classes must not produce a suspicious perfect score, and
     // clipping/regularisation must keep all reported metrics finite.

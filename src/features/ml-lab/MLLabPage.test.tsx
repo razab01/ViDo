@@ -13,7 +13,6 @@ import type { SerializableTrainingResult } from './mlStore';
 const setOfflineTrainingOptions = () => {
   fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
   fireEvent.change(screen.getByLabelText(/gpt tokenizer/i), { target: { value: 'builtin' } });
-  fireEvent.change(screen.getByLabelText(/deep model epochs/i), { target: { value: '2' } });
   fireEvent.click(screen.getByRole('button', { name: /hide advanced options/i }));
 };
 
@@ -142,7 +141,6 @@ describe('MLLabPage', () => {
     expect(screen.queryByLabelText(/training accuracy chart/i)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/gpt tokenizer/i), { target: { value: 'builtin' } });
-    fireEvent.change(screen.getByLabelText(/deep model epochs/i), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: /load demo data/i }));
 
     expect(await screen.findByText(/accuracy on test rows/i, {}, { timeout: 30000 })).toBeInTheDocument();

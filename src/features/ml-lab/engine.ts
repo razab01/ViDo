@@ -1895,9 +1895,8 @@ export async function trainAll(
   const deepFeatures = await buildDeepFeatures(texts, onStatus);
   tokenizerNote += ' · deep embeddings: ' + deepFeatures.source;
 
-  const epochs = options.bpeEpochs > 0 ? options.bpeEpochs : options.epochs;
   onProgress(0, 10, 'Training 10 deep models on ' + deepFeatures.source);
-  const deepTrained = trainDeepModels(deepFeatures, allY, tr, te, K, epochs, (name, epoch, total) => {
+  const deepTrained = trainDeepModels(deepFeatures, allY, tr, te, K, (name, epoch, total) => {
     const index = DEEP_MODEL_NAMES.indexOf(name as (typeof DEEP_MODEL_NAMES)[number]);
     onProgress(index + epoch / total, 10, 'Training ' + (index + 1) + '/10: ' + name + ' · epoch ' + epoch + '/' + total);
     onStatus('Training ' + name + ' · epoch ' + epoch + '/' + total);

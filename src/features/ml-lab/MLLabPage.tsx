@@ -90,7 +90,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [tokenizer, setTokenizer] = useState<TokenizerChoice>(initialSnapshot?.tokenizer ?? 'cl100k');
   const [split, setSplit] = useState<SplitChoice>(initialSnapshot?.split ?? 'auto');
   const [vocab, setVocab] = useState(initialSnapshot?.vocab ?? 2048);
-  const [epochs, setEpochs] = useState(initialSnapshot?.epochs ?? 6);
+  // Every model now trains for exactly three epochs; this is not adjustable.
+  const epochs = 3;
 
   const [result, setResult] = useState<TrainingResult | null>(() =>
     resultFromStored(initialSnapshot?.result ?? null, getActiveResult(userId))
@@ -119,7 +120,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setTokenizer(snapshot?.tokenizer ?? 'cl100k');
     setSplit(snapshot?.split ?? 'auto');
     setVocab(snapshot?.vocab ?? 2048);
-    setEpochs(snapshot?.epochs ?? 6);
     setResult(resultFromStored(snapshot?.result ?? null, active));
     setModelReady(Boolean(active));
     setPredictionValues(snapshot?.predictionValues ?? {});
@@ -659,19 +659,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     className="w-full mt-1.5 accent-[var(--accent)]"
                   />
                 </label>
-                <label className="block text-xs font-semibold text-[var(--muted)]">
-                  Deep model epochs: {epochs}
-                  <input
-                    type="range"
-                    min={2}
-                    max={20}
-                    step={1}
-                    value={epochs}
-                    onChange={(event) => setEpochs(Number(event.target.value))}
-                    disabled={training}
-                    className="w-full mt-1.5 accent-[var(--accent)]"
-                  />
-                </label>
+                <div className="block text-xs font-semibold text-[var(--muted)]">
+                  Deep model epochs: {epochs} (fixed)
+                  <div className="w-full mt-1.5 h-1.5 rounded-full bg-[var(--canvas)] border border-[var(--line)]" />
+                </div>
               </div>
 
               <Button variant="primary" className="w-full" onClick={handleTrain} disabled={!dataset || busy || training}>
