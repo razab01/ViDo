@@ -32,6 +32,23 @@ const WORLD_FACTS: Array<{ keys: string[]; about: string; president: string }> =
   },
 ];
 
+const PEOPLE_FACTS: Array<{ keys: string[]; about: string; works: string }> = [
+  {
+    keys: ['adam smith'],
+    about:
+      'Adam Smith was a Scottish economist and philosopher, best known as a founder of modern economics.',
+    works:
+      'Adam Smith wrote An Inquiry into the Nature and Causes of the Wealth of Nations (1776), commonly called The Wealth of Nations.',
+  },
+  {
+    keys: ['albert einstein'],
+    about:
+      'Albert Einstein was a German-born physicist who developed the special and general theories of relativity.',
+    works:
+      'Albert Einstein published papers on the photoelectric effect, Brownian motion, special relativity and mass–energy equivalence.',
+  },
+];
+
 const PRECEDENCE: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
 
 /** Safe Shunting Yard evaluator for basic arithmetic (no eval / new Function). */
@@ -108,6 +125,14 @@ export function localFallbackAnswer(question: string): string | null {
   if (arithmetic) return arithmetic;
 
   const low = trimmed.toLowerCase();
+  const person = PEOPLE_FACTS.find((fact) => fact.keys.some((key) => low.includes(key)));
+  if (person) {
+    if (/\b(write|wrote|written|writes|book|books|work|works|author|publish|published)\b/.test(low)) {
+      return person.works;
+    }
+    return person.about;
+  }
+
   const country = WORLD_FACTS.find((fact) => fact.keys.some((key) => low.includes(key)));
   if (!country) return null;
   if (/\bpresident\b/.test(low)) return country.president;

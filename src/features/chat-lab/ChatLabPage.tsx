@@ -1,93 +1,115 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MessageSquare, Plus, Send, Sparkles } from 'lucide-react';
-import { Badge, Button, Card } from '../../components/ui';
-import {
-  profileData,
-  ragDocs,
-  runRAG,
-  USER_RAG_MODE,
-} from '../ml-lab/engine';
-import type { Dataset, Profile, RAGDoc, TrainingResult } from '../ml-lab/engine';
-import { KNOWLEDGE_DOCS } from '../ml-lab/knowledge';
-import { polishRagAnswer } from '../ml-lab/answerEngine';
+import { Button, Card } from '../../components/ui';
+import { profileData } from '../ml-lab/engine';
+import type { Dataset, Profile } from '../ml-lab/engine';
 import { answerWithPython, isPythonAvailable } from '../ml-lab/pythonApi';
-import { localFallbackAnswer } from './localFallback';
 import {
   getActiveResult,
   readSnapshot,
   subscribeActiveResult,
 } from '../ml-lab/mlStore';
+import { answerLocally, resolveQuestion, type ChatTurn } from './chatBrain';
+import {
+  addMessage,
+  createThread,
+  ensureActiveThread,
+  getActiveChatId,
+  patchMessage,
+  readThreads,
+  subscribeThreads,
+} from './chatStore';
+import type { ChatMessage, ChatThread } from './chatStore';
 
 export interface ChatLabPageProps {
   userId?: string;
 }
 
-interface ChatMessage {
-  id: number;
-  role: 'user' | 'assistant';
-  text: string;
-  pending?: boolean;
-  engine?: 'python' | 'browser' | 'error';
-}
-
 const SUGGESTIONS = [
   'who is president of spain',
-  'what is eigenvector of [[2,3],[4,5]]',
+  'what is 2+2',
   'Tell me about India',
-  'What patterns predict completed?',
+  'which tasks are completed?',
 ];
 
-const engineBadge = (engine?: ChatMessage['engine']) => {
-  if (engine === 'python') return <Badge size="sm" variant="accent">Python</Badge>;
-  if (engine === 'browser') return <Badge size="sm" variant="neutral">Local</Badge>;
-  if (engine === 'error') return <Badge size="sm" variant="danger">Retry</Badge>;
-  return null;
+const id = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const turnsFrom = (messages: ChatMessage[]): ChatTurn[] => {
+  const turns: ChatTurn[] = [];
+  for (let index = 0; index < messages.length - 1; index += 1) {
+    if (messages[index].role === 'user' && messages[index + 1].role === 'assistant') {
+      turns.push({ question: messages[index].text, answer: messages[index + 1].text });
+      index += 1;
+    }
+  }
+  return turns;
 };
 
 export const ChatLabPage: React.FC<ChatLabPageProps> = ({ userId = 'demo-user-uid' }) => {
   const [initialSnapshot] = useState(() => readSnapshot(userId));
-  const [active, setActive] = useState<TrainingResult | null>(() => getActiveResult(userId));
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [active, setActive] = useState(() => getActiveResult(userId));
+  const [threads, setThreads] = useState<ChatThread[]>(() => readThreads(userId));
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const idRef = useRef(0);
   const endRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => subscribeActiveResult(userId, (next) => setActive(next)), [userId]);
+  useEffect(() => {
+    ensureActiveThread(userId);
+    const unsubscribeChats = subscribeThreads(userId, () => {
+      setThreads(readThreads(userId));
+      setActiveId(getActiveChatId(userId));
+    });
+    const unsubscribeModel = subscribeActiveResult(userId, setActive);
+    return () => {
+      unsubscribeChats();
+      unsubscribeModel();
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    setThreads(readThreads(userId));
+    setActiveId(getActiveChatId(userId));
+  }, [userId]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: 'nearest' });
-  }, [messages]);
+  }, [threads, activeId]);
+
+  const thread = useMemo(
+    () => threads.find((item) => item.id === (activeId ?? threads[0]?.id)) ?? null,
+    [threads, activeId]
+  );
+  const messages = thread?.messages ?? [];
 
   const dataset: Dataset | null = active?.dataset ?? initialSnapshot?.dataset ?? null;
   const profile: Profile = active?.profile ?? initialSnapshot?.profile ?? profileData([], []);
   const suggestions = active?.suggestions ?? [];
-  const docs = useMemo<RAGDoc[]>(
-    () => [...ragDocs(dataset, profile, suggestions), ...KNOWLEDGE_DOCS],
-    [dataset, profile, suggestions]
-  );
 
   const ask = async (raw: string) => {
     const question = raw.trim();
-    if (!question || busy) return;
+    if (!question || busy || !thread) return;
 
-    const userMessageId = ++idRef.current;
-    const assistantMessageId = ++idRef.current;
-    setMessages((current) => [
-      ...current,
-      { id: userMessageId, role: 'user', text: question },
-      { id: assistantMessageId, role: 'assistant', text: '', pending: true },
-    ]);
+    const currentThread = thread;
+    const history = turnsFrom(messages);
+    const resolved = resolveQuestion(question, history);
+    const userMessage: ChatMessage = { id: id(), role: 'user', text: question };
+    const pendingMessage: ChatMessage = { id: id(), role: 'assistant', text: '', pending: true };
+    addMessage(userId, currentThread.id, userMessage);
+    addMessage(userId, currentThread.id, pendingMessage);
     setInput('');
     setBusy(true);
 
     try {
       let answer = '';
-      let engine: ChatMessage['engine'] = 'browser';
 
       if (await isPythonAvailable()) {
         try {
           answer = await answerWithPython({
-            question,
+            question: resolved,
             rows: dataset?.rows ?? [],
             cols: dataset?.cols ?? [],
             profile,
@@ -101,55 +123,36 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({ userId = 'demo-user-ui
                 }
               : null,
           });
-          engine = 'python';
         } catch {
           answer = '';
         }
       }
 
       if (!answer) {
-        answer = localFallbackAnswer(question) ?? '';
-        if (!answer) {
-          const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
-          const polished = await polishRagAnswer({ question, rag: retrieved });
-          answer = polished.answer;
-        }
-        engine = 'browser';
+        answer =
+          (await answerLocally(resolved, { dataset, profile, suggestions })) ??
+          'I could not find a clear answer to that. Try asking about a task ID, your data, or a topic.';
       }
 
-      // Keep the transcript conversational: hide source labels used by the
-      // routing layer without changing the answer itself.
-      const displayAnswer = answer.replace(/^Wikipedia:\s*/, '').trim();
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantMessageId
-            ? { ...message, text: displayAnswer, pending: false, engine }
-            : message
-        )
-      );
+      patchMessage(userId, currentThread.id, pendingMessage.id, {
+        text: answer.replace(/^Wikipedia:\s*/, '').trim(),
+        pending: false,
+      });
     } catch {
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantMessageId
-            ? {
-                ...message,
-                text: 'Sorry, I could not answer that right now. Please try again.',
-                pending: false,
-                engine: 'error',
-              }
-            : message
-        )
-      );
+      patchMessage(userId, currentThread.id, pendingMessage.id, {
+        text: 'Sorry, I could not answer that right now. Please try again.',
+        pending: false,
+      });
     } finally {
       setBusy(false);
     }
   };
 
   const startNewChat = () => {
-    setMessages([]);
+    createThread(userId);
     setInput('');
     setBusy(false);
-    idRef.current = 0;
+    setActiveId(null);
   };
 
   return (
@@ -160,7 +163,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({ userId = 'demo-user-ui
             <MessageSquare className="w-6 h-6 text-[var(--accent)]" /> Chat Lab
           </h1>
           <p className="text-sm text-[var(--muted)] mt-1">
-            Ask anything — maths, world facts, or your saved data. Answers are routed through Python first.
+            Ask anything — maths, world facts, your data, or follow up with a pronoun.
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={startNewChat} disabled={!messages.length && !input}>
@@ -214,10 +217,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({ userId = 'demo-user-ui
                         Thinking…
                       </span>
                     ) : (
-                      <>
-                        <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">{message.text}</p>
-                        <div className="mt-2">{engineBadge(message.engine)}</div>
-                      </>
+                      <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">{message.text}</p>
                     )}
                   </div>
                 </div>

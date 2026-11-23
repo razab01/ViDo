@@ -268,6 +268,80 @@ def _pattern_answer(question: str, rows: Sequence[dict], cols: Sequence[str], tr
     return " ".join(parts)
 
 
+def _find_column(cols: Sequence[str], patterns: Sequence[str]) -> Optional[str]:
+    # Pattern order is intent order: "task_text" should beat "has_desc".
+    for pattern in patterns:
+        for col in cols:
+            if re.search(pattern, col, re.I):
+                return col
+    return None
+
+
+def _record_answer(question: str, rows: Sequence[dict], cols: Sequence[str]) -> Optional[str]:
+    """Answer directly from row values instead of returning a vague graph hit."""
+    low = question.lower()
+    # Predictions belong to _likely_answer, not to records already completed.
+    if re.search(r"\blikely|predict|chance|probability|estimate\b", low):
+        return None
+
+    id_col = _find_column(cols, [r"^(task[ _-]?)?id$"])
+    title_col = (
+        _find_column(cols, [r"task_text", r"title", r"desc", r"^text$", r"name"])
+        or _title_column(cols)
+    )
+    done_col = _find_column(cols, [r"^complet", r"^done$", r"finished", r"^status$"])
+    date_col = _find_column(cols, [r"due", r"deadline", r"date"])
+    priority_col = _find_column(cols, [r"priority"])
+
+    def label(row: dict) -> str:
+        text = str(row.get(title_col) or "Untitled record")
+        record_id = str(row.get(id_col) or "").strip() if id_col else ""
+        return f"{record_id} — {text}" if record_id else text
+
+    # Exact record lookup: "T09", "tell me about task T09".
+    for token in re.findall(r"[A-Za-z]*-?\d+", question):
+        if not id_col:
+            break
+        match = next(
+            (row for row in rows if str(row.get(id_col, "")).strip().lower() == token.lower()),
+            None,
+        )
+        if not match:
+            continue
+        parts = [f"{token} — {str(match.get(title_col) or 'Untitled record')}."]
+        if done_col:
+            parts.append(f"Status: {str(match.get(done_col) or 'unknown')}.")
+        if date_col:
+            parts.append(f"Due: {str(match.get(date_col) or 'not set')}.")
+        if priority_col:
+            parts.append(f"Priority: {str(match.get(priority_col) or 'not set')}.")
+        return " ".join(parts)
+
+    if re.search(r"completed|finished|done", low) and re.search(
+        r"which|what|list|show|most|mostly|many|how much|are there|tasks|records", low
+    ):
+        finished = [
+            row for row in rows
+            if done_col and str(row.get(done_col, "")).strip().lower()
+            in ("yes", "true", "1", "completed", "done", "finished", "completed on time")
+        ]
+        if re.search(r"how many|how much|count", low):
+            return f"{len(finished)} {'task is' if len(finished) == 1 else 'tasks are'} marked completed in your data."
+        if not finished:
+            return "No tasks in your data are marked completed yet."
+        titles = [label(row) for row in finished[:6]]
+        return f"The completed {'task is' if len(finished) == 1 else 'tasks are'} {_quote_list(titles)}."
+
+    if re.search(r"high priority|urgent", low) and priority_col:
+        urgent = [row for row in rows if re.search(r"high|urgent", str(row.get(priority_col, "")), re.I)]
+        if not urgent:
+            return "No high-priority tasks are in your data."
+        titles = [label(row) for row in urgent[:6]]
+        return f"The high-priority {'task is' if len(urgent) == 1 else 'tasks are'} {_quote_list(titles)}."
+
+    return None
+
+
 def _graph_answer(question: str, rows: Sequence[dict], cols: Sequence[str], graph: nx.Graph) -> Optional[str]:
     hits = retrieve(question, graph)
     if not hits:
@@ -319,6 +393,7 @@ def answer(
     # a compare question mentions `completed` and a pattern question mentions
     # `predict`, but neither is asking for a ranked record list.
     candidate_answers = [
+        _record_answer(question, rows, cols),
         _compare_answer(question, rows, cols, trained),
         _pattern_answer(question, rows, cols, trained, suggestions),
         _likely_answer(question, suggestions, trained),

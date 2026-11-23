@@ -16,9 +16,19 @@ import {
   CheckCircle2,
   FlaskConical,
   MessageSquare,
+  ArrowLeft,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '../../components/ui';
 import { Team } from '../teams/types';
+import {
+  createThread,
+  deleteThread,
+  getActiveChatId,
+  readThreads,
+  selectThread,
+  subscribeThreads,
+} from '../chat-lab/chatStore';
 
 export interface WorkspaceSidebarProps {
   isPreview?: boolean;
@@ -53,6 +63,15 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   onSignOut,
 }) => {
   const location = useLocation();
+  const chatUserId = user?.id || 'demo-user-uid';
+  const isChatRoute = location.pathname === `${basePath}/chat-lab`;
+  const [chatThreads, setChatThreads] = useState(() => readThreads(chatUserId));
+
+  useEffect(() => {
+    const refresh = () => setChatThreads(readThreads(chatUserId));
+    refresh();
+    return subscribeThreads(chatUserId, refresh);
+  }, [chatUserId]);
 
   const totalTasks =
     counts.total ?? counts.today + counts.upcoming + counts.needsAttention;
@@ -125,6 +144,85 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         ? 'bg-white/15 text-white shadow-xs'
         : 'text-gray-300 hover:bg-white/8 hover:text-white'
     }`;
+
+  // Chat Lab gets its own sidebar: conversation history with a way back.
+  if (isChatRoute) {
+    return (
+      <aside
+        aria-label="Chat history"
+        className={`w-64 bg-[var(--dark)] text-gray-200 flex flex-col shrink-0 sticky ${
+          isPreview ? 'top-[45px] h-[calc(100vh-45px)]' : 'top-0 h-screen'
+        } overflow-y-auto p-5 select-none`}
+      >
+        <div className="flex items-center gap-3 mb-6 px-1">
+          <div className="w-9 h-9 rounded-xl bg-white text-[var(--dark)] flex items-center justify-center font-black text-base shadow-sm">
+            V
+          </div>
+          <div>
+            <div className="font-bold text-base text-white tracking-tight block">Chat Lab</div>
+            <span className="text-[10px] text-amber-300/90 font-medium tracking-wide block">
+              Conversations
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-2 px-2.5">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
+            Chat history
+          </span>
+          <button
+            type="button"
+            aria-label="Start new chat"
+            onClick={() => createThread(chatUserId)}
+            className="p-1 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <nav className="space-y-1 flex-1 overflow-y-auto">
+          {chatThreads.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-gray-400 italic">No chats yet</div>
+          ) : (
+            chatThreads.map((thread) => (
+              <div key={thread.id} className="flex items-center gap-1 group">
+                <button
+                  type="button"
+                  onClick={() => selectThread(chatUserId, thread.id)}
+                  className={`flex-1 min-w-0 text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all truncate ${
+                    thread.id === getActiveChatId(chatUserId)
+                      ? 'bg-white/15 text-white shadow-xs'
+                      : 'text-gray-300 hover:bg-white/8 hover:text-white'
+                  }`}
+                  title={thread.title}
+                >
+                  {thread.title}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${thread.title}`}
+                  onClick={() => deleteThread(chatUserId, thread.id)}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-300 hover:bg-white/8 cursor-pointer opacity-60 group-hover:opacity-100"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </nav>
+
+        <div className="pt-4 mt-4 border-t border-white/10">
+          <Link
+            to={basePath}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
+            <span>Back to application</span>
+          </Link>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

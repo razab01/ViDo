@@ -1,9 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { addMessage, createThread, resetChatStore } from '../chat-lab/chatStore';
 
 describe('WorkspaceSidebar', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetChatStore();
+  });
+
   const mockCounts = {
     today: 6,
     needsAttention: 4,
@@ -112,5 +118,33 @@ describe('WorkspaceSidebar', () => {
     fireEvent.click(expandBtn);
 
     expect(screen.getByRole('link', { name: /all tasks 15/i })).toBeInTheDocument();
+  });
+
+  it('replaces workspace navigation with chat history on the chat route', () => {
+    const user = { id: 'sidebar-user', name: 'Demo User', email: 'demo@vido.app' };
+    const first = createThread(user.id);
+    addMessage(user.id, first.id, { id: 'u1', role: 'user', text: 'who is adam smith?' });
+    const second = createThread(user.id);
+    addMessage(user.id, second.id, { id: 'u2', role: 'user', text: 'what is 2+2' });
+
+    render(
+      <MemoryRouter initialEntries={['/preview/chat-lab']}>
+        <WorkspaceSidebar counts={mockCounts} user={user} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByLabelText('Chat history')).toBeInTheDocument();
+    expect(screen.getByText('Conversations')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'what is 2+2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'who is adam smith?' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to application/i })).toHaveAttribute(
+      'href',
+      '/preview'
+    );
+    expect(screen.queryByText('DEMO')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /ml lab/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /delete who is adam smith\?/i }));
+    expect(screen.queryByRole('button', { name: 'who is adam smith?' })).not.toBeInTheDocument();
   });
 });
