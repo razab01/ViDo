@@ -40,6 +40,7 @@ import {
   toStoredUpload,
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
+import { RagWorking, TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
   userId?: string;
@@ -68,7 +69,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [status, setStatus] = useState(() =>
     initialSnapshot
       ? `Saved dataset restored for this account.${initialSnapshot.result ? ' Preparing the saved model…' : ''}`
-      : 'Load a CSV/Excel file or start with the demo dataset.'
+      : 'Upload a file to get started.'
   );
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -102,7 +103,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [ragMode, setRagMode] = useState<RAGMode>('auto');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
   const [ragNotice, setRagNotice] = useState('');
-  const [showTechnical, setShowTechnical] = useState(false);
+  const [ragBusy, setRagBusy] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
     setUpload((snapshot?.upload as UploadedData | null) ?? null);
@@ -122,6 +124,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setPrediction(null);
     setRagResult(null);
     setRagNotice('');
+    setRagBusy(false);
     setSavedAt(snapshot?.savedAt ?? 0);
     setProgress({ done: 0, total: 10, label: '' });
   };
@@ -207,13 +210,68 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const columns = dataset?.cols ?? [];
   const dateOptions = columns.filter((column) => profile.P[column]?.isDate || profile.dates?.includes(column));
 
-  const applyData = (data: PreparedData) => {
+  const runTraining = async (source: Dataset, sourceProfile: Profile, startMessage: string) => {
+    cancelRestore(userId);
+    setTraining(true);
+    setError('');
+    setRagResult(null);
+    setRagNotice('');
+    setRagBusy(false);
+    setPrediction(null);
+    setProgress({ done: 0, total: 10, label: 'Starting…' });
+    setStatus(startMessage);
+    try {
+      const activeProfile: Profile = {
+        ...sourceProfile,
+        target: source.target || sourceProfile.target,
+        textCol: sourceProfile.textCol || source.cols[0] || '',
+        primaryDate: sourceProfile.primaryDate || null,
+      };
+      const activeDataset: Dataset = { ...source, target: activeProfile.target };
+      const options: TrainingOptions = {
+        target: activeProfile.target,
+        textCol: activeProfile.textCol || '',
+        tokenizer,
+        split,
+        vocab,
+        epochs,
+        bpeEmb: 16,
+        bpeHidden: 24,
+        bpeEpochs: epochs,
+      };
+      const trained = await trainAll(
+        activeDataset,
+        activeProfile,
+        options,
+        () => undefined,
+        (done, total, label) => setProgress({ done, total, label })
+      );
+      setResult(trained);
+      setActiveResult(userId, trained);
+      setModelReady(true);
+      setProfile(trained.profile);
+      setTarget(trained.target);
+      setTextCol(trained.textCol);
+      setStatus('Ready. Ask your data anything.');
+      const initial: Row = {};
+      Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
+        initial[column] = String(trained.sample[column] ?? '');
+      });
+      setPredictionValues(initial);
+    } catch (cause) {
+      setError(errorMessage(cause));
+      setStatus('Could not learn from that file. Try another file.');
+    } finally {
+      setTraining(false);
+    }
+  };
+
+  const applyData = (data: PreparedData, message: string) => {
     if (!data.valid) {
       setError(data.message);
       setStatus(data.message);
       return;
     }
-    cancelRestore(userId);
     clearActiveResult(userId);
     setDataset(data.dataset);
     setProfile(data.profile);
@@ -226,9 +284,11 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setPrediction(null);
     setRagResult(null);
     setRagNotice('');
+    setRagBusy(false);
     setProgress({ done: 0, total: 10, label: '' });
-    setStatus(data.message + ' Saved for this account.');
+    setStatus(message);
     setError('');
+    void runTraining(data.dataset, data.profile, message);
   };
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,13 +297,13 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setBusy(true);
     setError('');
     try {
-      const uploaded = await loadUploadedFile(file, setStatus);
+      const uploaded = await loadUploadedFile(file, () => undefined);
       setUpload(uploaded);
       setSheetName(uploaded.sheet);
-      applyData(uploaded.data);
+      applyData(uploaded.data, 'File received. Learning from it now…');
     } catch (cause) {
       setError(errorMessage(cause));
-      setStatus('Upload failed.');
+      setStatus('Could not read that file.');
     } finally {
       setBusy(false);
       event.target.value = '';
@@ -256,7 +316,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       const next = selectUploadSheet(upload, name);
       setUpload(next);
       setSheetName(next.sheet);
-      applyData(next.data);
+      applyData(next.data, 'Worksheet changed. Learning again…');
     } catch (cause) {
       setError(errorMessage(cause));
     }
@@ -267,62 +327,15 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     const table = prepareDataset(Object.keys(rows[0]), rows);
     setUpload(null);
     setSheetName('Demo dataset');
-    applyData(table);
-    setStatus('Demo dataset loaded: 300 synthetic task records with a text field and a binary target.');
+    applyData(table, 'Sample data loaded. Learning from it now…');
   };
 
-  const handleTrain = async () => {
-    if (!dataset || !target) {
-      setError('Load data and choose a target column first.');
+  const handleTrain = () => {
+    if (!dataset) {
+      setError('Upload a file first.');
       return;
     }
-    cancelRestore(userId);
-    setTraining(true);
-    setError('');
-    setRagResult(null);
-    setRagNotice('');
-    setPrediction(null);
-    setProgress({ done: 0, total: 10, label: 'Starting…' });
-    try {
-      const activeProfile: Profile = {
-        ...profile,
-        target,
-        textCol,
-        primaryDate: dateCol || null,
-      };
-      const activeDataset: Dataset = { ...dataset, target };
-      const options: TrainingOptions = {
-        target,
-        textCol,
-        tokenizer,
-        split,
-        vocab,
-        epochs,
-        bpeEmb: 16,
-        bpeHidden: 24,
-        bpeEpochs: epochs,
-      };
-      const trained = await trainAll(activeDataset, activeProfile, options, setStatus, (done, total, label) =>
-        setProgress({ done, total, label })
-      );
-      setResult(trained);
-      setActiveResult(userId, trained);
-      setModelReady(true);
-      setProfile(trained.profile);
-      setTarget(trained.target);
-      setTextCol(trained.textCol);
-      setStatus('Saved for this account · model ready.');
-      const initial: Row = {};
-      Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
-        initial[column] = String(trained.sample[column] ?? '');
-      });
-      setPredictionValues(initial);
-    } catch (cause) {
-      setError(errorMessage(cause));
-      setStatus('Training failed.');
-    } finally {
-      setTraining(false);
-    }
+    void runTraining(dataset, profile, 'Learning again…');
   };
 
   const predictionFields = useMemo(
@@ -351,9 +364,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setPrediction(predictWith(result, syncPredictionRow(result, predictionValues)));
   };
 
-  const handleRAG = () => {
+  const handleRAG = async () => {
     if (!docs.length) {
-      setError('Load data before running a RAG query.');
+      setError('Upload a file before asking a question.');
       return;
     }
     if (!ragQuery.trim()) {
@@ -363,7 +376,20 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     }
     setError('');
     setRagNotice('');
-    setRagResult(runRAG(ragQuery.trim(), ragMode, docs, result?.profile ?? profile, result?.suggestions ?? []));
+    setRagBusy(true);
+    setRagResult(null);
+    const startedAt = Date.now();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
+    try {
+      const next = runRAG(ragQuery.trim(), ragMode, docs, result?.profile ?? profile, result?.suggestions ?? []);
+      const remaining = 420 - (Date.now() - startedAt);
+      if (remaining > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+      }
+      setRagResult(next);
+    } finally {
+      setRagBusy(false);
+    }
   };
 
   const progressPercent = Math.min(100, Math.round((progress.done / Math.max(1, progress.total)) * 100));
@@ -385,23 +411,26 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="accent" size="sm">
-              Dynamic ML
-            </Badge>
-            <Badge variant="neutral" size="sm">
-              Schema-aware RAG
-            </Badge>
+            <Badge variant="accent" size="sm">Simple mode</Badge>
             {savedLabel && (
               <Badge variant="success" size="sm">Saved · {savedLabel}</Badge>
             )}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--ink)]">ML Lab</h1>
-          <p className="text-sm text-[var(--muted)] max-w-3xl">
-            Upload a CSV or spreadsheet. ML Lab learns from your data, then powers predictions and answers
-            across your workspace.
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--ink)]">Learn from your file</h1>
+          <p className="text-sm text-[var(--muted)] max-w-2xl">
+            Upload a CSV or spreadsheet. ViDo works out the columns, learns from the data, and lets you ask
+            questions about it — no setup needed.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAdvanced((value) => !value)}
+            aria-expanded={showAdvanced}
+          >
+            {showAdvanced ? 'Hide advanced options' : 'Advanced options'}
+          </Button>
           <Button variant="secondary" size="sm" onClick={loadDemo} disabled={busy || training}>
             <Sparkles className="w-4 h-4" /> Load demo data
           </Button>
@@ -427,15 +456,19 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
         </div>
       )}
 
-      <div
-        role="status"
-        aria-live="polite"
-        className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-xs text-[var(--muted)]"
-      >
-        <span className={`w-2 h-2 rounded-full shrink-0 ${training || busy ? 'bg-[var(--amber)] animate-pulse' : 'bg-[var(--green)]'}`} />
-        <span className="truncate">{status}</span>
-      </div>
+      {!training && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-xs text-[var(--muted)]"
+        >
+          <span className={`w-2 h-2 rounded-full shrink-0 ${busy || ragBusy ? 'bg-[var(--amber)] animate-pulse' : 'bg-[var(--green)]'}`} />
+          <span className="truncate">{status}</span>
+        </div>
+      )}
 
+      {(() => {
+        return showAdvanced ? (
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)] gap-5 items-start">
         <div className="space-y-5">
           <Card>
@@ -600,7 +633,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   aria-label="GPT tokenizer"
                   value={tokenizer}
                   onChange={(event) => setTokenizer(event.target.value as TokenizerChoice)}
-                  disabled={!dataset || training}
+                  disabled={training}
                   className="w-full px-3 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
                 >
                   <option value="cl100k">Hugging Face · cl100k (GPT-3.5/4)</option>
@@ -654,30 +687,42 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           </Card>
         </div>
 
+        {renderMain()}
+      </div>
+      ) : (
+        renderMain()
+      );
+
+        function renderMain() {
+          return (
         <div className="space-y-5">
-          {!result ? (
+          {training && <TrainingProgress progress={progressPercent} detail={showAdvanced ? progress.label : undefined} />}
+
+          {!result && !training ? (
             <Card>
               <div className="rounded-lg border border-dashed border-[var(--line)] px-6 py-12 text-center">
                 <Sparkles className="w-7 h-7 text-[var(--faint)] mx-auto mb-3" />
-                <h2 className="text-sm font-bold mb-1">No trained model yet</h2>
+                <h2 className="text-sm font-bold mb-1">Nothing learned yet</h2>
                 <p className="text-xs text-[var(--muted)]">
-                  Train the unified models to see benchmark results, tokenizer verification, predictions and RAG output.
+                  Upload a CSV or Excel file. ViDo will work out the rest.
                 </p>
               </div>
             </Card>
           ) : (
             <>
+              {result && (
+              <>
               <Card>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="success">Winner</Badge>
-                      {result.binned && <Badge variant="accent" size="sm">Target auto-binned</Badge>}
-                      {result.capped && <Badge variant="warning" size="sm">Capped at 1,200 rows</Badge>}
+                      <Badge variant="success">Ready</Badge>
+                      {showAdvanced && result.binned && <Badge variant="accent" size="sm">Target auto-binned</Badge>}
+                      {showAdvanced && result.capped && <Badge variant="warning" size="sm">Capped at 1,200 rows</Badge>}
                     </div>
-                    <h2 className="text-lg font-bold">Model ready</h2>
+                    <h2 className="text-lg font-bold">Ready to answer questions</h2>
                     <p className="text-xs text-[var(--muted)] mt-1">
-                      Trained on your saved data. Use it for predictions and answers.
+                      Learned from {result.dataset.rows.length} rows and saved for this account.
                     </p>
                   </div>
                   <div className="text-right">
@@ -686,15 +731,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowTechnical((value) => !value)}
-                  className="mt-4 text-[11px] font-semibold text-[var(--accent)] hover:underline cursor-pointer"
-                >
-                  {showTechnical ? 'Hide technical details' : 'Show technical details'}
-                </button>
-
-                {showTechnical && (
+                {showAdvanced && (
                   <div className="mt-4 space-y-3">
                     <div className="text-xs font-semibold">
                       {result.best.n} · {result.metrics.length} models compared
@@ -747,7 +784,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 )}
               </Card>
 
-              {showTechnical && (
+              {showAdvanced && (
                 <Card>
                   <h2 className="text-sm font-bold mb-3">Tokenizer verification</h2>
                   <p className="text-xs text-[var(--muted)] mb-3">{result.tokenizerNote}</p>
@@ -782,6 +819,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 </Card>
               )}
 
+              {showAdvanced && (
+                <>
               <Card>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h2 className="text-sm font-bold flex items-center gap-2">
@@ -799,7 +838,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                       <div className="text-[11px] text-[var(--muted)] mt-1.5">
                         {suggestion.conf} chance
                       </div>
-                      {showTechnical && suggestion.fields && (
+                      {showAdvanced && suggestion.fields && (
                         <div className="text-[10px] text-[var(--faint)] mt-1 line-clamp-1">{suggestion.fields}</div>
                       )}
                       <button
@@ -863,8 +902,12 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   )}
                 </div>
               </Card>
-            </>
-          )}
+                </>
+              )}
+              </>
+            )}
+          </>
+        )}
 
           <Card className="border-[var(--accent)]/20">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -873,37 +916,39 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   <Search className="w-4 h-4 text-[var(--accent)]" /> Ask your data
                 </h2>
                 <p className="text-[11px] text-[var(--muted)] mt-1">
-                  Schema-aware retrieval over your{' '}
+                  Ask anything about{' '}
                   <strong className="text-[var(--ink)]">
-                    {upload ? `${upload.name}${sheetName ? ` · ${sheetName}` : ''}` : 'loaded dataset'}
+                    {upload ? `${upload.name}${sheetName ? ` · ${sheetName}` : ''}` : 'your saved file'}
                   </strong>
                   . The file was detected and saved automatically.
                 </p>
               </div>
-              <Badge size="sm" variant="neutral">{docs.length} sources</Badge>
+              {showAdvanced && <Badge size="sm" variant="neutral">{docs.length} sources</Badge>}
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {RAG_MODES.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  title={mode.hint}
-                  onClick={() => setRagMode(mode.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
-                    ragMode === mode.id
-                      ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30'
-                      : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--line)] hover:bg-[var(--canvas)]'
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-            {showTechnical && (
-              <p className="text-[10px] text-[var(--faint)] mb-3">
-                {RAG_MODES.find((mode) => mode.id === ragMode)?.hint}
-              </p>
+            {showAdvanced && (
+              <>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {RAG_MODES.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      title={mode.hint}
+                      onClick={() => setRagMode(mode.id)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
+                        ragMode === mode.id
+                          ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30'
+                          : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--line)] hover:bg-[var(--canvas)]'
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--faint)] mb-3">
+                  {RAG_MODES.find((mode) => mode.id === ragMode)?.hint}
+                </p>
+              </>
             )}
 
             <textarea
@@ -913,7 +958,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 setRagQuery(event.target.value);
                 setRagNotice('');
               }}
-              placeholder={`Ask about ${textCol || 'your data'} and ${target || 'the target'}…`}
+              placeholder="Ask anything about your file…"
               className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -932,15 +977,17 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-3">
-              <Button variant="secondary" size="sm" onClick={handleRAG} disabled={!docs.length}>
-                Run query
+              <Button variant="secondary" size="sm" onClick={handleRAG} disabled={!docs.length || ragBusy}>
+                {ragBusy ? 'Finding…' : 'Find answer'}
               </Button>
               {ragNotice && <span className="text-[11px] text-[var(--muted)]">{ragNotice}</span>}
             </div>
 
-            {ragResult && (
+            {ragBusy && <RagWorking />}
+
+            {ragResult && !ragBusy && (
               <div className="mt-4 space-y-3">
-                {showTechnical && (
+                {showAdvanced && (
                   <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
                     <Badge size="sm" variant="accent">{ragModeLabel} mode</Badge>
                     <span className="text-[11px] text-[var(--muted)]">
@@ -968,7 +1015,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   )}
                 </div>
 
-                {(ragResult.plan.length > 0 || ragResult.trail) && (
+                {showAdvanced && (ragResult.plan.length > 0 || ragResult.trail) && (
                   <details className="rounded-lg border border-[var(--line)] px-3 py-2 text-[11px] text-[var(--muted)]">
                     <summary className="cursor-pointer font-semibold text-[var(--ink)]">
                       How this answer was found
@@ -984,7 +1031,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   </details>
                 )}
 
-                {ragResult.ranked.length > 0 && (
+                {showAdvanced && ragResult.ranked.length > 0 && (
                   <div>
                     <div className="text-[11px] font-bold text-[var(--muted)] mb-2">Most relevant sources</div>
                     <div className="space-y-1.5">
@@ -1006,7 +1053,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
             )}
           </Card>
         </div>
-      </div>
+          );
+        }
+      })()}
     </div>
   );
 };

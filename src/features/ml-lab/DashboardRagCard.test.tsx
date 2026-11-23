@@ -83,8 +83,9 @@ describe('DashboardRagCard', () => {
     fireEvent.change(screen.getByLabelText('Ask your data'), {
       target: { value: 'Which tasks look likely to be completed?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /ask rag/i }));
+    fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
 
+    expect(screen.getByText(/finding the answer/i)).toBeInTheDocument();
     expect(await screen.findByText(/^answer$/i)).toBeInTheDocument();
   });
 });

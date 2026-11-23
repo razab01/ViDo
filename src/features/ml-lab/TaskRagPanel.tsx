@@ -13,6 +13,7 @@ import {
   subscribeSnapshot,
 } from './mlStore';
 import type { TaskPrediction } from './mlStore';
+import { RagWorking } from './WorkingIndicator';
 
 export interface TaskRagPanelProps {
   task: SampleTask;
@@ -116,6 +117,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   const [query, setQuery] = useState('');
   const [answer, setAnswer] = useState<RAGResult | null>(null);
   const [notice, setNotice] = useState('');
+  const [ragBusy, setRagBusy] = useState(false);
   const [prediction, setPrediction] = useState<TaskPrediction | null>(() =>
     predictTask(userId, {
       title: task.title,
@@ -155,6 +157,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     setAnswer(null);
     setNotice('');
     setQuery('');
+    setRagBusy(false);
   }, [task.id]);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
@@ -164,7 +167,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     return [taskToRagDoc(task, prediction), ...savedDocs];
   }, [task, prediction, snapshot, profile, suggestions]);
 
-  const handleAsk = (event: React.FormEvent) => {
+  const handleAsk = async (event: React.FormEvent) => {
     event.preventDefault();
     const question = query.trim();
     if (!question) {
@@ -186,8 +189,20 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
       return;
     }
 
-    const rag = runRAG(question, 'auto', docs, profile, suggestions);
-    setAnswer({ ...rag, answer: stripIdFragments(rag.answer) });
+    setRagBusy(true);
+    setAnswer(null);
+    const startedAt = Date.now();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
+    try {
+      const rag = runRAG(question, 'auto', docs, profile, suggestions);
+      const remaining = 420 - (Date.now() - startedAt);
+      if (remaining > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+      }
+      setAnswer({ ...rag, answer: stripIdFragments(rag.answer) });
+    } finally {
+      setRagBusy(false);
+    }
   };
 
   const answerLines = useMemo(() => {
@@ -241,7 +256,9 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
           placeholder="Ask anything about this task or your saved data…"
           className="flex-1 px-3 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
         />
-        <Button type="submit" variant="secondary" size="sm">Ask</Button>
+        <Button type="submit" variant="secondary" size="sm" disabled={ragBusy}>
+          {ragBusy ? 'Finding…' : 'Ask'}
+        </Button>
       </form>
 
       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -266,7 +283,9 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
       </div>
       {notice && <p className="text-[11px] text-[var(--muted)] mt-2">{notice}</p>}
 
-      {answer && (
+      {ragBusy && <RagWorking compact />}
+
+      {answer && !ragBusy && (
         <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--canvas)] p-3">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />

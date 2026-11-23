@@ -2178,6 +2178,18 @@ function ragIndex(docs: RAGDoc[]): IndexedDoc[] {
   });
 }
 
+/** Docs are memoized by the UI, so rebuilding this index on every question is wasted work. */
+const ragIndexCache = new WeakMap<RAGDoc[], IndexedDoc[]>();
+
+function getRagIndex(docs: RAGDoc[]): IndexedDoc[] {
+  let indexed = ragIndexCache.get(docs);
+  if (!indexed) {
+    indexed = ragIndex(docs);
+    ragIndexCache.set(docs, indexed);
+  }
+  return indexed;
+}
+
 function ragRank(
   q: string,
   idx: IndexedDoc[],
@@ -2296,7 +2308,7 @@ export function runRAG(
 ): RAGResult {
   const query = String(queryText || '').trim();
   if (!query) return { mode: 'none', why: 'Type a question first.', plan: [], trail: '', ranked: [], answer: '' };
-  const idx = ragIndex(docs);
+  const idx = getRagIndex(docs);
   const dec = modeChoice === 'auto'
     ? ragDecision(query, docs, idx)
     : { mode: modeChoice, why: 'Manual override selected.' };

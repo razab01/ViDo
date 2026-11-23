@@ -5,6 +5,7 @@ import { Badge, Button, Card } from '../../components/ui';
 import { profileData, ragDocs, runRAG } from './engine';
 import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
+import { RagWorking } from './WorkingIndicator';
 
 export interface DashboardRagCardProps {
   userId?: string;
@@ -19,6 +20,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   const [query, setQuery] = useState('');
   const [answer, setAnswer] = useState<RAGResult | null>(null);
   const [notice, setNotice] = useState('');
+  const [ragBusy, setRagBusy] = useState(false);
 
   useEffect(() => {
     setSnapshot(readSnapshot(userId));
@@ -37,14 +39,27 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
     [snapshot, profile, suggestions]
   );
 
-  const handleAsk = (event: React.FormEvent) => {
+  const handleAsk = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!docs.length || !query.trim()) {
       setNotice('Type a question about your saved data.');
       return;
     }
     setNotice('');
-    setAnswer(runRAG(query.trim(), 'auto', docs, profile, suggestions));
+    setRagBusy(true);
+    setAnswer(null);
+    const startedAt = Date.now();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
+    try {
+      const next = runRAG(query.trim(), 'auto', docs, profile, suggestions);
+      const remaining = 420 - (Date.now() - startedAt);
+      if (remaining > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
+      }
+      setAnswer(next);
+    } finally {
+      setRagBusy(false);
+    }
   };
 
   const answerLines = useMemo(() => {
@@ -104,12 +119,16 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             placeholder="Ask a question about your saved rows…"
             className="flex-1 px-3 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
           />
-          <Button type="submit" variant="secondary" size="sm">Ask RAG</Button>
+          <Button type="submit" variant="secondary" size="sm" disabled={ragBusy}>
+            {ragBusy ? 'Finding…' : 'Find answer'}
+          </Button>
         </form>
       )}
       {notice && <p className="text-[11px] text-[var(--muted)] mt-2">{notice}</p>}
 
-      {answer && (
+      {ragBusy && <RagWorking compact />}
+
+      {answer && !ragBusy && (
         <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
