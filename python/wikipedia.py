@@ -20,6 +20,9 @@ USER_AGENT = "ViDo/1.0 (local answer engine; contact: local-user)"
 TIMEOUT = 6
 MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CACHE: Dict[str, str] = {}
+# Disambiguation stubs such as "President of Spain may refer to:" are not
+# answers. They are filtered out before ranking so chat replies stay useful.
+DISAMBIGUATION = re.compile(r"\b(?:may refer to|disambiguation|redirects here)\b", re.I)
 
 _TOKENIZER = None
 _TOKENIZER_TRIED = False
@@ -79,7 +82,7 @@ def _get_json(params: Dict[str, str]) -> Optional[dict]:
         return None
 
 
-def _search(topic: str, limit: int = 4) -> List[dict]:
+def _search(topic: str, limit: int = 6) -> List[dict]:
     payload = _get_json(
         {
             "action": "query",
@@ -116,7 +119,7 @@ def _search(topic: str, limit: int = 4) -> List[dict]:
     for page in payload.get("query", {}).get("pages", {}).values():
         extract = re.sub(r"\s+", " ", str(page.get("extract") or "")).strip()
         title = str(page.get("title") or "")
-        if extract:
+        if extract and not DISAMBIGUATION.search(extract) and len(extract) >= 60:
             candidates.append(
                 {"title": title, "extract": extract, "rank": by_title.get(title, len(titles))}
             )
@@ -158,6 +161,22 @@ def _trim(text: str) -> str:
     return text[:700].rstrip() + "…"
 
 
+def _search_topics(question: str, topic: str) -> List[str]:
+    """Try the literal topic first, then a role-aware rephrasing when useful."""
+    topics = [topic]
+    match = re.search(
+        r"\b(president|prime minister|king|queen|chancellor)\s+of\s+([a-z][\w\s-]+)",
+        str(question or "").lower(),
+    )
+    if match:
+        role, country = match.group(1), match.group(2).strip(" .,")
+        if role == "president":
+            topics.append(f"head of state of {country}")
+        elif role in ("prime minister", "chancellor"):
+            topics.append(f"head of government of {country}")
+    return [value for index, value in enumerate(topics) if value and value not in topics[:index]]
+
+
 def answer(question: str) -> Optional[str]:
     """Return a Wikipedia-backed answer when local routing found nothing."""
     topic = topic_phrase(question)
@@ -165,7 +184,11 @@ def answer(question: str) -> Optional[str]:
         return None
     key = topic.lower()
     if key not in CACHE:
-        candidates = _search(topic)
-        extract = _best_extract(question, topic, candidates)
+        extract = ""
+        for candidate_topic in _search_topics(question, topic):
+            candidates = _search(candidate_topic)
+            extract = _best_extract(question, topic, candidates)
+            if extract:
+                break
         CACHE[key] = _trim(extract) if extract else ""
     return f"Wikipedia: {CACHE[key]}" if CACHE[key] else None

@@ -211,6 +211,18 @@ def handle_advanced(question: str) -> Optional[str]:
         except Exception:
             return "I could not read that matrix. Try something like determinant of [[1,2],[3,4]]."
 
+    if re.search(r"\beigen\s*-?\s*vectors?\b|\beigenvectors?\b", q) and matrix_match:
+        try:
+            matrix = _parse_matrix(matrix_match.group(0))
+            parts = []
+            for value, _multiplicity, vectors in matrix.eigenvects():
+                for vector in vectors:
+                    entries = ", ".join(str(simplify(entry)) for entry in vector)
+                    parts.append(f"({entries}) for eigenvalue {value}")
+            return f"The eigenvectors are {'; '.join(parts)}."
+        except Exception:
+            return "I could not read that matrix. Try something like eigen vectors of [[1,2],[3,4]]."
+
     if re.search(r"\beigen\s*-?\s*values?\b|\beigenvalues?\b", q) and matrix_match:
         try:
             matrix = _parse_matrix(matrix_match.group(0))

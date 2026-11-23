@@ -67,6 +67,12 @@ export interface MLLabPageProps {
 type TokenizerChoice = TrainingOptions['tokenizer'];
 type SplitChoice = TrainingOptions['split'];
 
+interface ChatTurn {
+  id: number;
+  question: string;
+  answer: RAGResult | null;
+}
+
 const errorMessage = (error: unknown): string =>
   error && typeof error === 'object' && 'message' in error
     ? String((error as Error).message)
@@ -118,11 +124,17 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
   const [ragQuery, setRagQuery] = useState('');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
+  const [chatTurns, setChatTurns] = useState<ChatTurn[]>([]);
+  const turnId = useRef(0);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [ragNotice, setRagNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
   const [ragStage, setRagStage] = useState('');
   const enrichmentCancel = useRef<(() => void) | null>(null);
   useEffect(() => () => enrichmentCancel.current?.(), []);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [chatTurns, ragResult]);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
@@ -145,7 +157,11 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setSelectedModel('');
     setDeadlineTask('');
     setDeadlineDate('');
+    enrichmentCancel.current?.();
+    setRagQuery('');
     setRagResult(null);
+    setChatTurns([]);
+    turnId.current = 0;
     setRagNotice('');
     setRagBusy(false);
     setRagStage('');
@@ -459,11 +475,22 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       return;
     }
     const question = ragQuery.trim();
+    const id = ++turnId.current;
+    setChatTurns((current) => [...current, { id, question, answer: null }]);
+    setRagQuery('');
     setError('');
     setRagNotice('');
     setRagBusy(true);
     setRagStage('');
     setRagResult(null);
+
+    const recordAnswer = (value: RAGResult) => {
+      setRagResult(value);
+      setChatTurns((current) =>
+        current.map((turn) => (turn.id === id ? { ...turn, answer: value } : turn))
+      );
+    };
+
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const activeDataset = result?.dataset ?? dataset;
@@ -498,7 +525,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           // The Python answer is already complete; do not let live topic
           // enrichment replace a direct fact with a generic encyclopedia blurb.
           enrichmentCancel.current?.();
-          setRagResult({ ...retrieved, answer });
+          recordAnswer({ ...retrieved, answer });
           return;
         } catch (pythonError) {
           setRagNotice('Python answer service unavailable — used the local engine.');
@@ -508,19 +535,40 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
-      setRagResult(next);
+      recordAnswer(next);
       enrichmentCancel.current?.();
       enrichmentCancel.current = enrichAnswerWithTopic(
         { question, rag: retrieved },
         topicPhrase(question),
         next.answer,
-        (answer) =>
-          setRagResult((previous) => (previous?.answer === next.answer ? { ...previous, answer } : previous))
+        (answer) => {
+          setRagResult((previous) =>
+            previous?.answer === next.answer ? { ...previous, answer } : previous
+          );
+          setChatTurns((current) =>
+            current.map((turn) =>
+              turn.id === id && turn.answer && turn.answer.answer === next.answer
+                ? { ...turn, answer: { ...turn.answer, answer } }
+                : turn
+            )
+          );
+        }
       );
     } finally {
       setRagBusy(false);
       setRagStage('');
     }
+  };
+
+  const startNewChat = () => {
+    enrichmentCancel.current?.();
+    setChatTurns([]);
+    turnId.current = 0;
+    setRagQuery('');
+    setRagResult(null);
+    setRagNotice('');
+    setRagBusy(false);
+    setRagStage('');
   };
 
   const progressPercent = Math.min(100, Math.round((progress.done / Math.max(1, progress.total)) * 100));
@@ -529,6 +577,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     const parts = ragResult.answer.split(/\.\s+/).map((part) => part.trim()).filter(Boolean);
     return parts.map((part, index) => (index < parts.length - 1 ? `${part}.` : part));
   }, [ragResult]);
+  // The newest turn is shown in the full Answer card below; earlier turns stay
+  // visible as a compact chat transcript.
+  const historyTurns = chatTurns.slice(0, -1);
+  const latestQuestion = chatTurns[chatTurns.length - 1]?.question ?? '';
   const savedLabel = savedAt
     ? new Date(savedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : '';
@@ -1202,6 +1254,15 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   )}
                 </p>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={startNewChat}
+                disabled={!chatTurns.length && !ragQuery && !ragResult}
+                className="shrink-0"
+              >
+                New chat
+              </Button>
             </div>
 
             {showAdvanced && (
@@ -1210,12 +1271,37 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               </p>
             )}
 
+            {historyTurns.length > 0 && (
+              <div className="mb-4 max-h-72 space-y-3 overflow-y-auto pr-1" aria-label="Chat history">
+                {historyTurns.map((turn) => (
+                  <div key={turn.id} className="space-y-1.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-xl rounded-br-sm bg-[var(--accent-soft)] px-3 py-2 text-xs text-[var(--ink)]">
+                        {turn.question}
+                      </div>
+                    </div>
+                    <div className="max-w-[90%] rounded-xl rounded-bl-sm border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--accent)]">ViDo:</span>{' '}
+                      {turn.answer?.answer ?? 'Working on it…'}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+
             <textarea
               rows={3}
               value={ragQuery}
               onChange={(event) => {
                 setRagQuery(event.target.value);
                 setRagNotice('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  void handleRAG();
+                }
               }}
               placeholder="Ask about your data or any topic…"
               className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
@@ -1242,7 +1328,16 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               {ragNotice && <span className="text-[11px] text-[var(--muted)]">{ragNotice}</span>}
             </div>
 
-            {ragBusy && <RagWorking stage={ragStage} />}
+            {ragBusy && (
+              <>
+                {latestQuestion && (
+                  <div className="mt-3 text-[11px] text-[var(--muted)]">
+                    <span className="font-semibold text-[var(--ink)]">You asked:</span> {latestQuestion}
+                  </div>
+                )}
+                <RagWorking stage={ragStage} />
+              </>
+            )}
 
             {ragResult && !ragBusy && (
               <div className="mt-4 space-y-3">
@@ -1256,6 +1351,11 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 )}
 
                 <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                  {latestQuestion && (
+                    <div className="mb-2 text-[11px] text-[var(--muted)]">
+                      <span className="font-semibold text-[var(--ink)]">You asked:</span> {latestQuestion}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                     <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Answer</div>

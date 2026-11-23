@@ -112,6 +112,8 @@ PRESIDENT_MEANING = (
     "for a fixed term. The exact role depends on the country's constitution."
 )
 
+MONARCHY_COUNTRIES = {"netherlands", "holland", "spain"}
+
 WORLD_FACTS = {
     "usa": "The current President of the United States is Donald Trump.",
     "united states": "The current President of the United States is Donald Trump.",
@@ -127,6 +129,11 @@ WORLD_FACTS = {
         "The Netherlands is a constitutional monarchy, so it has no president. "
         "The head of state is King Willem-Alexander and the head of government is "
         "Prime Minister Dick Schoof."
+    ),
+    "spain": (
+        "Spain is a constitutional monarchy, so it has no president as head of state. "
+        "The head of state is King Felipe VI and the head of government is "
+        "Prime Minister Pedro Sánchez."
     ),
 }
 
@@ -154,7 +161,7 @@ def _world_fact_answer(question: str) -> Optional[str]:
         return None
     for country, fact in WORLD_FACTS.items():
         if country in low:
-            if country in ("netherlands", "holland") and "president" in low:
+            if country in MONARCHY_COUNTRIES and "president" in low:
                 return f"{PRESIDENT_MEANING} {fact}"
             return fact
     if re.search(r"\b(what does|what is|meaning of|define)\b.*\bpresident\b", low) or "president mean" in low:

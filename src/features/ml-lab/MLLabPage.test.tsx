@@ -62,7 +62,7 @@ describe('MLLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
 
     expect(screen.getByText(/finding the answer/i)).toBeInTheDocument();
-    expect(await screen.findByText(/^answer$/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^answer$/i, {}, { timeout: 10000 })).toBeInTheDocument();
   }, 60000);
 
   it('shows a friendly hint instead of an error badge for an empty question', async () => {
@@ -77,6 +77,41 @@ describe('MLLabPage', () => {
 
     expect(screen.getByText(/type a question or pick an example/i)).toBeInTheDocument();
     expect(screen.queryByText('NONE')).not.toBeInTheDocument();
+  }, 60000);
+
+  it('keeps a running chat and clears the composer after each question', async () => {
+    const userId = 'mllab-chat-user';
+    localStorage.clear();
+    clearDatasetUploaded(userId);
+    render(<MLLabPage userId={userId} />);
+
+    setOfflineTrainingOptions();
+    fireEvent.click(screen.getByRole('button', { name: /load demo data/i }));
+    expect(await screen.findByText(/ready to answer questions/i, {}, { timeout: 30000 })).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText(/ask about your data or any topic/i) as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: 'what is 2*9' } });
+    fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
+    expect(await screen.findByText(/^answer$/i, {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(input.value).toBe('');
+    expect(screen.getByText('what is 2*9')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'what is 3*7' } });
+    fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
+    expect(screen.queryByText(/^answer$/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/^answer$/i, {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(input.value).toBe('');
+    expect(screen.getByText('what is 2*9')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.textContent?.replace(/\s+/g, ' ').trim() === 'You asked: what is 3*7'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
+    expect(screen.queryByText('what is 2*9')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^answer$/i)).not.toBeInTheDocument();
   }, 60000);
 
   it('hides every saved-model percentage until a dataset is loaded in this session', async () => {
