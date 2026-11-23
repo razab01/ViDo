@@ -128,13 +128,19 @@ describe('unified training, prediction and RAG', () => {
     expect(trained.tokenizer.compact.length).toBeGreaterThan(0);
     expect(trained.history.ae.length).toBe(2);
 
-    // Mixed classes must not produce a suspicious perfect score.
+    // Mixed classes must not produce a suspicious perfect score, and
+    // clipping/regularisation must keep all reported metrics finite.
     expect(trained.best.acc).toBeLessThan(1);
     expect(trained.metrics.some((m) => !m.err && m.acc < 1)).toBe(true);
+    expect(trained.metrics.every((m) => Number.isFinite(m.acc))).toBe(true);
+    expect(trained.history.lt.every((v) => Number.isFinite(v))).toBe(true);
+    expect(trained.history.le.every((v) => Number.isFinite(v))).toBe(true);
 
     const prediction = predictWith(trained, trained.sample);
     expect(trained.labels).toContain(prediction.label);
     expect(prediction.model).toBe(trained.best.n);
+    // Dropout must be inactive outside the training loop.
+    expect(predictWith(trained, trained.sample)).toEqual(prediction);
 
     const text = 'delivered final report 42';
     const synced = syncPredictionRow(trained, { ...trained.sample, [trained.textCol]: text });

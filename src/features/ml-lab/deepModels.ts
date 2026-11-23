@@ -8,6 +8,9 @@
  * hashed token embedding with the same dimensionality, so every model still
  * trains and predicts without network access.
  *
+ * Inverted dropout, global gradient-norm clipping and L2 weight decay keep the
+ * compact in-browser heads from memorising small uploads or diverging.
+ *
  * The ten architectures:
  *   1. BERT                    multi-head self-attention encoder
  *   2. RoBERTa                 attention + GELU feed-forward encoder
@@ -40,6 +43,11 @@ const DIM = 64;
 const MAX_TOKENS = 6;
 const MAX_TRAIN_SAMPLES = 32;
 const MAX_EVAL_SAMPLES = 32;
+
+// Regularisation / optimisation safeguards.
+const DROPOUT = 0.2;
+const CLIP_NORM = 5;
+const WEIGHT_DECAY = 1e-3;
 
 /* ------------------------------------------------------------------ */
 /* Small dynamic-graph autograd engine (2-D Float32 tensors)            */
@@ -252,6 +260,23 @@ class Tensor {
     const self = this;
     return this.link(d, this.r, this.c, (g) => {
       for (let i = 0; i < d.length; i++) self.g[i] += g[i] * der[i];
+    });
+  }
+
+  /** Inverted dropout. Active only while training, so evaluation/prediction are deterministic. */
+  dropout(rate: number, training: boolean, rnd: () => number): Tensor {
+    if (!training || rate <= 0 || rate >= 1) return this;
+    const mask = new Float32Array(this.d.length);
+    const d = new Float32Array(this.d.length);
+    const keep = 1 - rate;
+    for (let i = 0; i < d.length; i++) {
+      const scale = rnd() < keep ? 1 / keep : 0;
+      mask[i] = scale;
+      d[i] = this.d[i] * scale;
+    }
+    const self = this;
+    return this.link(d, this.r, this.c, (g) => {
+      for (let i = 0; i < self.g.length; i++) self.g[i] += g[i] * mask[i];
     });
   }
 
@@ -724,7 +749,7 @@ function seqTensor(seq: Float32Array[], dim: number): Tensor {
 }
 
 interface Architecture {
-  build: (E: Tensor) => Tensor;
+  build: (E: Tensor, training?: boolean) => Tensor;
   params: Tensor[];
 }
 
@@ -734,25 +759,28 @@ function makeArchitecture(name: string, dim: number, K: number, seed: number): A
   const cur = { i: 0 };
   const H = 24;
 
-  const build = (E: Tensor): Tensor => {
+  const build = (E: Tensor, training = false): Tensor => {
     cur.i = 0;
+    // Inverted dropout is applied on the pooled representation just before the
+    // classifier head. It is disabled for evaluation and prediction.
+    const drop = (t: Tensor) => t.dropout(DROPOUT, training, rnd);
     if (name === DEEP_MODEL_NAMES[0]) {
       // BERT: multi-head attention + residual + mean pool + dense head
       const A = multiHeadAttention(E, 2, params, cur, rnd);
-      return denseHead(A.add(E).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(A.add(E).meanRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[1]) {
       // RoBERTa: attention + GELU feed-forward + residual
       const A = multiHeadAttention(E, 2, params, cur, rnd).add(E);
       const F = feedForward(A, 48, params, cur, rnd, true);
-      return denseHead(F.add(A).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(F.add(A).meanRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[2]) {
       // ELECTRA: per-token discriminator scores weight the token states
       const Wd = param(params, cur, dim, 1, rnd);
       const bd = param(params, cur, 1, 1, rnd, 0.01);
       const weights = E.matMul(Wd).add(bd).sigmoid().softmaxRows();
-      return denseHead(E.mulElem(weights).sumRows(), K, params, cur, rnd);
+      return denseHead(drop(E.mulElem(weights).sumRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[3]) {
       // DeBERTa-v3: disentangled content/position attention
@@ -767,7 +795,7 @@ function makeArchitecture(name: string, dim: number, K: number, seed: number): A
         .add(E.matMul(Qc).matMul(P.matMul(Kp).t()))
         .scale(1 / Math.sqrt(2 * dim));
       const ctx = scores.softmaxRows().matMul(E.matMul(Wv));
-      return denseHead(ctx.add(E).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(ctx.add(E).meanRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[4]) {
       // DistilBERT: single-layer distilled attention
@@ -775,7 +803,7 @@ function makeArchitecture(name: string, dim: number, K: number, seed: number): A
       const Wk = param(params, cur, dim, dim, rnd);
       const Wv = param(params, cur, dim, dim, rnd);
       const scores = E.matMul(Wq).matMul(E.matMul(Wk).t()).scale(1 / Math.sqrt(dim));
-      return denseHead(scores.softmaxRows().matMul(E.matMul(Wv)).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(scores.softmaxRows().matMul(E.matMul(Wv)).meanRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[5]) {
       // TextCNN: 1-D convolutions with kernel widths 2/3/4 + global max pooling
@@ -796,25 +824,25 @@ function makeArchitecture(name: string, dim: number, K: number, seed: number): A
         }
         pooled.push(windows.reduce((a, x) => a.concatCols(x)).maxRows());
       }
-      return denseHead(pooled.reduce((a, x) => a.concatCols(x)), K, params, cur, rnd);
+      return denseHead(drop(pooled.reduce((a, x) => a.concatCols(x))), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[6]) {
-      return denseHead(lstmPass(E, H, params, cur, rnd).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(lstmPass(E, H, params, cur, rnd).meanRows()), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[7]) {
       const fwd = lstmPass(E, H, params, cur, rnd);
       const bwd = lstmPass(E, H, params, cur, rnd, true);
-      return denseHead(fwd.concatCols(bwd), K, params, cur, rnd);
+      return denseHead(drop(fwd.concatCols(bwd)), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[8]) {
-      return denseHead(gruPass(E, H, params, cur, rnd), K, params, cur, rnd);
+      return denseHead(drop(gruPass(E, H, params, cur, rnd)), K, params, cur, rnd);
     }
     if (name === DEEP_MODEL_NAMES[9]) {
       const A = multiHeadAttention(E, 2, params, cur, rnd);
-      return denseHead(A.add(feedForward(A, 48, params, cur, rnd)).meanRows(), K, params, cur, rnd);
+      return denseHead(drop(A.add(feedForward(A, 48, params, cur, rnd)).meanRows()), K, params, cur, rnd);
     }
     const W1 = param(params, cur, dim, H, rnd);
-    return denseHead(E.meanRows().matMul(W1).relu(), K, params, cur, rnd);
+    return denseHead(drop(E.meanRows().matMul(W1).relu()), K, params, cur, rnd);
   };
 
   return { build, params };
@@ -935,7 +963,7 @@ export function trainDeepModels(
         for (const i of shuffled(trainOrder, 700 + e * 17 + m)) {
           const seq = features.seqs[i];
           const E = seqTensor(seq, features.dim);
-          const logits = arch.build(E);
+          const logits = arch.build(E, true);
           const loss = logits.logSoftmax().nll(y[i]);
           params.forEach((p) => p.zeroGrad());
           // The scalar loss needs an explicit upstream gradient of 1.
@@ -946,6 +974,19 @@ export function trainDeepModels(
           const c1 = 1 - Math.pow(b1, step);
           const c2 = 1 - Math.pow(b2, step);
           const lr = 0.004;
+
+          // L2 weight decay on weights (bias rows are r === 1 and are exempt),
+          // applied before clipping so the total gradient is bounded.
+          let normSq = 0;
+          for (let p = 0; p < params.length; p++) {
+            const P = params[p];
+            const decay = P.r > 1 ? WEIGHT_DECAY : 0;
+            if (decay) for (let k = 0; k < P.g.length; k++) P.g[k] += decay * P.d[k];
+            for (let k = 0; k < P.g.length; k++) normSq += P.g[k] * P.g[k];
+          }
+          const norm = Math.sqrt(normSq);
+          const clip = Number.isFinite(norm) && norm > CLIP_NORM ? CLIP_NORM / norm : 1;
+
           for (let p = 0; p < params.length; p++) {
             const P = params[p];
             if (!mState[p].length) {
@@ -953,9 +994,7 @@ export function trainDeepModels(
               vState[p] = new Float32Array(P.g.length);
             }
             for (let k = 0; k < P.d.length; k++) {
-              let g = P.g[k];
-              const n2 = g * g;
-              if (n2 > 25) g *= 5 / Math.sqrt(n2);
+              const g = P.g[k] * clip;
               mState[p][k] = b1 * mState[p][k] + (1 - b1) * g;
               vState[p][k] = b2 * vState[p][k] + (1 - b2) * g * g;
               P.d[k] -= (lr * (mState[p][k] / c1)) / (Math.sqrt(vState[p][k] / c2) + 1e-8);
