@@ -14,6 +14,7 @@ import {
   sparkline,
   syncPredictionRow,
   trainAll,
+  USER_RAG_MODE,
 } from './engine';
 import type {
   Dataset,
@@ -40,6 +41,7 @@ import {
   toStoredUpload,
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
+import { polishRagAnswer } from './answerEngine';
 import { RagWorking, TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
@@ -48,14 +50,6 @@ export interface MLLabPageProps {
 
 type TokenizerChoice = TrainingOptions['tokenizer'];
 type SplitChoice = TrainingOptions['split'];
-type RAGMode = 'auto' | 'rag' | 'agentic' | 'graph';
-
-const RAG_MODES: Array<{ id: RAGMode; label: string; hint: string }> = [
-  { id: 'auto', label: 'Auto', hint: 'Let the schema choose' },
-  { id: 'rag', label: 'RAG', hint: 'Direct retrieval' },
-  { id: 'agentic', label: 'Agentic', hint: 'Multi-step retrieval' },
-  { id: 'graph', label: 'Graph', hint: 'Entity traversal' },
-];
 
 const errorMessage = (error: unknown): string =>
   error && typeof error === 'object' && 'message' in error
@@ -100,10 +94,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [prediction, setPrediction] = useState<{ label: string; confidence: string; model: string } | null>(null);
 
   const [ragQuery, setRagQuery] = useState('');
-  const [ragMode, setRagMode] = useState<RAGMode>('auto');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
   const [ragNotice, setRagNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
+  const [ragStage, setRagStage] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
@@ -125,6 +119,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagResult(null);
     setRagNotice('');
     setRagBusy(false);
+    setRagStage('');
     setSavedAt(snapshot?.savedAt ?? 0);
     setProgress({ done: 0, total: 10, label: '' });
   };
@@ -217,6 +212,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagResult(null);
     setRagNotice('');
     setRagBusy(false);
+    setRagStage('');
     setPrediction(null);
     setProgress({ done: 0, total: 10, label: 'Starting…' });
     setStatus(startMessage);
@@ -285,6 +281,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagResult(null);
     setRagNotice('');
     setRagBusy(false);
+    setRagStage('');
     setProgress({ done: 0, total: 10, label: '' });
     setStatus(message);
     setError('');
@@ -374,14 +371,18 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setRagNotice('Type a question or pick an example below to search your data.');
       return;
     }
+    const question = ragQuery.trim();
     setError('');
     setRagNotice('');
     setRagBusy(true);
+    setRagStage('');
     setRagResult(null);
     const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
-      const next = runRAG(ragQuery.trim(), ragMode, docs, result?.profile ?? profile, result?.suggestions ?? []);
+      const retrieved = runRAG(question, USER_RAG_MODE, docs, result?.profile ?? profile, result?.suggestions ?? []);
+      setRagStage('Comparing the best matches…');
+      const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       const remaining = 420 - (Date.now() - startedAt);
       if (remaining > 0) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
@@ -389,6 +390,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setRagResult(next);
     } finally {
       setRagBusy(false);
+      setRagStage('');
     }
   };
 
@@ -398,8 +400,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     const parts = ragResult.answer.split(/\.\s+/).map((part) => part.trim()).filter(Boolean);
     return parts.map((part, index) => (index < parts.length - 1 ? `${part}.` : part));
   }, [ragResult]);
-  const ragModeLabel =
-    RAG_MODES.find((mode) => mode.id === ragResult?.mode.toLowerCase())?.label ?? ragResult?.mode ?? 'Auto';
   const savedLabel = savedAt
     ? new Date(savedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : '';
@@ -927,28 +927,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
             </div>
 
             {showAdvanced && (
-              <>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {RAG_MODES.map((mode) => (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      title={mode.hint}
-                      onClick={() => setRagMode(mode.id)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
-                        ragMode === mode.id
-                          ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30'
-                          : 'bg-[var(--surface)] text-[var(--muted)] border-[var(--line)] hover:bg-[var(--canvas)]'
-                      }`}
-                    >
-                      {mode.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-[var(--faint)] mb-3">
-                  {RAG_MODES.find((mode) => mode.id === ragMode)?.hint}
-                </p>
-              </>
+              <p className="text-[10px] text-[var(--faint)] mb-3">
+                ViDo always uses agentic retrieval — it breaks your question into steps when needed and writes the final answer with the local assistant.
+              </p>
             )}
 
             <textarea
@@ -983,13 +964,13 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               {ragNotice && <span className="text-[11px] text-[var(--muted)]">{ragNotice}</span>}
             </div>
 
-            {ragBusy && <RagWorking />}
+            {ragBusy && <RagWorking stage={ragStage} />}
 
             {ragResult && !ragBusy && (
               <div className="mt-4 space-y-3">
                 {showAdvanced && (
                   <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
-                    <Badge size="sm" variant="accent">{ragModeLabel} mode</Badge>
+                    <Badge size="sm" variant="accent">Agentic mode</Badge>
                     <span className="text-[11px] text-[var(--muted)]">
                       {ragResult.why.charAt(0).toLowerCase() + ragResult.why.slice(1)}
                     </span>

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SAMPLE_TASKS } from '../../data/sampleTasks';
+import type { SampleTask } from '../../data/sampleTasks';
 import { profileData } from './engine';
 import type { Row, TrainingResult } from './engine';
 import { clearActiveResult, clearSnapshot, saveSnapshot, setActiveResult } from './mlStore';
@@ -73,12 +74,12 @@ describe('TaskRagPanel', () => {
 
     render(<TaskRagPanel task={SAMPLE_TASKS[0]} userId="task-rag-user" />);
 
-    expect(screen.getByText(/ask rag about this task/i)).toBeInTheDocument();
+    expect(screen.getByText(/ask about this task/i)).toBeInTheDocument();
     expect(screen.getByText('tasks.xlsx')).toBeInTheDocument();
     expect(screen.getByText('Completion probability')).toBeInTheDocument();
     expect(screen.getByText('88%')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Ask RAG about this task'), {
+    fireEvent.change(screen.getByLabelText('Ask about this task'), {
       target: { value: 'When is this task due?' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
@@ -86,12 +87,35 @@ describe('TaskRagPanel', () => {
     expect(await screen.findByText(/17 Nov 2026 at 16:00/)).toBeInTheDocument();
     expect(screen.queryByText(/task[_-]?id/i)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Ask RAG about this task'), {
+    fireEvent.change(screen.getByLabelText('Ask about this task'), {
       target: { value: 'What is this task about?' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
 
     expect(await screen.findByText(/Ensure departmental forecasts/)).toBeInTheDocument();
     expect(screen.queryByText(/task[_-]?id/i)).not.toBeInTheDocument();
+  });
+
+  it('explains what a Boating task is instead of echoing its title and category', async () => {
+    const boating: SampleTask = {
+      id: 'boating-task',
+      title: 'Boating',
+      description: 'Plan a relaxed day out.',
+      priority: 'medium',
+      state: 'active',
+      category: 'personal',
+      createdAt: '2026-11-20T09:00:00Z',
+      dueDate: '2026-11-25',
+    };
+
+    render(<TaskRagPanel task={boating} userId="task-rag-user" />);
+
+    fireEvent.change(screen.getByLabelText('Ask about this task'), {
+      target: { value: 'What is this task about?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText(/Boating is spending time on the water/i)).toBeInTheDocument();
+    expect(screen.queryByText('This task is “Boating” in the personal category.')).not.toBeInTheDocument();
   });
 });

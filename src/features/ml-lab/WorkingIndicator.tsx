@@ -68,9 +68,10 @@ export const TrainingProgress: React.FC<TrainingProgressProps> = ({ progress, de
 
 export interface RagWorkingProps {
   compact?: boolean;
+  stage?: string;
 }
 
-export const RagWorking: React.FC<RagWorkingProps> = ({ compact = false }) => {
+export const RagWorking: React.FC<RagWorkingProps> = ({ compact = false, stage }) => {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export const RagWorking: React.FC<RagWorkingProps> = ({ compact = false }) => {
             <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
             <p className="text-xs font-bold text-[var(--ink)]">Finding the answer…</p>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{RAG_STEPS[step]}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">{stage || RAG_STEPS[step]}</p>
         </div>
         <span className="flex items-end gap-1" aria-hidden="true">
           {[0, 1, 2].map((index) => (

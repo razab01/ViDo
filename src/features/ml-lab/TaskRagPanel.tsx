@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Sparkles } from 'lucide-react';
 import { Badge, Button } from '../../components/ui';
 import type { SampleTask } from '../../data/sampleTasks';
-import { profileData, ragDocs, runRAG } from './engine';
+import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGDoc, RAGResult } from './engine';
 import {
   formatTaskProbability,
@@ -13,6 +13,7 @@ import {
   subscribeSnapshot,
 } from './mlStore';
 import type { TaskPrediction } from './mlStore';
+import { polishRagAnswer } from './answerEngine';
 import { RagWorking } from './WorkingIndicator';
 
 export interface TaskRagPanelProps {
@@ -79,8 +80,8 @@ const directTaskAnswer = (
   return null;
 };
 
-const taskToRagDoc = (task: SampleTask, prediction: TaskPrediction | null): RAGDoc => {
-  const parts = [
+const taskFactLines = (task: SampleTask, prediction: TaskPrediction | null): string[] =>
+  [
     `Task title: ${task.title}.`,
     task.description ? `Description: ${task.description}.` : '',
     `State: ${task.state}.`,
@@ -97,17 +98,17 @@ const taskToRagDoc = (task: SampleTask, prediction: TaskPrediction | null): RAGD
         )}${prediction.isCompletion ? '' : ` ${prediction.label}`}.`
       : '',
     ...(task.checkpoints || []).map((checkpoint) => `Checkpoint: ${checkpoint.note}.`),
-  ];
-  return {
-    id: `task-${task.id}`,
-    title: task.title,
-    text: parts.filter(Boolean).join(' '),
-    tags: `category=${task.category || ''}, priority=${task.priority || ''}, state=${task.state}`,
-    priority: task.priority || '',
-    assignee: '',
-    edges: [],
-  };
-};
+  ].filter(Boolean);
+
+const taskToRagDoc = (task: SampleTask, prediction: TaskPrediction | null): RAGDoc => ({
+  id: `task-${task.id}`,
+  title: task.title,
+  text: taskFactLines(task, prediction).join(' '),
+  tags: `category=${task.category || ''}, priority=${task.priority || ''}, state=${task.state}`,
+  priority: task.priority || '',
+  assignee: '',
+  edges: [],
+});
 
 export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   task,
@@ -118,6 +119,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   const [answer, setAnswer] = useState<RAGResult | null>(null);
   const [notice, setNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
+  const [ragStage, setRagStage] = useState('');
   const [prediction, setPrediction] = useState<TaskPrediction | null>(() =>
     predictTask(userId, {
       title: task.title,
@@ -158,6 +160,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     setNotice('');
     setQuery('');
     setRagBusy(false);
+    setRagStage('');
   }, [task.id]);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
@@ -166,6 +169,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     const savedDocs = ragDocs(snapshot?.dataset ?? null, profile, suggestions);
     return [taskToRagDoc(task, prediction), ...savedDocs];
   }, [task, prediction, snapshot, profile, suggestions]);
+  const facts = useMemo(() => taskFactLines(task, prediction), [task, prediction]);
 
   const handleAsk = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -175,33 +179,31 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
       return;
     }
     setNotice('');
-
-    const direct = directTaskAnswer(question, task, prediction);
-    if (direct) {
-      setAnswer({
-        mode: 'task',
-        why: 'Answered from this task’s own fields.',
-        plan: [],
-        trail: '',
-        ranked: [],
-        answer: direct,
-      });
-      return;
-    }
-
     setRagBusy(true);
+    setRagStage('');
     setAnswer(null);
     const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
-      const rag = runRAG(question, 'auto', docs, profile, suggestions);
+      const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
+      setRagStage('Comparing the best matches…');
+      const direct = directTaskAnswer(question, task, prediction);
+      const isAbout = /\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/i.test(question);
+      const answerFacts = isAbout || !direct ? facts : [direct, ...facts];
+      const next = await polishRagAnswer({
+        question,
+        rag: retrieved,
+        facts: answerFacts,
+        onProgress: setRagStage,
+      });
       const remaining = 420 - (Date.now() - startedAt);
       if (remaining > 0) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
       }
-      setAnswer({ ...rag, answer: stripIdFragments(rag.answer) });
+      setAnswer({ ...next, answer: stripIdFragments(next.answer) });
     } finally {
       setRagBusy(false);
+      setRagStage('');
     }
   };
 
@@ -216,7 +218,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--muted)] flex items-center gap-1.5">
-            <Search className="w-3.5 h-3.5 text-[var(--accent)]" /> Ask RAG about this task
+            <Search className="w-3.5 h-3.5 text-[var(--accent)]" /> Ask about this task
           </h3>
           <p className="text-[11px] text-[var(--muted)] mt-1.5">
             {snapshot?.upload ? (
@@ -247,7 +249,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
 
       <form onSubmit={handleAsk} className="flex flex-col sm:flex-row gap-2 mt-3">
         <input
-          aria-label="Ask RAG about this task"
+          aria-label="Ask about this task"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -283,7 +285,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
       </div>
       {notice && <p className="text-[11px] text-[var(--muted)] mt-2">{notice}</p>}
 
-      {ragBusy && <RagWorking compact />}
+      {ragBusy && <RagWorking compact stage={ragStage} />}
 
       {answer && !ragBusy && (
         <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--canvas)] p-3">

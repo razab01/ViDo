@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Badge, Button, Card } from '../../components/ui';
-import { profileData, ragDocs, runRAG } from './engine';
+import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
+import { polishRagAnswer } from './answerEngine';
 import { RagWorking } from './WorkingIndicator';
 
 export interface DashboardRagCardProps {
@@ -21,6 +22,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   const [answer, setAnswer] = useState<RAGResult | null>(null);
   const [notice, setNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
+  const [ragStage, setRagStage] = useState('');
 
   useEffect(() => {
     setSnapshot(readSnapshot(userId));
@@ -30,6 +32,8 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   useEffect(() => {
     setAnswer(null);
     setNotice('');
+    setRagBusy(false);
+    setRagStage('');
   }, [userId]);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
@@ -45,13 +49,17 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
       setNotice('Type a question about your saved data.');
       return;
     }
+    const question = query.trim();
     setNotice('');
     setRagBusy(true);
+    setRagStage('');
     setAnswer(null);
     const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
-      const next = runRAG(query.trim(), 'auto', docs, profile, suggestions);
+      const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
+      setRagStage('Comparing the best matches…');
+      const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       const remaining = 420 - (Date.now() - startedAt);
       if (remaining > 0) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
@@ -59,6 +67,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
       setAnswer(next);
     } finally {
       setRagBusy(false);
+      setRagStage('');
     }
   };
 
@@ -79,7 +88,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-[var(--muted)] max-w-xl">
-            Schema-aware RAG answers questions from the spreadsheet you saved in ML Lab.
+            ViDo searches the spreadsheet you saved in ML Lab and writes a clear answer for you.
             {snapshot?.upload && (
               <span className="block text-[11px] text-[var(--faint)] mt-0.5">
                 Auto-detected source: {snapshot.upload.name}
@@ -126,7 +135,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
       )}
       {notice && <p className="text-[11px] text-[var(--muted)] mt-2">{notice}</p>}
 
-      {ragBusy && <RagWorking compact />}
+      {ragBusy && <RagWorking compact stage={ragStage} />}
 
       {answer && !ragBusy && (
         <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">

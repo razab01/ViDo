@@ -140,6 +140,15 @@ export interface RAGDoc {
   ents?: string[];
 }
 
+export type RAGMode = 'auto' | 'rag' | 'agentic' | 'graph';
+
+/**
+ * ViDo uses one retrieval strategy everywhere. Agentic RAG is deliberately
+ * fixed here: it handles single and multi-part questions without exposing a
+ * confusing mode switch to the user.
+ */
+export const USER_RAG_MODE: RAGMode = 'agentic';
+
 export interface RAGResult {
   mode: string;
   why: string;
@@ -2301,7 +2310,7 @@ function ragDecision(
 
 export function runRAG(
   queryText: string,
-  modeChoice: 'auto' | 'rag' | 'agentic' | 'graph',
+  modeChoice: RAGMode,
   docs: RAGDoc[],
   profile: Profile,
   suggestions: Suggestion[]

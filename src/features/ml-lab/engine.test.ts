@@ -11,6 +11,7 @@ import {
   runRAG,
   syncPredictionRow,
   trainAll,
+  USER_RAG_MODE,
 } from './engine';
 import type { RAGDoc, Row, TrainingOptions, TrainingResult } from './engine';
 
@@ -162,6 +163,14 @@ describe('unified training, prediction and RAG', () => {
 
     const empty = runRAG('', 'auto', docs, trained.profile, trained.suggestions);
     expect(empty.mode).toBe('none');
+  });
+
+  it('uses one fixed agentic strategy for user-facing answers', () => {
+    expect(USER_RAG_MODE).toBe('agentic');
+    const docs = ragDocs(trained.dataset, trained.profile, trained.suggestions);
+    const response = runRAG('finished delivery', USER_RAG_MODE, docs, trained.profile, trained.suggestions);
+    expect(response.mode).toBe('agentic');
+    expect(response.plan.length).toBeGreaterThan(0);
   });
 
   it('extracts the sentence that directly answers a due-date question', () => {
