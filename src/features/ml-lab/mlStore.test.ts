@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { profileData } from './engine';
 import type { Row, TrainingResult } from './engine';
 import {
+  clearDatasetUploaded,
   clearSnapshot,
   formatTaskProbability,
   getActiveResult,
+  hasDatasetUploaded,
+  markDatasetUploaded,
   predictTask,
   readSnapshot,
   saveSnapshot,
@@ -68,6 +71,8 @@ describe('ML Lab per-user store', () => {
     localStorage.clear();
     clearSnapshot('user-a');
     clearSnapshot('user-b');
+    clearDatasetUploaded('user-a');
+    clearDatasetUploaded('user-b');
   });
 
   it('keeps saved datasets isolated by user id', () => {
@@ -85,6 +90,7 @@ describe('ML Lab per-user store', () => {
     expect('artifact' in serialized).toBe(false);
 
     setActiveResult('user-a', fakeResult);
+    markDatasetUploaded('user-a');
     expect(getActiveResult('user-a')).toBe(fakeResult);
     expect(predictTask('user-a', { title: 'Finish report', priority: 'High' })).toMatchObject({
       label: 'yes',
@@ -93,6 +99,12 @@ describe('ML Lab per-user store', () => {
       kind: 'confidence',
     });
     expect(predictTask('user-b', { title: 'Finish report' })).toBeNull();
+  });
+
+  it('does not predict from a saved model before data is loaded in this session', () => {
+    setActiveResult('user-a', fakeResult);
+    expect(hasDatasetUploaded('user-a')).toBe(false);
+    expect(predictTask('user-a', { title: 'Finish report' })).toBeNull();
   });
 
   it('formats nearby confidences distinctly instead of rounding them all to 100%', () => {
@@ -114,6 +126,7 @@ describe('ML Lab per-user store', () => {
       },
     };
     setActiveResult('user-a', varying);
+    markDatasetUploaded('user-a');
 
     const door = predictTask('user-a', { title: 'closing door' });
     const report = predictTask('user-a', { title: 'finish quarterly report' });
@@ -143,6 +156,7 @@ describe('ML Lab per-user store', () => {
       },
     };
     setActiveResult('user-a', dateResult);
+    markDatasetUploaded('user-a');
 
     const prediction = predictTask('user-a', {
       title: 'closing door',

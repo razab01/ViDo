@@ -6,6 +6,7 @@ import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGDoc, RAGResult } from './engine';
 import {
   formatTaskProbability,
+  hasDatasetUploaded,
   predictTask,
   readSnapshot,
   requestRestore,
@@ -170,7 +171,12 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   useEffect(() => () => enrichmentCancel.current?.(), []);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
-  const suggestions = snapshot?.result?.suggestions ?? [];
+  // A saved summary is useful for context, but its model confidence strings
+  // must stay out of answers until data is loaded in this session.
+  const suggestions = useMemo(
+    () => (hasDatasetUploaded(userId) ? (snapshot?.result?.suggestions ?? []) : []),
+    [snapshot, userId]
+  );
   const docs = useMemo(() => {
     const savedDocs = ragDocs(snapshot?.dataset ?? null, profile, suggestions);
     return [taskToRagDoc(task, prediction), ...savedDocs, ...KNOWLEDGE_DOCS];

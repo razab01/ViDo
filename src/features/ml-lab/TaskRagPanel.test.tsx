@@ -4,7 +4,14 @@ import { SAMPLE_TASKS } from '../../data/sampleTasks';
 import type { SampleTask } from '../../data/sampleTasks';
 import { profileData } from './engine';
 import type { Row, TrainingResult } from './engine';
-import { clearActiveResult, clearSnapshot, saveSnapshot, setActiveResult } from './mlStore';
+import {
+  clearActiveResult,
+  clearDatasetUploaded,
+  clearSnapshot,
+  markDatasetUploaded,
+  saveSnapshot,
+  setActiveResult,
+} from './mlStore';
 import { TaskRagPanel } from './TaskRagPanel';
 
 const cols = ['task_text', 'priority', 'completed'];
@@ -44,6 +51,7 @@ describe('TaskRagPanel', () => {
     localStorage.clear();
     clearSnapshot('task-rag-user');
     clearActiveResult('task-rag-user');
+    clearDatasetUploaded('task-rag-user');
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
   });
 
@@ -74,6 +82,7 @@ describe('TaskRagPanel', () => {
       predictionValues: {},
     });
     setActiveResult('task-rag-user', result);
+    markDatasetUploaded('task-rag-user');
 
     render(<TaskRagPanel task={SAMPLE_TASKS[0]} userId="task-rag-user" />);
 
@@ -97,6 +106,15 @@ describe('TaskRagPanel', () => {
 
     expect(await screen.findByText(/ensure departmental forecasts/i)).toBeInTheDocument();
     expect(screen.queryByText(/task[_-]?id/i)).not.toBeInTheDocument();
+  });
+
+  it('hides the saved-model probability until data is loaded in this session', () => {
+    setActiveResult('task-rag-user', result);
+
+    render(<TaskRagPanel task={SAMPLE_TASKS[0]} userId="task-rag-user" />);
+
+    expect(screen.queryByText('Completion probability')).not.toBeInTheDocument();
+    expect(screen.queryByText('88%')).not.toBeInTheDocument();
   });
 
   it('explains what a Boating task is instead of echoing its title and category', async () => {

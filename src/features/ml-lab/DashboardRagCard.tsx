@@ -4,7 +4,7 @@ import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Badge, Button, Card } from '../../components/ui';
 import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGResult } from './engine';
-import { readSnapshot, subscribeSnapshot } from './mlStore';
+import { hasDatasetUploaded, readSnapshot, subscribeSnapshot } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
 import { KNOWLEDGE_DOCS } from './knowledge';
 import { enrichAnswerWithTopic } from './topicEnrichment';
@@ -44,7 +44,10 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   useEffect(() => () => enrichmentCancel.current?.(), []);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
-  const suggestions = snapshot?.result?.suggestions ?? [];
+  const suggestions = useMemo(
+    () => (hasDatasetUploaded(userId) ? (snapshot?.result?.suggestions ?? []) : []),
+    [snapshot, userId]
+  );
   const docs = useMemo(
     () => [...ragDocs(snapshot?.dataset ?? null, profile, suggestions), ...KNOWLEDGE_DOCS],
     [snapshot, profile, suggestions]

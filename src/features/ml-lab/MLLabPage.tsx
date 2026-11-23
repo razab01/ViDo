@@ -31,6 +31,8 @@ import {
   cancelRestore,
   clearActiveResult,
   getActiveResult,
+  hasDatasetUploaded,
+  markDatasetUploaded,
   readSnapshot,
   requestRestore,
   resultFromStored,
@@ -77,6 +79,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [upload, setUpload] = useState<UploadedData | null>(
     () => (initialSnapshot?.upload as UploadedData | null) ?? null
   );
+  const [datasetLoaded, setDatasetLoaded] = useState(() => hasDatasetUploaded(userId));
   const [sheetName, setSheetName] = useState(initialSnapshot?.sheetName ?? '');
   const [dataset, setDataset] = useState<Dataset | null>(initialSnapshot?.dataset ?? null);
   const [profile, setProfile] = useState<Profile>(() => initialSnapshot?.profile ?? profileData([], []));
@@ -274,6 +277,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       return;
     }
     clearActiveResult(userId);
+    markDatasetUploaded(userId);
+    setDatasetLoaded(true);
     setDataset(data.dataset);
     setProfile(data.profile);
     setTarget(data.profile.target || data.dataset.target || '');
@@ -345,12 +350,18 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     [result]
   );
 
+  // Saved suggestions carry model confidence strings; keep them out of the
+  // retrieval index until data is loaded in this session.
+  const visibleSuggestions = useMemo(
+    () => (datasetLoaded ? (result?.suggestions ?? []) : []),
+    [datasetLoaded, result]
+  );
   const docs = useMemo<RAGDoc[]>(
     () => [
-      ...ragDocs(result?.dataset ?? dataset, result?.profile ?? profile, result?.suggestions ?? []),
+      ...ragDocs(result?.dataset ?? dataset, result?.profile ?? profile, visibleSuggestions),
       ...KNOWLEDGE_DOCS,
     ],
-    [result, dataset, profile]
+    [result, dataset, profile, visibleSuggestions]
   );
 
   const ragExamples = useMemo(() => {
@@ -383,7 +394,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagResult(null);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
-      const retrieved = runRAG(question, USER_RAG_MODE, docs, result?.profile ?? profile, result?.suggestions ?? []);
+      const retrieved = runRAG(question, USER_RAG_MODE, docs, result?.profile ?? profile, visibleSuggestions);
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       setRagResult(next);
@@ -410,6 +421,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const savedLabel = savedAt
     ? new Date(savedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : '';
+  // Model scores are only meaningful for data loaded in this session. A
+  // persisted result may be restored for instant RAG, but its percentages
+  // stay hidden until the user uploads a file or loads the demo dataset.
+  const metricText = (value: number) => (datasetLoaded ? pct(value) : '—');
   const lossMax = result ? Math.max(0.1, ...result.history.lt, ...result.history.le) : 1;
   const accuracyMax = result ? Math.max(0.1, ...result.history.at, ...result.history.ae) : 1;
 
@@ -714,8 +729,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-black text-[var(--green)]">{pct(result.best.acc)}</div>
-                    <div className="text-[11px] text-[var(--muted)]">accuracy on test rows</div>
+                    <div className="text-2xl font-black text-[var(--green)]">{metricText(result.best.acc)}</div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      {datasetLoaded ? 'accuracy on test rows' : 'upload data to see accuracy'}
+                    </div>
                   </div>
                 </div>
 
@@ -727,15 +744,15 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
                         <div className="text-[var(--faint)]">Precision</div>
-                        <div className="font-bold">{pct(result.best.P)}</div>
+                        <div className="font-bold">{metricText(result.best.P)}</div>
                       </div>
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
                         <div className="text-[var(--faint)]">Recall</div>
-                        <div className="font-bold">{pct(result.best.R)}</div>
+                        <div className="font-bold">{metricText(result.best.R)}</div>
                       </div>
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
                         <div className="text-[var(--faint)]">F1 score</div>
-                        <div className="font-bold">{pct(result.best.F)}</div>
+                        <div className="font-bold">{metricText(result.best.F)}</div>
                       </div>
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
                         <div className="text-[var(--faint)]">Split</div>
@@ -760,8 +777,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                               className={`border-t border-[var(--line)] ${metric.n === result.best.n ? 'bg-[var(--green-soft)]' : ''}`}
                             >
                               <td className="px-2.5 py-1.5 font-medium">{metric.err ? '⚠ ' : ''}{metric.n}</td>
-                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? 'failed' : pct(metric.acc)}</td>
-                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? '—' : pct(metric.F)}</td>
+                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? 'failed' : metricText(metric.acc)}</td>
+                              <td className="px-2.5 py-1.5 font-mono">{metric.err ? '—' : metricText(metric.F)}</td>
                               <td className="px-2.5 py-1.5 font-mono">{metric.ms} ms</td>
                             </tr>
                           ))}
@@ -790,17 +807,25 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     <div className="space-y-2">
                       <div className="rounded-lg border border-[var(--line)] p-2.5">
                         <div className="text-[11px] font-semibold mb-1">Training loss</div>
-                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training loss chart">
-                          <polyline points={sparkline(result.history.lt, lossMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
-                          <polyline points={sparkline(result.history.le, lossMax)} fill="none" stroke="var(--amber)" strokeWidth="2" />
-                        </svg>
+                        {datasetLoaded ? (
+                          <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training loss chart">
+                            <polyline points={sparkline(result.history.lt, lossMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
+                            <polyline points={sparkline(result.history.le, lossMax)} fill="none" stroke="var(--amber)" strokeWidth="2" />
+                          </svg>
+                        ) : (
+                          <p className="text-[11px] text-[var(--muted)]">Load a dataset to see training progress.</p>
+                        )}
                       </div>
                       <div className="rounded-lg border border-[var(--line)] p-2.5">
                         <div className="text-[11px] font-semibold mb-1">Training accuracy</div>
-                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training accuracy chart">
-                          <polyline points={sparkline(result.history.at, accuracyMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
-                          <polyline points={sparkline(result.history.ae, accuracyMax)} fill="none" stroke="var(--green)" strokeWidth="2" />
-                        </svg>
+                        {datasetLoaded ? (
+                          <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training accuracy chart">
+                            <polyline points={sparkline(result.history.at, accuracyMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
+                            <polyline points={sparkline(result.history.ae, accuracyMax)} fill="none" stroke="var(--green)" strokeWidth="2" />
+                          </svg>
+                        ) : (
+                          <p className="text-[11px] text-[var(--muted)]">Load a dataset to see training progress.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -824,7 +849,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                         <Badge size="sm" variant="success">{suggestion.label}</Badge>
                       </div>
                       <div className="text-[11px] text-[var(--muted)] mt-1.5">
-                        {suggestion.conf} chance
+                        {datasetLoaded ? `${suggestion.conf} chance` : 'Load a dataset to see estimates'}
                       </div>
                       {showAdvanced && suggestion.fields && (
                         <div className="text-[10px] text-[var(--faint)] mt-1 line-clamp-1">{suggestion.fields}</div>
@@ -885,7 +910,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--green)]/30 bg-[var(--green-soft)] px-3 py-2.5">
                       <CheckCircle2 className="w-4 h-4 text-[var(--green)]" />
                       <span className="text-sm font-bold">{prediction.label}</span>
-                      <Badge size="sm" variant="success">{prediction.confidence} chance</Badge>
+                      {datasetLoaded && <Badge size="sm" variant="success">{prediction.confidence} chance</Badge>}
                     </div>
                   )}
                 </div>

@@ -71,12 +71,30 @@ const STORAGE_PREFIX = 'vido_ml_lab_v1_';
 
 const snapshots = new Map<string, StoredMLLabState | null>();
 const activeResults = new Map<string, TrainingResult>();
+// Session-only: a saved snapshot must never display model percentages until
+// the user actually loads a dataset (upload or demo data) in this tab session.
+const uploadedThisSession = new Set<string>();
 const snapshotListeners = new Map<string, Set<() => void>>();
 const resultListeners = new Map<string, Set<(result: TrainingResult | null) => void>>();
 const restoreGenerations = new Map<string, number>();
 const restores = new Map<string, Promise<void>>();
 
 const keyFor = (userId: string) => STORAGE_PREFIX + encodeURIComponent(userId || 'anonymous');
+
+/** Record that the user loaded a dataset during this browser session. */
+export function markDatasetUploaded(userId: string) {
+  uploadedThisSession.add(userId);
+}
+
+/** True only after an upload/demo load in this session, never from storage. */
+export function hasDatasetUploaded(userId: string): boolean {
+  return uploadedThisSession.has(userId);
+}
+
+/** Forget the session flag (e.g. when switching accounts or resetting a test). */
+export function clearDatasetUploaded(userId: string) {
+  uploadedThisSession.delete(userId);
+}
 
 function notifySnapshot(userId: string) {
   snapshotListeners.get(userId)?.forEach((listener) => listener());
@@ -258,6 +276,9 @@ export function formatTaskProbability(value: number, kind: TaskPrediction['kind'
 
 /** Build a probability estimate for a task from the user's winning model. */
 export function predictTask(userId: string, input: TaskPredictionInput): TaskPrediction | null {
+  // Persisted models are restored for convenience, but their numbers stay
+  // hidden until the user loads data in this session.
+  if (!hasDatasetUploaded(userId)) return null;
   const result = getActiveResult(userId);
   if (!result) return null;
   const cols = result.dataset.cols;

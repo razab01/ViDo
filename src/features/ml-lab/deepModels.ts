@@ -8,7 +8,8 @@
  * hashed token embedding with the same dimensionality, so every model still
  * trains and predicts without network access.
  *
- * Inverted dropout, global gradient-norm clipping and L2 weight decay keep the
+ * Inverted dropout, label smoothing, input jitter, global gradient-norm
+ * clipping, L2 weight decay and validation-based early stopping keep the
  * compact in-browser heads from memorising small uploads or diverging.
  *
  * The ten architectures:
@@ -48,6 +49,11 @@ const MAX_EVAL_SAMPLES = 32;
 const DROPOUT = 0.2;
 const CLIP_NORM = 5;
 const WEIGHT_DECAY = 1e-3;
+const LABEL_SMOOTHING = 0.08;
+const INPUT_NOISE = 0.04;
+const VALIDATION_FRACTION = 0.25;
+const EARLY_STOPPING_PATIENCE = 2;
+const EARLY_STOPPING_MIN_DELTA = 1e-4;
 
 /* ------------------------------------------------------------------ */
 /* Small dynamic-graph autograd engine (2-D Float32 tensors)            */
@@ -333,6 +339,25 @@ class Tensor {
     const self = this;
     return this.link(d, 1, 1, (g) => {
       self.g[y] += -g[0];
+    });
+  }
+
+  /** Cross-entropy with label smoothing: a small share of mass is spread over
+   *  the other classes so the classifier never becomes absolutely certain. */
+  smoothNll(y: number, classes: number, epsilon: number): Tensor {
+    const K = Math.max(2, classes);
+    const other = epsilon / K;
+    let value = 0;
+    for (let j = 0; j < this.c; j++) {
+      const target = j === y ? 1 - epsilon + other : other;
+      value -= target * this.d[j];
+    }
+    const self = this;
+    return this.link(new Float32Array([value]), 1, 1, (g) => {
+      for (let j = 0; j < this.c; j++) {
+        const target = j === y ? 1 - epsilon + other : other;
+        self.g[j] += g[0] * (Math.exp(self.d[j]) - target);
+      }
     });
   }
 
@@ -930,6 +955,51 @@ function shuffled(idx: number[], seed: number): number[] {
   return a;
 }
 
+/** Hold out part of the training rows for early stopping. The test slice is
+ *  never used for model selection, so reported accuracy stays unbiased. */
+function stratifiedHoldout(
+  idx: number[],
+  y: number[],
+  K: number,
+  fraction: number
+): { fit: number[]; val: number[] } {
+  if (idx.length < 6) return { fit: idx.slice(), val: idx.slice() };
+  const buckets: number[][] = Array.from({ length: K }, () => []);
+  for (const i of idx) if (y[i] >= 0 && y[i] < K) buckets[y[i]].push(i);
+  const fit: number[] = [];
+  const val: number[] = [];
+  for (let k = 0; k < buckets.length; k++) {
+    const bucket = buckets[k];
+    if (!bucket.length) continue;
+    if (bucket.length < 2) {
+      fit.push(bucket[0]);
+      continue;
+    }
+    const order = shuffled(bucket, 3301 + k);
+    const nVal = Math.min(bucket.length - 1, Math.max(1, Math.round(bucket.length * fraction)));
+    val.push(...order.slice(0, nVal));
+    fit.push(...order.slice(nVal));
+  }
+  if (!fit.length || !val.length) return { fit: idx.slice(), val: idx.slice() };
+  return { fit, val };
+}
+
+/** Small deterministic Gaussian jitter on the input embedding. This is a cheap
+ *  data augmentation that discourages memorising exact training vectors. */
+function noisySeqTensor(seq: Float32Array[], dim: number, rnd: () => number): Tensor {
+  const base = seqTensor(seq, dim);
+  let sumSq = 0;
+  for (let i = 0; i < base.d.length; i++) sumSq += base.d[i] * base.d[i];
+  const std = INPUT_NOISE * Math.sqrt(sumSq / Math.max(1, base.d.length));
+  const d = new Float32Array(base.d.length);
+  for (let i = 0; i < d.length; i++) {
+    const u = Math.max(1e-12, rnd());
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+    d[i] = base.d[i] + z * (Number.isFinite(std) ? std : INPUT_NOISE);
+  }
+  return Tensor.const(d, base.r, base.c);
+}
+
 export function trainDeepModels(
   features: DeepFeatures,
   y: number[],
@@ -958,63 +1028,85 @@ export function trainDeepModels(
       let step = 0;
       const history: DeepHistory = { lt: [], le: [], at: [], ae: [] };
       const trainOrder = shuffled(trainIdx, 421 + m).slice(0, MAX_TRAIN_SAMPLES);
+      const { fit: fitIdx, val: valIdx } = stratifiedHoldout(trainOrder, y, K, VALIDATION_FRACTION);
+      const noiseRnd = mulberry(811 + m * 37);
+      let bestValLoss = Infinity;
+      let bestWeights: Float32Array[] | null = null;
+      let staleEpochs = 0;
+      let stopped = false;
 
-      for (let e = 1; e <= ep; e++) {
-        for (const i of shuffled(trainOrder, 700 + e * 17 + m)) {
+      const evaluate = (idx: number[]) => {
+        let loss = 0;
+        const preds: number[] = [];
+        for (const i of idx) {
           const seq = features.seqs[i];
           const E = seqTensor(seq, features.dim);
-          const logits = arch.build(E, true);
-          const loss = logits.logSoftmax().nll(y[i]);
-          params.forEach((p) => p.zeroGrad());
-          // The scalar loss needs an explicit upstream gradient of 1.
-          loss.backward(new Float32Array([1]));
-          step++;
-          const b1 = 0.9;
-          const b2 = 0.999;
-          const c1 = 1 - Math.pow(b1, step);
-          const c2 = 1 - Math.pow(b2, step);
-          const lr = 0.004;
+          const prob = softmaxArray(arch.build(E).d);
+          const p = argmax(prob);
+          preds.push(p);
+          loss += -Math.log(Math.max(prob[y[i]], 1e-12));
+        }
+        return { loss: loss / Math.max(1, idx.length), preds };
+      };
 
-          // L2 weight decay on weights (bias rows are r === 1 and are exempt),
-          // applied before clipping so the total gradient is bounded.
-          let normSq = 0;
-          for (let p = 0; p < params.length; p++) {
-            const P = params[p];
-            const decay = P.r > 1 ? WEIGHT_DECAY : 0;
-            if (decay) for (let k = 0; k < P.g.length; k++) P.g[k] += decay * P.d[k];
-            for (let k = 0; k < P.g.length; k++) normSq += P.g[k] * P.g[k];
+      for (let e = 1; e <= ep; e++) {
+        if (!stopped) {
+          for (const i of shuffled(fitIdx, 700 + e * 17 + m)) {
+            // Noisy embeddings + label smoothing are data augmentation that
+            // stops the head from memorising exact rows of a small upload.
+            const E = noisySeqTensor(features.seqs[i], features.dim, noiseRnd);
+            const logits = arch.build(E, true);
+            const loss = logits.logSoftmax().smoothNll(y[i], K, LABEL_SMOOTHING);
+            params.forEach((p) => p.zeroGrad());
+            // The scalar loss needs an explicit upstream gradient of 1.
+            loss.backward(new Float32Array([1]));
+            step++;
+            const b1 = 0.9;
+            const b2 = 0.999;
+            const c1 = 1 - Math.pow(b1, step);
+            const c2 = 1 - Math.pow(b2, step);
+            const lr = 0.004;
+
+            // L2 weight decay on weights (bias rows are r === 1 and are exempt),
+            // applied before clipping so the total gradient is bounded.
+            let normSq = 0;
+            for (let p = 0; p < params.length; p++) {
+              const P = params[p];
+              const decay = P.r > 1 ? WEIGHT_DECAY : 0;
+              if (decay) for (let k = 0; k < P.g.length; k++) P.g[k] += decay * P.d[k];
+              for (let k = 0; k < P.g.length; k++) normSq += P.g[k] * P.g[k];
+            }
+            const norm = Math.sqrt(normSq);
+            const clip = Number.isFinite(norm) && norm > CLIP_NORM ? CLIP_NORM / norm : 1;
+
+            for (let p = 0; p < params.length; p++) {
+              const P = params[p];
+              if (!mState[p].length) {
+                mState[p] = new Float32Array(P.g.length);
+                vState[p] = new Float32Array(P.g.length);
+              }
+              for (let k = 0; k < P.d.length; k++) {
+                const g = P.g[k] * clip;
+                mState[p][k] = b1 * mState[p][k] + (1 - b1) * g;
+                vState[p][k] = b2 * vState[p][k] + (1 - b2) * g * g;
+                P.d[k] -= (lr * (mState[p][k] / c1)) / (Math.sqrt(vState[p][k] / c2) + 1e-8);
+              }
+            }
           }
-          const norm = Math.sqrt(normSq);
-          const clip = Number.isFinite(norm) && norm > CLIP_NORM ? CLIP_NORM / norm : 1;
 
-          for (let p = 0; p < params.length; p++) {
-            const P = params[p];
-            if (!mState[p].length) {
-              mState[p] = new Float32Array(P.g.length);
-              vState[p] = new Float32Array(P.g.length);
-            }
-            for (let k = 0; k < P.d.length; k++) {
-              const g = P.g[k] * clip;
-              mState[p][k] = b1 * mState[p][k] + (1 - b1) * g;
-              vState[p][k] = b2 * vState[p][k] + (1 - b2) * g * g;
-              P.d[k] -= (lr * (mState[p][k] / c1)) / (Math.sqrt(vState[p][k] / c2) + 1e-8);
-            }
+          // Early stopping uses a held-out slice of the training rows, never
+          // the test rows used for the reported score.
+          const valLoss = evaluate(valIdx).loss;
+          if (Number.isFinite(valLoss) && valLoss < bestValLoss - EARLY_STOPPING_MIN_DELTA) {
+            bestValLoss = valLoss;
+            bestWeights = params.map((p) => p.d.slice());
+            staleEpochs = 0;
+          } else if (Number.isFinite(valLoss)) {
+            staleEpochs++;
+            if (staleEpochs >= EARLY_STOPPING_PATIENCE) stopped = true;
           }
         }
 
-        const evaluate = (idx: number[]) => {
-          let loss = 0;
-          const preds: number[] = [];
-          for (const i of idx) {
-            const seq = features.seqs[i];
-            const E = seqTensor(seq, features.dim);
-            const prob = softmaxArray(arch.build(E).d);
-            const p = argmax(prob);
-            preds.push(p);
-            loss += -Math.log(Math.max(prob[y[i]], 1e-12));
-          }
-          return { loss: loss / Math.max(1, idx.length), preds };
-        };
         const evalTrainIdx = trainOrder;
         const trEval = evaluate(evalTrainIdx);
         const teEval = evaluate(evalIdx);
@@ -1023,6 +1115,11 @@ export function trainDeepModels(
         history.at.push(classificationMetrics(evalTrainIdx.map((i) => y[i]), trEval.preds, K).acc);
         history.ae.push(classificationMetrics(evalIdx.map((i) => y[i]), teEval.preds, K).acc);
         onEpoch?.(name, e, ep);
+      }
+
+      // Roll back to the best validation checkpoint rather than the last epoch.
+      if (bestWeights) {
+        for (let p = 0; p < params.length; p++) params[p].d.set(bestWeights[p]);
       }
 
       const final = (() => {
@@ -1042,11 +1139,15 @@ export function trainDeepModels(
         return Array.from(softmaxArray(arch.build(E).d));
       };
 
+      const score = classificationMetrics(evalIdx.map((i) => y[i]), final.preds, K);
+      if (![score.acc, score.P, score.R, score.F].every(Number.isFinite)) {
+        throw new Error('non-finite metric');
+      }
       trained.push({
         name,
         metric: {
           n: name,
-          ...classificationMetrics(evalIdx.map((i) => y[i]), final.preds, K),
+          ...score,
           ms: Math.round(performance.now() - t0),
         },
         history,
