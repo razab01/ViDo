@@ -181,6 +181,17 @@ def _parse_math(expression: str):
     return parse_expr(expression, local_dict=SYMBOLS, transformations=TRANSFORMS, evaluate=True)
 
 
+def _matrix_text(question: str) -> Optional[str]:
+    """Accept [[1,2],[3,4]] and also [1,2],[3,4] without outer brackets."""
+    nested = re.search(r"\[\[.*\]\]", question)
+    if nested:
+        return nested.group(0)
+    rows = re.search(r"\[[^\]]+\](?:\s*,\s*\[[^\]]+\])+", question)
+    if rows:
+        return "[" + rows.group(0) + "]"
+    return None
+
+
 def _parse_matrix(text: str):
     inner = text.strip()[1:-1]
     rows = []
@@ -203,17 +214,17 @@ def handle_advanced(question: str) -> Optional[str]:
     """Return an answer for advanced math questions, or None if not applicable."""
     q = question.lower().strip()
 
-    matrix_match = re.search(r"\[\[.*\]\]", q)
-    if re.search(r"\b(determinant|det)\b", q) and matrix_match:
+    matrix_text = _matrix_text(q)
+    if re.search(r"\b(determinant|det)\b", q) and matrix_text:
         try:
-            matrix = _parse_matrix(matrix_match.group(0))
+            matrix = _parse_matrix(matrix_text)
             return f"The determinant is {simplify(matrix.det())}."
         except Exception:
             return "I could not read that matrix. Try something like determinant of [[1,2],[3,4]]."
 
-    if re.search(r"\beigen\s*-?\s*vectors?\b|\beigenvectors?\b", q) and matrix_match:
+    if re.search(r"\beigen\s*-?\s*vectors?\b|\beigenvectors?\b", q) and matrix_text:
         try:
-            matrix = _parse_matrix(matrix_match.group(0))
+            matrix = _parse_matrix(matrix_text)
             parts = []
             for value, _multiplicity, vectors in matrix.eigenvects():
                 for vector in vectors:
@@ -223,9 +234,9 @@ def handle_advanced(question: str) -> Optional[str]:
         except Exception:
             return "I could not read that matrix. Try something like eigen vectors of [[1,2],[3,4]]."
 
-    if re.search(r"\beigen\s*-?\s*values?\b|\beigenvalues?\b", q) and matrix_match:
+    if re.search(r"\beigen\s*-?\s*values?\b|\beigenvalues?\b", q) and matrix_text:
         try:
-            matrix = _parse_matrix(matrix_match.group(0))
+            matrix = _parse_matrix(matrix_text)
             values = matrix.eigenvals()
             return f"The eigenvalues are {', '.join(str(v) for v in values.keys())}."
         except Exception:
