@@ -16,6 +16,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:python": "python python/test_answers.py",
     "emulators": "firebase emulators:start --project demo-vido",
     "emu": "firebase emulators:start --project demo-vido",
     "emu:export": "firebase emulators:export ./firebase-export-local --project demo-vido",

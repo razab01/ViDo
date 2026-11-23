@@ -22,10 +22,31 @@ MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CACHE: Dict[str, str] = {}
 # Disambiguation stubs such as "President of Spain may refer to:" are not
 # answers. They are filtered out before ranking so chat replies stay useful.
-DISAMBIGUATION = re.compile(r"\b(?:may refer to|disambiguation|redirects here)\b", re.I)
+DISAMBIGUATION = re.compile(r"\b(?:may refer to|could refer to|disambiguation|redirects here)\b", re.I)
+FILLER_PREFIX = re.compile(
+    r"^(?:ok(?:ay)?|so|and|now|well|yeah|yes|please|also)\b[\s,!.]*",
+    re.I,
+)
+# A few common terms have a disambiguation page with the exact title. Prefer
+# the article that matches the meaning people usually ask about.
+TOPIC_ALIASES = {"blue chip": "Blue chip (stock market)"}
 
 _TOKENIZER = None
 _TOKENIZER_TRIED = False
+
+
+def strip_leading_fillers(question: str) -> str:
+    """Remove conversational lead-ins such as 'ok so' before routing a question."""
+    value = str(question or "").strip()
+    while True:
+        updated = FILLER_PREFIX.sub("", value).lstrip()
+        if updated == value:
+            return value
+        value = updated
+
+
+def _normalize_title(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", str(text or "").lower())).strip()
 
 
 def _hf_tokens(text: str) -> List[str]:
@@ -53,8 +74,8 @@ def _hf_tokens(text: str) -> List[str]:
 
 
 def topic_phrase(question: str) -> str:
-    """Strip question wording so 'Tell me about India' becomes 'India'."""
-    topic = re.sub(r"\?+\s*$", "", str(question or "").strip())
+    """Strip question wording so 'ok so what is Nash equilibrium' becomes 'Nash equilibrium'."""
+    topic = re.sub(r"\?+\s*$", "", strip_leading_fillers(question))
     topic = re.sub(
         r"^(?:tell me about|explain|describe|summari[sz]e|what about|about)\s+",
         "",
@@ -82,7 +103,7 @@ def _get_json(params: Dict[str, str]) -> Optional[dict]:
         return None
 
 
-def _search(topic: str, limit: int = 6) -> List[dict]:
+def _search(topic: str, limit: int = 10) -> List[dict]:
     payload = _get_json(
         {
             "action": "query",
@@ -119,7 +140,12 @@ def _search(topic: str, limit: int = 6) -> List[dict]:
     for page in payload.get("query", {}).get("pages", {}).values():
         extract = re.sub(r"\s+", " ", str(page.get("extract") or "")).strip()
         title = str(page.get("title") or "")
-        if extract and not DISAMBIGUATION.search(extract) and len(extract) >= 60:
+        if (
+            extract
+            and not DISAMBIGUATION.search(extract)
+            and not DISAMBIGUATION.search(title)
+            and len(extract) >= 60
+        ):
             candidates.append(
                 {"title": title, "extract": extract, "rank": by_title.get(title, len(titles))}
             )
@@ -127,28 +153,55 @@ def _search(topic: str, limit: int = 6) -> List[dict]:
 
 
 def _best_extract(question: str, topic: str, candidates: Sequence[dict]) -> Optional[str]:
+    topic_key = _normalize_title(topic)
+    preferred_key = _normalize_title(TOPIC_ALIASES.get(topic_key, ""))
     query_tokens = set(_hf_tokens(question)) | set(_hf_tokens(topic))
     if not query_tokens:
         return None
 
     best: Optional[str] = None
-    best_score = 0.0
+    best_score = float("-inf")
     for candidate in candidates:
-        title_tokens = set(_hf_tokens(candidate["title"]))
-        body_tokens = set(_hf_tokens(candidate["extract"][:1500]))
-        score = 3 * len(query_tokens & title_tokens) + len(query_tokens & body_tokens)
-        # Wikipedia's own relevance order matters, and an exact title match is
-        # almost always the article the user meant.
-        score += max(0, 5 - int(candidate.get("rank", 5))) * 3
-        lowered = candidate["title"].lower()
-        if lowered == topic.lower():
-            score += 20
-        elif lowered.endswith(" " + topic.lower()):
-            score += 5
+        title = candidate["title"]
+        extract = candidate["extract"]
+        lowered = title.lower()
+        title_key = _normalize_title(title)
+        title_tokens = set(_hf_tokens(title))
+        body_tokens = set(_hf_tokens(extract[:1500]))
+
+        score = 4 * len(query_tokens & title_tokens) + len(query_tokens & body_tokens)
+        score += max(0, 10 - int(candidate.get("rank", 10))) * 2
+
+        exact = bool(topic_key) and title_key == topic_key
+        preferred = bool(preferred_key) and title_key == preferred_key
+        parenthetical = bool(topic_key) and lowered.startswith(topic_key + " (")
+        if exact:
+            score += 50
+        elif preferred:
+            score += 60
+        elif parenthetical:
+            score += 30
+        elif topic_key and title_key.endswith(" " + topic_key):
+            score += 8
+
+        # A page that defines the topic in its opening sentence is a better
+        # answer than a company or film that merely contains the same words.
+        if topic_key and re.search(rf"\b{re.escape(topic_key)}\b", _normalize_title(extract[:180])):
+            score += 10
+        if not (exact or preferred or parenthetical):
+            if topic_key and title_key.startswith(topic_key + " "):
+                score -= 10
+            if re.search(r"\b(?:film|album|company|stamps)\b", title_key) or re.search(
+                r"\b(?:started as|was an American|released in|released on)\b",
+                extract[:300],
+                re.I,
+            ):
+                score -= 8
+
         score /= math.sqrt(len(body_tokens) + 1)
         if score > best_score:
             best_score = score
-            best = candidate["extract"]
+            best = extract
     return best
 
 
@@ -162,8 +215,11 @@ def _trim(text: str) -> str:
 
 
 def _search_topics(question: str, topic: str) -> List[str]:
-    """Try the literal topic first, then a role-aware rephrasing when useful."""
-    topics = [topic]
+    """Try the best-known article first, then the literal topic and role rephrasings."""
+    preferred = TOPIC_ALIASES.get(_normalize_title(topic), topic)
+    topics = [preferred]
+    if preferred != topic:
+        topics.append(topic)
     match = re.search(
         r"\b(president|prime minister|king|queen|chancellor)\s+of\s+([a-z][\w\s-]+)",
         str(question or "").lower(),

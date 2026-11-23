@@ -7,7 +7,7 @@
  */
 import type { Dataset, Profile, Suggestion } from '../ml-lab/engine';
 import { lookupTopic, lookupTopicWord } from '../ml-lab/topicLookup';
-import { localFallbackAnswer } from './localFallback';
+import { localFallbackAnswer, normalizeQuestion } from './localFallback';
 
 export interface ChatTurn {
   question: string;
@@ -44,7 +44,7 @@ const titleSubject = (subject: string): string =>
 
 /** Pull the entity out of "who is X" / "tell me about X" style questions. */
 export function extractSubject(question: string): string | null {
-  const q = String(question || '').trim();
+  const q = normalizeQuestion(String(question || '').trim());
   const patterns = [
     /^(?:what)\s+did(?:\s+the)?\s+(.+?)\s+(?:write|do|say|discover|invent|create|build|found|publish|develop|contribute)\b.*$/i,
     /^(?:who|what)\s+(?:is|was|are|were)\s+(.+?)[?.!]*$/i,
@@ -71,7 +71,7 @@ export function extractSubject(question: string): string | null {
 
 /** Replace he/she/it with the last entity the user asked about. */
 export function resolveQuestion(raw: string, history: ChatTurn[]): string {
-  const q = String(raw || '').trim();
+  const q = normalizeQuestion(String(raw || '').trim());
   if (!/\b(he|she|it|him|her|his|they|them|their|that person|this person)\b/i.test(q)) return q;
 
   let subject: string | null = null;
@@ -124,7 +124,8 @@ export function datasetAnswer(question: string, context: BrainContext): string |
   const { dataset, profile, suggestions } = context;
   if (!dataset || !dataset.rows.length) return null;
   const cols = dataset.cols;
-  const lower = question.toLowerCase();
+  const normalized = normalizeQuestion(question);
+  const lower = normalized.toLowerCase();
 
   const textCol =
     (profile?.textCol && cols.includes(profile.textCol) ? profile.textCol : null) ??
@@ -140,7 +141,7 @@ export function datasetAnswer(question: string, context: BrainContext): string |
   const priorityCol = column(cols, [/priority/]);
 
   // Exact record lookup: "T09", "tell me about task T09", '"T09" tell me about...'.
-  const tokens = question.match(/[A-Za-z]*-?\d+/g) ?? [];
+  const tokens = normalized.match(/[A-Za-z]*-?\d+/g) ?? [];
   if (idCol) {
     for (const token of tokens) {
       const match = dataset.rows.find(
@@ -223,13 +224,14 @@ export async function wikipediaAnswer(question: string): Promise<string | null> 
  * so the caller can show a friendly "try again" message.
  */
 export async function answerLocally(question: string, context: BrainContext): Promise<string | null> {
-  const quick = localFallbackAnswer(question);
+  const normalized = normalizeQuestion(question);
+  const quick = localFallbackAnswer(normalized);
   if (quick) return quick;
 
-  const dataAnswer = datasetAnswer(question, context);
+  const dataAnswer = datasetAnswer(normalized, context);
   if (dataAnswer) return dataAnswer;
 
-  const wiki = await wikipediaAnswer(question);
+  const wiki = await wikipediaAnswer(normalized);
   if (wiki) return wiki;
 
   return null;

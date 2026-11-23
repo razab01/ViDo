@@ -51,6 +51,44 @@ _CONSTANTS = {"pi": math.pi, "e": math.e}
 _PRECEDENCE = {"+": 1, "-": 1, "*": 2, "/": 2, "%": 2, "^": 3, "u-": 4, "u+": 4}
 _RIGHT_ASSOC = {"^", "u-", "u+"}
 
+# Short, Wikipedia-style explanations for concept questions. These are used
+# when the user asks *about* an operation ("how does integration work?") rather
+# than giving a function to compute.
+CONCEPT_EXPLANATIONS: Dict[str, str] = {
+    "integration": (
+        "Integration is a way of adding up many tiny pieces to find a total. On a graph it gives "
+        "the area under a curve, and as an antiderivative it reverses differentiation: if F'(x) = f(x), "
+        "then the integral of f(x) is F(x) + C. The “+ C” is the constant of integration because "
+        "differentiating a constant gives zero."
+    ),
+    "differentiation": (
+        "Differentiation finds the instantaneous rate of change of a function — the slope of its graph "
+        "at a point. If integration combines tiny pieces into a total, differentiation splits a total "
+        "into its tiny changes. For a power such as x^n, bring the exponent down in front and reduce "
+        "the exponent by one."
+    ),
+    "calculus": (
+        "Calculus is the branch of mathematics that studies continuous change. Differential calculus "
+        "measures rates of change and slopes, while integral calculus adds up small pieces to find "
+        "totals such as areas and accumulated quantities."
+    ),
+    "limit": (
+        "A limit describes the value a function approaches as its input gets closer to some point. "
+        "Limits are the foundation of calculus: they make the ideas of an instantaneous slope and an "
+        "area under a curve precise."
+    ),
+}
+
+_INTEGRATION_PATTERN = re.compile(
+    r"(?:integrat(?:e|ion|ing)|integral|antiderivative|∫)\s*(?:of\s*)?(.*?)"
+    r"(?:\s+with\s+respect\s+to\s+([a-z]))?\s*$",
+    re.I,
+)
+_DERIVATIVE_PATTERN = re.compile(
+    r"(?:differentiat(?:e|ion|ing)|derivative\s+of|differentiate)\s*(?:of\s*)?(.*?)\s*$",
+    re.I,
+)
+
 
 def _tokenize(expression: str) -> List[str]:
     pattern = r"\d*\.?\d+|[A-Za-z_]\w*|[+\-*/^%()]"
@@ -177,8 +215,85 @@ def _extract_expression(question: str) -> str:
     return candidate
 
 
+def _normalize_spoken_math(text: str) -> str:
+    """Translate a few spoken math phrases so 'x squared' becomes x^2."""
+    value = str(text or "").strip()
+    value = value.replace("×", "*").replace("÷", "/").replace("–", "-")
+    value = re.sub(r"\bsquared\b", "^2", value, flags=re.I)
+    value = re.sub(r"\bcubed\b", "^3", value, flags=re.I)
+    value = re.sub(r"\btimes\b", "*", value, flags=re.I)
+    value = re.sub(r"\bplus\b", "+", value, flags=re.I)
+    value = re.sub(r"\bminus\b", "-", value, flags=re.I)
+    return value.strip()
+
+
 def _parse_math(expression: str):
-    return parse_expr(expression, local_dict=SYMBOLS, transformations=TRANSFORMS, evaluate=True)
+    return parse_expr(
+        _normalize_spoken_math(expression),
+        local_dict=SYMBOLS,
+        transformations=TRANSFORMS,
+        evaluate=True,
+    )
+
+
+def _looks_like_expression(candidate: str) -> bool:
+    """Reject prose such as 'happen' before implicit multiplication parses it."""
+    text = _normalize_spoken_math(candidate).lower().strip(" .?!,")
+    if not text:
+        return False
+    if re.search(r"\d|[+\-*/^=()]", text):
+        return True
+    if re.search(r"\b(?:sin|cos|tan|sqrt|log|ln|exp|abs)\b", text):
+        return True
+    return bool(re.search(r"\b[xytuvn]\b", text))
+
+
+def _concept_explanation(q: str) -> Optional[str]:
+    """Explain a math idea when no actual expression was supplied."""
+    if re.search(r"\bcalculus\b", q) and not re.search(r"\d|[+\-*/^]", q):
+        return CONCEPT_EXPLANATIONS["calculus"]
+
+    match = _INTEGRATION_PATTERN.search(q)
+    if match and not _looks_like_expression(match.group(1)):
+        return CONCEPT_EXPLANATIONS["integration"]
+
+    match = _DERIVATIVE_PATTERN.search(q)
+    if match and not _looks_like_expression(match.group(1)):
+        return CONCEPT_EXPLANATIONS["differentiation"]
+
+    if re.search(r"\blimit\b", q) and not re.search(r"\blimit\s+of\s+.+\s+as\s+", q):
+        return CONCEPT_EXPLANATIONS["limit"]
+    return None
+
+
+def _power_rule_hint(source: str) -> str:
+    if re.search(r"\d|\^|\*\*|squared|cubed", str(source or ""), re.I):
+        return (
+            "For a power, raise the exponent by one and divide by the new exponent. "
+        )
+    return ""
+
+
+def _integration_answer(expression, variable, value, source: str) -> str:
+    result = f"The integral of {expression} with respect to {variable} is {value} + C."
+    explanation = (
+        "Integration is the reverse of differentiation: it adds up tiny pieces to find a total, "
+        "such as the area under a curve. "
+        + _power_rule_hint(source)
+        + "The “+ C” is the constant of integration because a constant disappears when you differentiate."
+    )
+    return f"{result}\n\n{explanation}"
+
+
+def _derivative_answer(expression, value, source: str) -> str:
+    result = f"The derivative of {expression} is {value}."
+    explanation = (
+        "Differentiation measures the instantaneous rate of change — the slope of the curve at a point. "
+        + _power_rule_hint(source).replace("raise the exponent by one and divide by the new exponent",
+                                          "bring the exponent down and reduce it by one")
+        + "That gives a formula for how quickly the function changes as its input changes."
+    )
+    return f"{result}\n\n{explanation}"
 
 
 def _matrix_text(question: str) -> Optional[str]:
@@ -214,6 +329,10 @@ def handle_advanced(question: str) -> Optional[str]:
     """Return an answer for advanced math questions, or None if not applicable."""
     q = question.lower().strip()
 
+    concept = _concept_explanation(q)
+    if concept:
+        return concept
+
     matrix_text = _matrix_text(q)
     if re.search(r"\b(determinant|det)\b", q) and matrix_text:
         try:
@@ -242,28 +361,30 @@ def handle_advanced(question: str) -> Optional[str]:
         except Exception:
             return "I could not read that matrix. Try something like eigen values of [[1,2],[3,4]]."
 
-    if re.search(r"\b(integrat(e|ion)|integral|antiderivative)\b|∫", q):
-        match = re.search(
-            r"(?:integrat(?:e|ion)|integral|antiderivative|∫)\s*(?:of\s*)?(.+?)"
-            r"(?:\s+with\s+respect\s+to\s+([a-z]))?\s*$",
-            q,
-        )
-        if match:
-            try:
-                expr = _parse_math(match.group(1))
-                variable = SYMBOLS.get(match.group(2) or "x", Symbol("x"))
-                return _sympy_answer("The integral of", expr, integrate(expr, variable))
-            except Exception:
-                return "I could not parse that function for integration."
+    match = _INTEGRATION_PATTERN.search(q)
+    if match:
+        source = match.group(1).strip()
+        try:
+            expr = _parse_math(source)
+            variable = SYMBOLS.get(match.group(2) or "x", Symbol("x"))
+            return _integration_answer(expr, variable, integrate(expr, variable), source)
+        except Exception:
+            return (
+                CONCEPT_EXPLANATIONS["integration"]
+                + "\n\nI could not read that exact function. Try something like “integrate x^2”."
+            )
 
-    if re.search(r"\b(differentiat(e|ion)|derivative|differentiate)\b", q):
-        match = re.search(r"(?:differentiat(?:e|ion)|derivative\s+of|differentiate)\s*(?:of\s*)?(.+?)\s*$", q)
-        if match:
-            try:
-                expr = _parse_math(match.group(1))
-                return _sympy_answer("The derivative of", expr, diff(expr, Symbol("x")))
-            except Exception:
-                return "I could not parse that function for differentiation."
+    match = _DERIVATIVE_PATTERN.search(q)
+    if match:
+        source = match.group(1).strip()
+        try:
+            expr = _parse_math(source)
+            return _derivative_answer(expr, diff(expr, Symbol("x")), source)
+        except Exception:
+            return (
+                CONCEPT_EXPLANATIONS["differentiation"]
+                + "\n\nI could not read that exact function. Try something like “differentiate x^2”."
+            )
 
     if re.search(r"\b(maxima|maximum|minima|minimum|extrema|turning point)\b", q):
         match = re.search(r"(?:maxim\w*|minim\w*|extrema|turning point)\s+(?:of\s+|for\s+)?(.+?)\s*$", q)

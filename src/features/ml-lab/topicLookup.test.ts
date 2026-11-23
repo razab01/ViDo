@@ -70,6 +70,73 @@ describe('topic lookup', () => {
     expect(await lookupTopic('Unknown subject')).toBeNull();
   });
 
+  it('uses the common meaning when an exact title is a disambiguation page', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = decodeURIComponent(String(input));
+      const json = url.includes('titles=Blue chip (stock market)')
+        ? {
+            query: {
+              pages: {
+                '1': {
+                  title: 'Blue chip (stock market)',
+                  extract:
+                    'A blue chip is capital stock of a company with a national reputation for quality, reliability and profitability.',
+                },
+              },
+            },
+          }
+        : {
+            query: {
+              pages: {
+                '1': { title: 'Blue chip', extract: 'Blue chip may refer to several things.' },
+              },
+            },
+          };
+      return { ok: true, json: async () => json } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await lookupTopic('blue chip');
+    expect(summary?.title).toBe('Blue chip (stock market)');
+    expect(decodeURIComponent(String(fetchMock.mock.calls[0][0]))).toContain(
+      'titles=Blue chip (stock market)'
+    );
+  });
+
+  it('skips disambiguation results and keeps searching', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = decodeURIComponent(String(input));
+      let json: unknown;
+      if (url.includes('list=search')) {
+        json = { query: { search: [{ title: 'Mercury' }, { title: 'Mercury (element)' }] } };
+      } else if (url.includes('titles=Mercury (element)')) {
+        json = {
+          query: {
+            pages: {
+              '2': {
+                title: 'Mercury (element)',
+                extract: 'Mercury is a chemical element with the symbol Hg and atomic number 80.',
+              },
+            },
+          },
+        };
+      } else {
+        json = {
+          query: {
+            pages: {
+              '1': { title: 'Mercury', extract: 'Mercury may refer to several things.' },
+            },
+          },
+        };
+      }
+      return { ok: true, json: async () => json } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await lookupTopicWord('Mercury');
+    expect(summary?.title).toBe('Mercury (element)');
+  });
+
   it('rejects disambiguation pages', async () => {
     vi.stubGlobal(
       'fetch',

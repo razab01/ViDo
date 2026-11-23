@@ -44,6 +44,8 @@ describe('chatBrain', () => {
     expect(extractSubject('Tell me about India.')).toBe('India');
     expect(extractSubject('what did Adam Smith write?')).toBe('Adam Smith');
     expect(extractSubject('what did he write?')).toBeNull();
+    expect(extractSubject('ok what is game theory')).toBe('Game Theory');
+    expect(extractSubject('ok so what is nash equilibrium')).toBe('Nash Equilibrium');
   });
 
   it('resolves pronouns against the last extracted subject', () => {
@@ -81,6 +83,27 @@ describe('chatBrain', () => {
   it('handles maths and curated world facts without any service', async () => {
     expect(await answerLocally('what is 2+2', context)).toBe('2+2 = 4');
     expect(await answerLocally('who is president of spain', context)).toContain('King Felipe VI');
+  });
+
+  it('explains math concepts and simple integrals instead of guessing symbols', async () => {
+    const concept = await answerLocally('how is integration happen', context);
+    expect(concept).toMatch(/adding up many tiny pieces/i);
+    expect(concept).not.toMatch(/a\*e\*h/);
+
+    const integral = await answerLocally('what is integration of x^2', context);
+    expect(integral).toContain('x^3/3 + C');
+    expect(integral).toMatch(/reverse of differentiation/i);
+  });
+
+  it('strips conversational filler before looking up a topic', async () => {
+    mockedLookup.mockResolvedValueOnce({
+      title: 'Nash equilibrium',
+      extract: 'In game theory, a Nash equilibrium is a situation where no player gains by changing strategy alone.',
+    });
+
+    const answer = await answerLocally('ok so what is nash equilibrium', context);
+    expect(answer).toContain('no player gains');
+    expect(mockedLookup).toHaveBeenCalledWith('Nash Equilibrium');
   });
 
   it('uses Wikipedia for general topics and keeps pronoun answers locally reliable', async () => {

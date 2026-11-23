@@ -14,6 +14,7 @@ import networkx as nx
 
 from vido_math import handle_query
 from wikipedia import answer as wikipedia_answer
+from wikipedia import strip_leading_fillers
 
 
 STOP_WORDS = {
@@ -366,7 +367,9 @@ def answer(
     suggestions: Optional[Sequence[dict]] = None,
     trained: Optional[dict] = None,
 ) -> str:
-    question = str(question or "").strip()
+    # "ok so what is X" is the same question as "what is X". Strip the lead-in
+    # once here so routing, Wikipedia lookup and graph retrieval all agree.
+    question = strip_leading_fillers(str(question or "").strip())
     if not question:
         return "Type a question and I will answer it."
 

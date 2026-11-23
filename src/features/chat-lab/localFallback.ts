@@ -51,6 +51,117 @@ const PEOPLE_FACTS: Array<{ keys: string[]; about: string; works: string }> = [
 
 const PRECEDENCE: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
 
+const FILLER_PREFIX = /^(?:ok(?:ay)?|so|and|now|well|yeah|yes|please|also)\b[\s,.!]*/i;
+
+const MATH_CONCEPTS: Record<string, string> = {
+  integration:
+    'Integration is a way of adding up many tiny pieces to find a total. On a graph it gives the area under a curve, and as an antiderivative it reverses differentiation: if F\'(x) = f(x), then the integral of f(x) is F(x) + C. The “+ C” is the constant of integration because differentiating a constant gives zero.',
+  differentiation:
+    'Differentiation finds the instantaneous rate of change of a function — the slope of its graph at a point. If integration combines tiny pieces into a total, differentiation splits a total into its tiny changes. For a power such as x^n, bring the exponent down in front and reduce the exponent by one.',
+  calculus:
+    'Calculus is the branch of mathematics that studies continuous change. Differential calculus measures rates of change, while integral calculus adds up small pieces to find totals such as areas.',
+};
+
+/** Remove conversational lead-ins so "ok so what is X" routes like "what is X". */
+export function normalizeQuestion(raw: string): string {
+  let value = String(raw || '').trim();
+  while (FILLER_PREFIX.test(value)) value = value.replace(FILLER_PREFIX, '').trim();
+  return value;
+}
+
+const looksLikeExpression = (value: string): boolean =>
+  /\d|[+\-*/^=()]|\b(?:sin|cos|tan|sqrt|log|ln|exp)\b|\b[xytuvn]\b/i.test(value);
+
+type Power = { coefficient: number; exponent: number };
+
+/** Parse simple powers such as x^2, 3x^2, x squared or 2*x^3. */
+function parsePower(raw: string): Power | null {
+  const text = String(raw || '')
+    .replace(/\s+/g, '')
+    .replace(/\*\*/g, '^')
+    .replace(/×/g, '*')
+    .replace(/x²/gi, 'x^2')
+    .replace(/x³/gi, 'x^3')
+    .replace(/xsquared/gi, 'x^2')
+    .replace(/xcubed/gi, 'x^3');
+  const match = text.match(/^(?:(\d+(?:\.\d+)?)\*?)?x(?:\^(\d+(?:\.\d+)?))?$/i);
+  if (!match) return null;
+  return {
+    coefficient: match[1] ? Number(match[1]) : 1,
+    exponent: match[2] !== undefined ? Number(match[2]) : 1,
+  };
+}
+
+const formatNumber = (value: number): string =>
+  Number.isInteger(value) ? String(value) : String(Number(value.toFixed(6)));
+
+const gcd = (a: number, b: number): number => (b === 0 ? Math.abs(a) : gcd(b, a % b));
+
+const powerTerm = (coefficient: number, exponent: number): string => {
+  const prefix = coefficient === 1 ? '' : formatNumber(coefficient);
+  if (exponent === 0) return prefix || '1';
+  if (exponent === 1) return `${prefix}x`;
+  return `${prefix}x^${formatNumber(exponent)}`;
+};
+
+const integralTerm = ({ coefficient, exponent }: Power): string => {
+  const nextExponent = exponent + 1;
+  if (Number.isInteger(coefficient)) {
+    const divisor = gcd(coefficient, nextExponent) || 1;
+    const numerator = coefficient / divisor;
+    const denominator = nextExponent / divisor;
+    if (denominator === 1) return powerTerm(numerator, nextExponent);
+    return `${powerTerm(numerator, nextExponent)}/${formatNumber(denominator)}`;
+  }
+  return `${formatNumber(coefficient / nextExponent)}x^${formatNumber(nextExponent)}`;
+};
+
+const derivativeTerm = ({ coefficient, exponent }: Power): string => {
+  const nextCoefficient = coefficient * exponent;
+  if (exponent === 0) return '0';
+  return powerTerm(nextCoefficient, exponent - 1);
+};
+
+/** Explanatory answers for concept questions and simple powers. */
+function localMathAnswer(question: string): string | null {
+  const low = normalizeQuestion(question).toLowerCase();
+
+  if (/\bcalculus\b/.test(low) && !/\d|[+\-*/^]/.test(low)) return MATH_CONCEPTS.calculus;
+
+  if (/\b(?:integrat(?:e|ion|ing)|integral|antiderivative)\b/.test(low)) {
+    const match = low.match(/\b(?:integration|integrate|integral|antiderivative)\s+(?:of\s+)?([a-z0-9\s*^()+\-.]+)$/i);
+    const source = match?.[1]?.trim() ?? '';
+    if (!source || !looksLikeExpression(source)) return MATH_CONCEPTS.integration;
+    const power = parsePower(source);
+    if (!power) {
+      return `${MATH_CONCEPTS.integration}\n\nI can show exact steps for a simple power such as “x^2”.`;
+    }
+    return (
+      `The integral of ${source} is ${integralTerm(power)} + C.\n\n` +
+      'Integration is the reverse of differentiation: it adds up tiny pieces to find a total, such as the area under a curve. ' +
+      'For a power, raise the exponent by one and divide by the new exponent. ' +
+      'The “+ C” appears because a constant disappears when you differentiate.'
+    );
+  }
+
+  if (/\b(?:differentiat(?:e|ion|ing)|derivative)\b/.test(low)) {
+    const match = low.match(/\b(?:differentiate|differentiation(?:\s+of)?|derivative(?:\s+of)?)\s+([a-z0-9\s*^()+\-.]+)$/i);
+    const source = match?.[1]?.trim() ?? '';
+    if (!source || !looksLikeExpression(source)) return MATH_CONCEPTS.differentiation;
+    const power = parsePower(source);
+    if (!power) {
+      return `${MATH_CONCEPTS.differentiation}\n\nI can show exact steps for a simple power such as “x^2”.`;
+    }
+    return (
+      `The derivative of ${source} is ${derivativeTerm(power)}.\n\n` +
+      'Differentiation measures the instantaneous rate of change — the slope of the curve at a point. ' +
+      'For a power, bring the exponent down and reduce it by one.'
+    );
+  }
+
+  return null;
+}
+
 /** Safe Shunting Yard evaluator for basic arithmetic (no eval / new Function). */
 function evaluateArithmetic(question: string): string | null {
   const expression = question
@@ -120,7 +231,10 @@ function evaluateArithmetic(question: string): string | null {
 
 /** Return a reliable local answer for common general questions, else null. */
 export function localFallbackAnswer(question: string): string | null {
-  const trimmed = question.trim();
+  const trimmed = normalizeQuestion(question);
+  const math = localMathAnswer(trimmed);
+  if (math) return math;
+
   const arithmetic = evaluateArithmetic(trimmed);
   if (arithmetic) return arithmetic;
 

@@ -14,6 +14,22 @@ export interface TopicSummary {
 const CACHE_PREFIX = 'vido:topic:';
 const CACHE_TTL = 1000 * 60 * 60 * 24 * 30;
 
+// Some exact Wikipedia titles are disambiguation pages. Use the meaning people
+// usually ask about for those terms.
+const TOPIC_ALIASES: Record<string, string> = {
+  'blue chip': 'Blue chip (stock market)',
+};
+
+const DISAMBIGUATION = /may refer to|could refer to|disambiguation|redirects here/i;
+const normalizedKey = (value: string): string =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const preferredTitle = (subject: string): string =>
+  TOPIC_ALIASES[normalizedKey(subject)] ?? String(subject || '').trim();
+
 const cacheKey = (subject: string): string =>
   CACHE_PREFIX +
   String(subject || '')
@@ -55,10 +71,11 @@ const writeCachedTopic = (subject: string, summary: TopicSummary): void => {
  * so callers can keep the locally composed answer.
  */
 export async function lookupTopic(subject: string, signal?: AbortSignal): Promise<TopicSummary | null> {
-  const title = String(subject || '').trim();
-  if (!title) return null;
+  const subjectText = String(subject || '').trim();
+  if (!subjectText) return null;
+  const title = preferredTitle(subjectText);
 
-  const cached = readCachedTopic(title);
+  const cached = readCachedTopic(subjectText);
   if (cached) return cached;
 
   const url =
@@ -77,10 +94,13 @@ export async function lookupTopic(subject: string, signal?: AbortSignal): Promis
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (extract.length < 40 || /may refer to|could refer to/i.test(extract)) return null;
+  if (extract.length < 40 || DISAMBIGUATION.test(extract) || DISAMBIGUATION.test(page?.title || '')) {
+    return null;
+  }
 
   const summary: TopicSummary = { title: page?.title || title, extract };
-  writeCachedTopic(title, summary);
+  writeCachedTopic(subjectText, summary);
+  if (title !== subjectText) writeCachedTopic(title, summary);
   return summary;
 }
 
@@ -103,7 +123,7 @@ export async function lookupTopicWord(
 
   const searchUrl =
     'https://en.wikipedia.org/w/api.php?action=query&list=search&srnamespace=0' +
-    '&srlimit=1&format=json&origin=*&srsearch=' +
+    '&srlimit=8&format=json&origin=*&srsearch=' +
     encodeURIComponent(query);
 
   const response = await fetch(searchUrl, { signal, headers: { Accept: 'application/json' } });
@@ -112,10 +132,17 @@ export async function lookupTopicWord(
   const payload = (await response.json()) as {
     query?: { search?: Array<{ title?: string }> };
   };
-  const title = payload.query?.search?.find((item) => Boolean(item.title))?.title;
-  if (!title) return null;
+  const titles = (payload.query?.search ?? [])
+    .map((item) => String(item.title || '').trim())
+    .filter((title) => title && !DISAMBIGUATION.test(title))
+    .slice(0, 5);
 
-  const summary = await lookupTopic(title, signal);
-  if (summary) writeCachedTopic(query, summary);
-  return summary;
+  for (const title of titles) {
+    const summary = await lookupTopic(title, signal);
+    if (summary) {
+      writeCachedTopic(query, summary);
+      return summary;
+    }
+  }
+  return null;
 }

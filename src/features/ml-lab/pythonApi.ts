@@ -201,7 +201,8 @@ export async function answerWithPython(input: PythonAnswerInput): Promise<string
     { ...input, trained: input.trained ?? {} },
     30000
   );
-  return response.answer;
+  // Wikipedia is a source, not an engine badge; keep the reply conversational.
+  return response.answer.replace(/^Wikipedia:\s*/, '').trim();
 }
 
 /** Display helper so the UI can say which backend produced the numbers. */
