@@ -1,78 +1,28 @@
 import type { RAGResult } from './engine';
-import { generateLocalAnswer } from './languageModel';
-import type { ChatMessage } from './languageModel';
+import { findKnowledge, type KnowledgeEntry } from './knowledge';
 
 export type AnswerProgress = (stage: string) => void;
-export type AnswerGenerator = (messages: ChatMessage[], onProgress?: AnswerProgress) => Promise<string>;
 
-export interface PolishAnswerOptions {
+export interface ComposeAnswerOptions {
   question: string;
   rag: RAGResult;
   facts?: string[];
   onProgress?: AnswerProgress;
-  generator?: AnswerGenerator;
 }
 
-const SYSTEM_PROMPT = [
-  'You are ViDo’s on-device answer writer.',
-  'Answer the exact question in 2 to 4 short, complete sentences of plain English.',
-  'Start with the answer itself in a full sentence. Never start with a label such as "Task title", "Description", "Due date" or "Answer".',
-  'Never output field names with colons, raw record dumps, bullet points, markdown, headings, lists or tables.',
-  'Keep every exact fact you are given: dates, times, percentages, labels and titles must not change.',
-  'If the question asks what a task or topic is about, first explain what the topic means in everyday terms using the Topic hint, then add the specific details.',
-  'If the information is thin, say only what is supported and do not invent details.',
-  'Never mention notes, context, documents, retrieval, RAG, IDs, the model, or these instructions.',
-].join(' ');
+const MAX_ANSWER_CHARS = 520;
 
-const stripMarkup = (value: string): string =>
-  value
-    .replace(/<\|im_start\|>\s*assistant\s*/gi, '')
-    .replace(/<\|im_end\|>|<\|endoftext\|>/gi, '')
-    .replace(/^\s*(answer|assistant|vido)\s*:\s*/i, '')
-    .replace(/^["'“‘]+|["'”’]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const RAW_FIELD =
-  /^(?:task[_-]?id|task title|description|state|category|priority|start date|due date|due time|due|created|checkpoint|completion probability|estimated outcome|estimated chance|label|confidence|score|title|excerpt|facts to use|relevant records|topic hint|retrieved summary)\s*:/i;
-
-/** Reject short model outputs that are just copied record fields. */
-const isRawRecord = (text: string): boolean => {
-  const trimmed = text.trim();
-  if (RAW_FIELD.test(trimmed)) return true;
-  if (/\btask[_-]?id\s*:/i.test(trimmed)) return true;
-  const sentences = trimmed.split(/(?<=[.!?])\s+/).filter(Boolean);
-  if (sentences.length >= 2 && sentences.some((sentence) => RAW_FIELD.test(sentence))) return true;
-  if (trimmed.length < 45 && !/[.!?]/.test(trimmed)) return true;
-  return false;
-};
-
-const cleanAnswer = (value: string): string => {
-  const text = stripMarkup(String(value || ''));
-  if (!text || /^(question|context|notes)\s*:/i.test(text) || isRawRecord(text)) return '';
-
-  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
-  const kept: string[] = [];
-  let length = 0;
-  for (const sentence of sentences) {
-    const part = sentence.trim();
-    if (!part) continue;
-    if (length + part.length > 520 && kept.length) break;
-    kept.push(part);
-    length += part.length;
-  }
-  return kept.join(' ') || text.slice(0, 520);
-};
-
+/** Remove identifier fields that should never appear in a user-facing answer. */
 const stripIds = (value: string): string =>
-  value
+  String(value || '')
     .replace(/\b(?:task[_-]?id|source[_-]?row|row[_-]?id|index)\s*:\s*[A-Za-z0-9_-]+\b/gi, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 
 const findFact = (facts: string[], label: string): string => {
-  const source = facts.join(' ');
-  const match = new RegExp(`${label}\\s*:\\s*([^.]+)`, 'i').exec(source);
+  const source = stripIds(facts.join(' '));
+  // Stop at a real sentence end, not at a decimal point inside a percentage.
+  const match = new RegExp(`${label}\\s*:\\s*(.+?)(?:\\.(?=\\s|$)|[!?]|$)`, 'i').exec(source);
   return match?.[1]?.trim() || '';
 };
 
@@ -81,158 +31,257 @@ const lowerFirst = (value: string): string => {
   return clean ? clean.charAt(0).toLowerCase() + clean.slice(1) : '';
 };
 
-/** Turn a stored `Label: value` fact into a sentence the model can copy safely. */
-const factToSentence = (fact: string): string => {
-  const cleaned = stripIds(fact).replace(/\.$/, '').trim();
-  if (!cleaned) return '';
-  const match = /^([^:]+):\s*(.+)$/.exec(cleaned);
-  if (!match) return `${cleaned}.`;
-  const label = match[1].trim().toLowerCase();
-  const value = match[2].trim();
-  if (!value) return '';
-  if (label === 'task title') return `The task is ${value}.`;
-  if (label === 'description') return `It involves ${lowerFirst(value)}.`;
-  if (label === 'state') return `It is currently ${value.toLowerCase()}.`;
-  if (label === 'category') return `It falls under ${value.toLowerCase()}.`;
-  if (label === 'priority') return `It is ${value.toLowerCase()} priority.`;
-  if (label === 'start date') return `It starts on ${value}.`;
-  if (label === 'due date' || label === 'due') return `It is due ${value}.`;
-  if (label === 'due time') return `The due time is ${value}.`;
-  if (label === 'created') return `It was created on ${value}.`;
-  if (label === 'checkpoint') return `The latest update was ${lowerFirst(value)}.`;
-  if (label.includes('probab') || label.includes('chance')) return `The estimated chance is ${value}.`;
-  if (label.includes('outcome')) return `The estimated outcome is ${value}.`;
-  return `${label}: ${value}.`;
+const sentencesOf = (value: string): string[] =>
+  String(value || '')
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((part) => part.trim())
+    .filter(Boolean) || [];
+
+const firstSentence = (value: string): string => sentencesOf(value)[0] || '';
+const firstTwoSentences = (value: string): string => sentencesOf(value).slice(0, 2).join(' ');
+
+/** A raw `Label: value` record is never an acceptable answer. */
+const isRawField = (value: string): boolean =>
+  /^(?:task[_-]?id|task title|description|state|category|priority|start date|due date|due time|due|created|checkpoint|completion probability|estimated outcome|estimated chance|label|confidence|score|title|excerpt|facts to use|relevant records)\s*:/i.test(
+    value.trim()
+  );
+
+const hasNoContext = (value: string): boolean => /no relevant context|could not find/i.test(value);
+
+const tidy = (parts: string[]): string => {
+  const kept: string[] = [];
+  let length = 0;
+  for (const raw of parts) {
+    const part = stripIds(raw).trim();
+    if (!part || isRawField(part)) continue;
+    const withStop = /[.!?]$/.test(part) ? part : `${part}.`;
+    if (length + withStop.length > MAX_ANSWER_CHARS && kept.length) break;
+    kept.push(withStop);
+    length += withStop.length + 1;
+  }
+  return kept.join(' ');
 };
 
-const factsToSentences = (facts: string[]): string =>
-  facts
-    .map(factToSentence)
-    .filter(Boolean)
-    .slice(0, 6)
-    .join(' ');
+/** Quote a description so any wording reads naturally in a sentence. */
+const detailSentence = (description: string): string =>
+  `It is described as “${description.replace(/\.$/, '').trim()}”.`;
 
-const TOPIC_KNOWLEDGE: Array<[RegExp, string]> = [
-  [
-    /\bboat|boating|sail|kayak|cruise|rowing\b/i,
-    'Boating is spending time on the water in a boat, which usually means planning a route, checking the weather and safety gear, and making sure everything needed is on board.',
-  ],
-  [
-    /\bhik|trek|trail|walk\b/i,
-    'Hiking is a walk outdoors, usually on a trail, where the route, timing, footwear and weather matter as much as reaching the destination.',
-  ],
-  [
-    /\bcook|bake|meal|dinner|recipe|grocer\b/i,
-    'This is a food-related task: it is about planning or preparing a meal, including ingredients, timing and who it is for.',
-  ],
-  [
-    /\bmeeting|stand-?up|call|sync\b/i,
-    'This is about bringing people together to discuss a topic, make decisions and agree on what happens next.',
-  ],
-  [
-    /\breport|forecast|analysis|dashboard|spreadsheet\b/i,
-    'This task is about turning information into a clear summary so patterns and next steps are easier to see.',
-  ],
-  [
-    /\bclean|tidy|laundry|wash\b/i,
-    'This is an everyday upkeep task: the aim is to get a space or item back into a usable, tidy state.',
-  ],
-  [
-    /\bpay|invoice|bill|tax|budget\b/i,
-    'This is an admin or money task, usually about checking an amount, keeping records and making sure it is handled on time.',
-  ],
-];
+const listPhrase = (values: string[]): string => {
+  const clean = values.map((value) => stripIds(value).trim()).filter(Boolean).slice(0, 3);
+  if (!clean.length) return '';
+  if (clean.length === 1) return `“${clean[0]}”`;
+  if (clean.length === 2) return `“${clean[0]}” and “${clean[1]}”`;
+  return `${clean.slice(0, -1).map((v) => `“${v}”`).join(', ')} and “${clean[clean.length - 1]}”`;
+};
 
-const describeTopic = (facts: string[], rag: RAGResult): string => {
-  const title = findFact(facts, 'Task title') || rag.ranked[0]?.title || 'this task';
-  const description = findFact(facts, 'Description');
-  const category = findFact(facts, 'Category');
-  const priority = findFact(facts, 'Priority');
-  const due = findFact(facts, 'Due date');
-  const checkpoint = findFact(facts, 'Checkpoint');
+type Intent = 'probability' | 'due' | 'nextStep' | 'about' | 'compare' | 'general';
 
-  const known = TOPIC_KNOWLEDGE.find(([pattern]) => pattern.test(`${title} ${description}`))?.[1];
-  const generic = `“${title}” is ${category ? `a ${category.toLowerCase()} ` : ''}task about getting this piece of work organised and finished.`;
+const detectIntent = (question: string): Intent => {
+  const q = question.toLowerCase();
+  if (/probab|likelihood|chance|confidence|\bscore\b|how likely/.test(q)) return 'probability';
+  if (/\bwhen\b|\bdue\b|deadline|by when|\bdate\b|\btime\b/.test(q)) return 'due';
+  if (/next step|what should i do|what do i do|recommend|suggest|\baction\b|\bstart\b/.test(q)) return 'nextStep';
+  if (/\babout\b|describe|summari[sz]e|explain|what is|what's|\btell me\b/.test(q)) return 'about';
+  if (/compare|comparison|trend|pattern|difference|versus|\bvs\b|\bmost\b|\btop\b|likely|predict|\bwhich\b/.test(q))
+    return 'compare';
+  return 'general';
+};
 
-  const details = [
-    description ? `It involves ${lowerFirst(description)}.` : '',
-    priority ? `It is marked ${priority.toLowerCase()} priority.` : '',
-    due ? `It is planned for ${due}.` : '',
-    checkpoint ? `The latest update was ${lowerFirst(checkpoint)}.` : '',
+/** Knowledge query that matches the intent, so probability answers explain probability. */
+const INTENT_KNOWLEDGE: Partial<Record<Intent, string>> = {
+  probability: 'probability confidence prediction chance',
+  due: 'deadline scheduling due date time',
+  nextStep: 'next action prioritisation plan',
+  compare: 'trend pattern compare features categories',
+};
+
+const subjectOf = (question: string, facts: string[], rag: RAGResult): string =>
+  [
+    findFact(facts, 'Task title'),
+    findFact(facts, 'Description'),
+    findFact(facts, 'Category'),
+    question,
+    rag.ranked.slice(0, 2).map((item) => item.title).join(' '),
   ]
     .filter(Boolean)
     .join(' ');
 
-  return stripIds(`${known || generic}${details ? ` ${details}` : ''}`);
+const knowledgeFor = (intent: Intent, subject: string, question: string): KnowledgeEntry | null => {
+  const byIntent = INTENT_KNOWLEDGE[intent];
+  return (byIntent ? findKnowledge(byIntent) : null) || findKnowledge(subject) || findKnowledge(question);
 };
 
-/** Deterministic, natural answer used when the small model is unavailable or low quality. */
-export const friendlyFallback = (question: string, rag: RAGResult, facts: string[] = []): string => {
-  const q = question.toLowerCase();
-  const safeFacts = facts.map(stripIds).filter(Boolean);
+const dueParts = (facts: string[], knowledge: KnowledgeEntry | null, question: string): string[] => {
+  const direct = findFact(facts, 'Due');
+  const date = findFact(facts, 'Due date');
+  const time = findFact(facts, 'Due time');
+  const parts: string[] = [];
 
-  if (/\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/.test(q)) {
-    return describeTopic(safeFacts, rag);
-  }
+  if (direct) parts.push(`This task is due ${direct}.`);
+  else if (date) parts.push(`This task is due ${date}${time ? ` at ${time}` : ''}.`);
+  else if (time) parts.push(`The due time is ${time}.`);
+  else parts.push('I do not have a due date for this item yet.');
 
-  const sentenceFacts = factsToSentences(safeFacts);
-  if (sentenceFacts) return stripIds(sentenceFacts);
-
-  return stripIds(
-    rag.answer && !/no relevant context/i.test(rag.answer)
-      ? factsToSentences([rag.answer])
-      : 'I could not find a clear answer to that. Try asking with different words.'
-  );
+  if (knowledge) parts.push(firstSentence(knowledge.text));
+  else if (hasNoContext(question)) parts.push('Add a due date to your data and I can give you the exact deadline.');
+  return parts;
 };
 
-export const buildAnswerContext = (rag: RAGResult, facts: string[] = [], question = ''): string => {
-  const sections: string[] = [];
-  const safeFacts = facts.map(stripIds).filter(Boolean);
-  const naturalFacts = factsToSentences(safeFacts);
-  if (naturalFacts) sections.push(`Facts to use (rewrite these as your own sentences):\n${naturalFacts}`);
-  if (/\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/i.test(question)) {
-    const topic = describeTopic(safeFacts, rag);
-    if (topic) sections.push(`Topic hint (explain this in your own words):\n${topic}`);
+const probabilityParts = (facts: string[], knowledge: KnowledgeEntry | null): string[] => {
+  const completion = findFact(facts, 'Completion probability');
+  const outcome = findFact(facts, 'Estimated outcome');
+  const generic = findFact(facts, 'Probability') || findFact(facts, 'Chance') || findFact(facts, 'Confidence');
+  const parts: string[] = [];
+
+  if (completion) parts.push(`The estimated completion probability is ${completion}.`);
+  else if (outcome) parts.push(`The best model estimates ${outcome}.`);
+  else if (generic) parts.push(`The estimated chance is ${generic}.`);
+  else parts.push('There is no trained probability for this item yet.');
+
+  if (knowledge) parts.push(firstSentence(knowledge.text));
+  return parts;
+};
+
+const nextStepParts = (
+  facts: string[],
+  rag: RAGResult,
+  knowledge: KnowledgeEntry | null
+): string[] => {
+  const title = findFact(facts, 'Task title') || rag.ranked[0]?.title || '';
+  const priority = findFact(facts, 'Priority');
+  const due = findFact(facts, 'Due') || findFact(facts, 'Due date');
+  const checkpoint = findFact(facts, 'Checkpoint');
+  const parts: string[] = [];
+
+  if (title) {
+    parts.push(
+      `The next step is to move ${listPhrase([title])} forward${
+        priority ? `, starting with the ${priority.toLowerCase()} priority work` : ''
+      }${due ? ` and finishing before ${due}` : ''}.`
+    );
+  } else {
+    parts.push('Pick the most important open item and turn it into one concrete action.');
   }
-  if (rag.answer) sections.push(`Retrieved text (do not copy it word for word):\n${factsToSentences([rag.answer])}`);
-  if (rag.ranked.length) {
-    sections.push(
-      `Relevant records:\n${rag.ranked
-        .slice(0, 4)
-        .map((item, index) => `${index + 1}. ${item.title}: ${item.excerpt}`)
-        .join('\n')}`
+  if (checkpoint) parts.push(`The latest update was ${lowerFirst(checkpoint)}.`);
+  if (knowledge) parts.push(firstSentence(knowledge.text));
+  return parts;
+};
+
+const aboutParts = (
+  facts: string[],
+  rag: RAGResult,
+  knowledge: KnowledgeEntry | null,
+  intentKnowledge: boolean
+): string[] => {
+  const title = findFact(facts, 'Task title') || rag.ranked[0]?.title || '';
+  const description = findFact(facts, 'Description');
+  const category = findFact(facts, 'Category');
+  const priority = findFact(facts, 'Priority');
+  const due = findFact(facts, 'Due') || findFact(facts, 'Due date');
+  const checkpoint = findFact(facts, 'Checkpoint');
+  const parts: string[] = [];
+
+  if (knowledge && !intentKnowledge) parts.push(firstSentence(knowledge.text));
+  else if (title)
+    parts.push(
+      `${listPhrase([title])} is ${category ? `a ${category.toLowerCase()} ` : ''}item about getting this work organised and finished.`
+    );
+
+  if (description) parts.push(detailSentence(description));
+  if (priority) parts.push(`It is marked ${priority.toLowerCase()} priority.`);
+  if (due) parts.push(`It is planned for ${due}.`);
+  if (checkpoint) parts.push(`The latest update was ${lowerFirst(checkpoint)}.`);
+
+  if (!parts.length && knowledge) parts.push(firstTwoSentences(knowledge.text));
+  return parts;
+};
+
+const compareParts = (rag: RAGResult, knowledge: KnowledgeEntry | null): string[] => {
+  const titles = rag.ranked.slice(0, 3).map((item) => item.title);
+  const parts: string[] = [];
+  if (titles.length) parts.push(`The closest records in your data are ${listPhrase(titles)}.`);
+  if (knowledge) parts.push(firstTwoSentences(knowledge.text));
+  if (!parts.length)
+    parts.push('Upload a file or ask about a specific topic and I can compare the records and highlight the pattern.');
+  return parts;
+};
+
+const generalParts = (
+  facts: string[],
+  rag: RAGResult,
+  knowledge: KnowledgeEntry | null
+): string[] => {
+  const parts: string[] = [];
+  if (knowledge) parts.push(firstTwoSentences(knowledge.text));
+  else if (facts.length) {
+    const title = findFact(facts, 'Task title');
+    const description = findFact(facts, 'Description');
+    if (title) parts.push(`${listPhrase([title])} is the item you are asking about.`);
+    if (description) parts.push(detailSentence(description));
+  } else if (rag.ranked.length) {
+    parts.push(`I found related records: ${listPhrase(rag.ranked.slice(0, 3).map((item) => item.title))}.`);
+    parts.push('Ask about one of them for a fuller explanation.');
+  } else {
+    parts.push(
+      'I do not have a clear answer for that yet. Try asking about a topic such as prioritisation, deadlines or a task in your data, and I will explain it.'
     );
   }
-  return sections.join('\n\n').slice(0, 3200);
+  return parts;
 };
 
 /**
- * Runs RAG's extractive result through the tiny local assistant so answers
- * read naturally. If the model cannot load or writes a raw record dump, a
- * well-formed sentence answer is used instead.
+ * Compose a natural answer from Graph RAG results, the caller's structured
+ * facts and ViDo's bundled knowledge. No model call is involved, so the reply
+ * is immediate and identical for the same question.
  */
-export async function polishRagAnswer({
-  question,
-  rag,
-  facts = [],
-  onProgress,
-  generator = generateLocalAnswer,
-}: PolishAnswerOptions): Promise<RAGResult> {
-  const context = buildAnswerContext(rag, facts, question);
-  if (!question.trim() || !context.trim()) return rag;
+export function composeAnswer({ question, rag, facts = [] }: ComposeAnswerOptions): string {
+  const cleanQuestion = String(question || '').trim();
+  if (!cleanQuestion) return '';
 
-  onProgress?.('Understanding your question…');
-  try {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: `Question: ${question.trim()}\n\n${context}` },
-    ];
-    const written = cleanAnswer(await generator(messages, onProgress));
-    if (written) return { ...rag, answer: written };
-  } catch {
-    // The deterministic answer below is still useful on its own.
+  const safeFacts = facts.map(stripIds).filter(Boolean);
+  const intent = detectIntent(cleanQuestion);
+  const subject = subjectOf(cleanQuestion, safeFacts, rag);
+  // Prefer the item's own name over incidental words in its description or in
+  // the question, so a "Visit parents" note cannot outrank a "Boating" task.
+  const primarySubject = findFact(safeFacts, 'Task title') || rag.ranked[0]?.title || subject;
+  const knowledge = knowledgeFor(intent, primarySubject, cleanQuestion);
+  const intentKnowledge = Boolean(
+    INTENT_KNOWLEDGE[intent] && knowledge && findKnowledge(primarySubject) !== knowledge
+  );
+
+  let parts: string[];
+  switch (intent) {
+    case 'probability':
+      parts = probabilityParts(safeFacts, knowledge);
+      break;
+    case 'due':
+      parts = dueParts(safeFacts, knowledge, cleanQuestion);
+      break;
+    case 'nextStep':
+      parts = nextStepParts(safeFacts, rag, knowledge);
+      break;
+    case 'about':
+      parts = aboutParts(safeFacts, rag, knowledge, intentKnowledge);
+      break;
+    case 'compare':
+      parts = compareParts(rag, knowledge);
+      break;
+    default:
+      parts = generalParts(safeFacts, rag, knowledge);
   }
 
-  onProgress?.('Finishing the answer…');
-  return { ...rag, answer: friendlyFallback(question, rag, facts) };
+  const answer = tidy(parts);
+  return answer || 'I could not find a clear answer to that. Try asking with different words.';
+}
+
+/** Backwards-compatible name used by callers that want a pure fallback. */
+export const friendlyFallback = (question: string, rag: RAGResult, facts: string[] = []): string =>
+  composeAnswer({ question, rag, facts });
+
+/** Deterministic wrapper kept async so UI callers can show a short status. */
+export async function polishRagAnswer(options: ComposeAnswerOptions): Promise<RAGResult> {
+  options.onProgress?.('Connecting related ideas…');
+  const answer = composeAnswer(options);
+  options.onProgress?.('Writing your answer…');
+  return { ...options.rag, answer };
 }

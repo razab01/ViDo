@@ -14,6 +14,7 @@ import {
 } from './mlStore';
 import type { TaskPrediction } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import { KNOWLEDGE_DOCS } from './knowledge';
 import { RagWorking } from './WorkingIndicator';
 
 export interface TaskRagPanelProps {
@@ -167,7 +168,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   const suggestions = snapshot?.result?.suggestions ?? [];
   const docs = useMemo(() => {
     const savedDocs = ragDocs(snapshot?.dataset ?? null, profile, suggestions);
-    return [taskToRagDoc(task, prediction), ...savedDocs];
+    return [taskToRagDoc(task, prediction), ...savedDocs, ...KNOWLEDGE_DOCS];
   }, [task, prediction, snapshot, profile, suggestions]);
   const facts = useMemo(() => taskFactLines(task, prediction), [task, prediction]);
 
@@ -182,11 +183,10 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     setRagBusy(true);
     setRagStage('');
     setAnswer(null);
-    const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
-      setRagStage('Comparing the best matches…');
+      setRagStage('Connecting related ideas…');
       const direct = directTaskAnswer(question, task, prediction);
       const isAbout = /\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/i.test(question);
       const answerFacts = isAbout || !direct ? facts : [direct, ...facts];
@@ -196,10 +196,6 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
         facts: answerFacts,
         onProgress: setRagStage,
       });
-      const remaining = 420 - (Date.now() - startedAt);
-      if (remaining > 0) {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
-      }
       setAnswer({ ...next, answer: stripIdFragments(next.answer) });
     } finally {
       setRagBusy(false);

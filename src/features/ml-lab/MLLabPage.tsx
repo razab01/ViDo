@@ -42,7 +42,7 @@ import {
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
-import { scheduleLocalModelWarmup } from './languageModel';
+import { KNOWLEDGE_DOCS } from './knowledge';
 import { RagWorking, TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
@@ -138,7 +138,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       );
     }
     if (snapshot?.result && !active) void requestRestore(userId);
-    if (snapshot?.result || snapshot?.dataset) scheduleLocalModelWarmup();
   }, [userId]);
 
   useEffect(
@@ -251,7 +250,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setTarget(trained.target);
       setTextCol(trained.textCol);
       setStatus('Ready. Ask your data anything.');
-      scheduleLocalModelWarmup();
       const initial: Row = {};
       Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
         initial[column] = String(trained.sample[column] ?? '');
@@ -344,7 +342,10 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   );
 
   const docs = useMemo<RAGDoc[]>(
-    () => ragDocs(result?.dataset ?? dataset, result?.profile ?? profile, result?.suggestions ?? []),
+    () => [
+      ...ragDocs(result?.dataset ?? dataset, result?.profile ?? profile, result?.suggestions ?? []),
+      ...KNOWLEDGE_DOCS,
+    ],
     [result, dataset, profile]
   );
 
@@ -365,10 +366,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   };
 
   const handleRAG = async () => {
-    if (!docs.length) {
-      setError('Upload a file before asking a question.');
-      return;
-    }
     if (!ragQuery.trim()) {
       setRagResult(null);
       setRagNotice('Type a question or pick an example below to search your data.');
@@ -380,16 +377,11 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagBusy(true);
     setRagStage('');
     setRagResult(null);
-    const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const retrieved = runRAG(question, USER_RAG_MODE, docs, result?.profile ?? profile, result?.suggestions ?? []);
-      setRagStage('Comparing the best matches…');
+      setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
-      const remaining = 420 - (Date.now() - startedAt);
-      if (remaining > 0) {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
-      }
       setRagResult(next);
     } finally {
       setRagBusy(false);
@@ -705,9 +697,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
             <Card>
               <div className="rounded-lg border border-dashed border-[var(--line)] px-6 py-12 text-center">
                 <Sparkles className="w-7 h-7 text-[var(--faint)] mx-auto mb-3" />
-                <h2 className="text-sm font-bold mb-1">Nothing learned yet</h2>
+                <h2 className="text-sm font-bold mb-1">No file yet — knowledge is ready</h2>
                 <p className="text-xs text-[var(--muted)]">
-                  Upload a CSV or Excel file. ViDo will work out the rest.
+                  You can ask about any topic right now using ViDo’s built-in knowledge. Upload a CSV or Excel file any time to add your own data.
                 </p>
               </div>
             </Card>
@@ -916,14 +908,20 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
                 <h2 className="text-sm font-bold flex items-center gap-2">
-                  <Search className="w-4 h-4 text-[var(--accent)]" /> Ask your data
+                  <Search className="w-4 h-4 text-[var(--accent)]" /> Ask a question
                 </h2>
                 <p className="text-[11px] text-[var(--muted)] mt-1">
-                  Ask anything about{' '}
-                  <strong className="text-[var(--ink)]">
-                    {upload ? `${upload.name}${sheetName ? ` · ${sheetName}` : ''}` : 'your saved file'}
-                  </strong>
-                  . The file was detected and saved automatically.
+                  {upload ? (
+                    <>
+                      Ask about{' '}
+                      <strong className="text-[var(--ink)]">
+                        {upload.name}{sheetName ? ` · ${sheetName}` : ''}
+                      </strong>
+                      , or about any general topic. Your file was detected and saved automatically.
+                    </>
+                  ) : (
+                    <>No upload needed — ViDo answers from its built-in knowledge, and includes your files once you add them.</>
+                  )}
                 </p>
               </div>
               {showAdvanced && <Badge size="sm" variant="neutral">{docs.length} sources</Badge>}
@@ -931,7 +929,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
             {showAdvanced && (
               <p className="text-[10px] text-[var(--faint)] mb-3">
-                ViDo always uses agentic retrieval — it breaks your question into steps when needed and writes the final answer with the local assistant.
+                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, then writes a clear answer instantly.
               </p>
             )}
 
@@ -942,7 +940,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 setRagQuery(event.target.value);
                 setRagNotice('');
               }}
-              placeholder="Ask anything about your file…"
+              placeholder="Ask about your data or any topic…"
               className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -973,7 +971,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               <div className="mt-4 space-y-3">
                 {showAdvanced && (
                   <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
-                    <Badge size="sm" variant="accent">Agentic mode</Badge>
+                    <Badge size="sm" variant="accent">Graph RAG</Badge>
                     <span className="text-[11px] text-[var(--muted)]">
                       {ragResult.why.charAt(0).toLowerCase() + ragResult.why.slice(1)}
                     </span>

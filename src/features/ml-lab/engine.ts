@@ -143,11 +143,11 @@ export interface RAGDoc {
 export type RAGMode = 'auto' | 'rag' | 'agentic' | 'graph';
 
 /**
- * ViDo uses one retrieval strategy everywhere. Agentic RAG is deliberately
- * fixed here: it handles single and multi-part questions without exposing a
- * confusing mode switch to the user.
+ * ViDo uses one retrieval strategy everywhere. Graph RAG is deliberately fixed
+ * here: it connects a question to related records and bundled knowledge through
+ * shared topics, tags and flow edges, without exposing a mode switch to users.
  */
-export const USER_RAG_MODE: RAGMode = 'agentic';
+export const USER_RAG_MODE: RAGMode = 'graph';
 
 export interface RAGResult {
   mode: string;
@@ -2320,7 +2320,15 @@ export function runRAG(
   const idx = getRagIndex(docs);
   const dec = modeChoice === 'auto'
     ? ragDecision(query, docs, idx)
-    : { mode: modeChoice, why: 'Manual override selected.' };
+    : {
+        mode: modeChoice,
+        why:
+          modeChoice === 'graph'
+            ? 'Graph retrieval connects your question to related records and built-in knowledge through shared topics and tags.'
+            : modeChoice === 'agentic'
+              ? 'The question is split into steps with a retrieve → reflect → answer loop.'
+              : 'Direct retrieval finds the closest matching records.',
+      };
   const mode = dec.mode;
   let ranked: Array<{ doc: IndexedDoc; score: number }> = [];
   const plan: string[] = [];

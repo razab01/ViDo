@@ -1,13 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { RAGResult } from './engine';
-import { buildAnswerContext, friendlyFallback, polishRagAnswer } from './answerEngine';
-import type { ChatMessage } from './languageModel';
+import { composeAnswer, friendlyFallback, polishRagAnswer } from './answerEngine';
 
 const rag: RAGResult = {
-  mode: 'agentic',
-  why: 'Multi-step retrieval',
-  plan: ['Step 1: searched'],
-  trail: '',
+  mode: 'graph',
+  why: 'Graph retrieval connects your question to related records and built-in knowledge.',
+  plan: [],
+  trail: 'Graph seeds: boating · 18 nodes reached in 2 hops',
   ranked: [
     {
       title: 'Boating',
@@ -19,95 +18,124 @@ const rag: RAGResult = {
 };
 
 describe('answerEngine', () => {
-  it('lets the local assistant rewrite a static extract into a natural answer', async () => {
-    const generator = vi.fn(async (_messages: ChatMessage[]) =>
-      'Answer: Boating is spending time on the water in a boat. For this task, it is a personal item with medium priority.'
-    );
-    const stages: string[] = [];
-
+  it('explains the subject from bundled knowledge instead of echoing raw fields', async () => {
     const result = await polishRagAnswer({
       question: 'What is this task about?',
       rag,
-      facts: ['Task title: Boating.', 'Category: personal.', 'Priority: medium.'],
-      generator,
-      onProgress: (stage) => stages.push(stage),
+      facts: ['Task title: Boating.', 'Description: Visit parents.', 'Category: personal.'],
     });
 
-    expect(generator).toHaveBeenCalledOnce();
-    expect(result.answer).toMatch(/on the water/i);
-    expect(result.answer).not.toMatch(/^Answer:/i);
-    expect(stages).toContain('Understanding your question…');
+    expect(result.mode).toBe('graph');
+    expect(result.answer).toMatch(/Boating is spending time on the water/i);
+    expect(result.answer).toMatch(/visit parents/i);
+    expect(result.answer).not.toMatch(/task title\s*:/i);
   });
 
-  it('still explains the topic when the small model is unavailable', () => {
-    const answer = friendlyFallback('What is this task about?', rag, [
-      'Task title: Boating.',
-      'Category: personal.',
-      'Priority: medium.',
-    ]);
+  it('keeps exact dates and times in natural sentences', () => {
+    const answer = composeAnswer({
+      question: 'When is this task due?',
+      rag,
+      facts: ['Task title: Boating.', 'Due date: 2026-11-23.', 'Due time: 23:59.'],
+    });
 
-    expect(answer).toMatch(/water/i);
-    expect(answer).toMatch(/medium priority/i);
-    expect(answer).not.toMatch(/task[_-]?id/i);
-    expect(answer).not.toBe(rag.answer);
+    expect(answer).toContain('This task is due 2026-11-23 at 23:59.');
+    expect(answer).not.toMatch(/^Due date\s*:/i);
   });
 
-  it('keeps exact completion probabilities in the fallback', () => {
-    const answer = friendlyFallback('What is the completion probability of Boating?', rag, [
-      'Completion probability: 99.9%.',
-    ]);
+  it('preserves completion probabilities and explains what they mean', () => {
+    const answer = composeAnswer({
+      question: 'What is the completion probability of Boating?',
+      rag,
+      facts: ['Task title: Boating.', 'Completion probability: 99.9%.'],
+    });
 
     expect(answer).toContain('99.9%');
+    expect(answer).toMatch(/estimated completion probability/i);
+    expect(answer).toMatch(/estimate|likely/i);
+    expect(answer).not.toMatch(/^(Completion probability|Task title)\s*:/i);
   });
 
-  it('builds a compact context of natural sentences that keeps exact facts and drops ids', () => {
-    const context = buildAnswerContext(rag, ['Due date: 2026-11-17.', 'task_id: T12']);
-
-    expect(context).toContain('It is due 2026-11-17.');
-    expect(context).not.toMatch(/^task_id|TASK_ID\s*:/m);
-    expect(context.match(/task_id/g)).toHaveLength(1); // retained only inside the retrieved excerpt
-    expect(context.length).toBeLessThan(3201);
-
-    const aboutContext = buildAnswerContext(rag, ['Task title: Boating.'], 'What is this task about?');
-    expect(aboutContext).toContain('Topic hint');
-    expect(aboutContext).toMatch(/on the water/i);
-  });
-
-  it('rejects a raw record dump from the model and explains the topic instead', async () => {
-    const result = await polishRagAnswer({
-      question: 'What is this task about?',
+  it('gives a concrete next step using the task facts', () => {
+    const answer = composeAnswer({
+      question: 'What should I do next?',
       rag,
-      facts: ['Task title: Boating.', 'Description: Visit parents.'],
-      generator: async () => 'Task title: Boating task: Visit parents',
+      facts: [
+        'Task title: Boating.',
+        'Priority: medium.',
+        'Due date: 2026-11-25.',
+        'Checkpoint: Task initialized in workspace.',
+      ],
     });
 
-    expect(result.answer).not.toMatch(/task title/i);
-    expect(result.answer).toMatch(/on the water/i);
-    expect(result.answer).toMatch(/visit parents/i);
+    expect(answer).toMatch(/next step/i);
+    expect(answer).toMatch(/medium priority/i);
+    expect(answer).toContain('2026-11-25');
+    expect(answer).toMatch(/task initialized in workspace/i);
   });
 
-  it('turns plain facts into a natural fallback answer', () => {
-    const answer = friendlyFallback('When is this task due?', rag, [
-      'Task title: Boating.',
-      'Due date: 2026-11-23.',
-      'Due time: 23:59.',
-    ]);
+  it('answers general knowledge questions with no uploaded data', () => {
+    const answer = composeAnswer({
+      question: 'What is prioritisation?',
+      rag: { ...rag, ranked: [], answer: 'No relevant context found' },
+      facts: [],
+    });
 
-    expect(answer).toContain('It is due 2026-11-23.');
-    expect(answer).toContain('The due time is 23:59.');
-    expect(answer).not.toMatch(/^(Task title|Due date|Due time)\s*:/i);
+    expect(answer).toMatch(/deciding which work deserves attention first/i);
+    expect(answer).not.toMatch(/no relevant context/i);
   });
 
-  it('falls back safely when generation throws', async () => {
-    const result = await polishRagAnswer({
+  it('summarises the closest records for comparison questions', () => {
+    const answer = composeAnswer({
+      question: 'Which records look likely to be completed?',
+      rag: {
+        ...rag,
+        ranked: [
+          { title: 'Review budget', score: 3, excerpt: '' },
+          { title: 'Plan a trip', score: 2, excerpt: '' },
+        ],
+      },
+      facts: [],
+    });
+
+    expect(answer).toMatch(/closest records/i);
+    expect(answer).toMatch(/review budget/i);
+    expect(answer).toMatch(/plan a trip/i);
+  });
+
+  it('never returns a raw record dump, even when retrieval extracted one', () => {
+    const answer = composeAnswer({
+      question: 'What is this task about?',
+      rag: { ...rag, answer: 'Task title: Boating task: Visit parents' },
+      facts: ['Task title: Boating.', 'Description: Visit parents.'],
+    });
+
+    expect(answer).not.toMatch(/task title\s*:/i);
+    expect(answer).not.toMatch(/task:\s*visit parents/i);
+    expect(answer).toMatch(/on the water/i);
+  });
+
+  it('composes deterministically and reports short progress stages', async () => {
+    const options = {
       question: 'What is this task about?',
       rag,
       facts: ['Task title: Boating.'],
-      generator: async () => {
-        throw new Error('model failed');
-      },
-    });
+    };
+    const first = composeAnswer(options);
+    const second = composeAnswer(options);
+    expect(second).toBe(first);
 
-    expect(result.answer).toMatch(/water/i);
+    const stages: string[] = [];
+    const result = await polishRagAnswer({ ...options, onProgress: (stage) => stages.push(stage) });
+    expect(result.answer).toBe(first);
+    expect(stages).toContain('Connecting related ideas…');
+    expect(stages).toContain('Writing your answer…');
+  });
+
+  it('keeps the friendly fallback useful for unrelated questions', () => {
+    const answer = friendlyFallback('How do I reorganise my week?', { ...rag, ranked: [] }, []);
+
+    expect(answer.length).toBeGreaterThan(40);
+    expect(answer).toMatch(/[.!?]$/);
+    expect(answer).not.toMatch(/no relevant context/i);
   });
 });

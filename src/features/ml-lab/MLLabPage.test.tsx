@@ -27,11 +27,11 @@ describe('MLLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
     expect(screen.getByText(/tokenizer verification/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /suggestions/i })).toBeInTheDocument();
-    expect(screen.getByText(/always uses agentic retrieval/i)).toBeInTheDocument();
+    expect(screen.getByText(/always uses graph rag/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Graph' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Agentic' })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/ask anything about your file/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about your data or any topic/i), {
       target: { value: 'Which task_text records look likely to be completed?' },
     });
     fireEvent.click(screen.getByRole('button', { name: /find answer/i }));

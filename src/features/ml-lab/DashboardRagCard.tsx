@@ -6,7 +6,7 @@ import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
-import { scheduleLocalModelWarmup } from './languageModel';
+import { KNOWLEDGE_DOCS } from './knowledge';
 import { RagWorking } from './WorkingIndicator';
 
 export interface DashboardRagCardProps {
@@ -40,18 +40,14 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
   const suggestions = snapshot?.result?.suggestions ?? [];
   const docs = useMemo(
-    () => ragDocs(snapshot?.dataset ?? null, profile, suggestions),
+    () => [...ragDocs(snapshot?.dataset ?? null, profile, suggestions), ...KNOWLEDGE_DOCS],
     [snapshot, profile, suggestions]
   );
 
-  useEffect(() => {
-    if (docs.length > 0) scheduleLocalModelWarmup();
-  }, [docs.length]);
-
   const handleAsk = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!docs.length || !query.trim()) {
-      setNotice('Type a question about your saved data.');
+    if (!query.trim()) {
+      setNotice('Type a question about your data or any topic.');
       return;
     }
     const question = query.trim();
@@ -59,16 +55,11 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
     setRagBusy(true);
     setRagStage('');
     setAnswer(null);
-    const startedAt = Date.now();
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
-      setRagStage('Comparing the best matches…');
+      setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
-      const remaining = 420 - (Date.now() - startedAt);
-      if (remaining > 0) {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, remaining));
-      }
       setAnswer(next);
     } finally {
       setRagBusy(false);
@@ -93,7 +84,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-[var(--muted)] max-w-xl">
-            ViDo searches the spreadsheet you saved in ML Lab and writes a clear answer for you.
+            ViDo answers from built-in knowledge and anything you saved in ML Lab, then writes a clear answer for you.
             {snapshot?.upload && (
               <span className="block text-[11px] text-[var(--faint)] mt-0.5">
                 Auto-detected source: {snapshot.upload.name}
@@ -117,7 +108,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             <span>{docs.length} searchable sources</span>
           </>
         ) : (
-          <span>No saved dataset yet. Upload a CSV or Excel file in ML Lab to enable RAG here.</span>
+          <span>Built-in knowledge is ready. Upload a CSV or Excel file in ML Lab to add your own data.</span>
         )}
       </div>
 
@@ -130,7 +121,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
               setQuery(event.target.value);
               setNotice('');
             }}
-            placeholder="Ask a question about your saved rows…"
+            placeholder="Ask about your data or any topic…"
             className="flex-1 px-3 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
           />
           <Button type="submit" variant="secondary" size="sm" disabled={ragBusy}>
