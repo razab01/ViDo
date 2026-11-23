@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   formatConfidence,
   normalizeTable,
@@ -86,21 +86,28 @@ describe('confidence formatting', () => {
 });
 
 describe('model ranking', () => {
-  it('prefers the LSTM when the top models have identical scores', () => {
+  it('breaks exact score ties randomly instead of favouring any architecture', () => {
     const tied = [
-      { n: 'Logistic Regression', acc: 0.9, F: 0.9 },
-      { n: 'Decision Tree', acc: 0.9, F: 0.9 },
-      { n: 'LSTM · GPT token IDs', acc: 0.9, F: 0.9 },
+      { n: 'BERT', acc: 0.9, F: 0.9 },
+      { n: 'RoBERTa', acc: 0.9, F: 0.9 },
+      { n: 'ELECTRA', acc: 0.9, F: 0.9 },
     ];
-    expect(rankModels(tied)[0].n).toBe('LSTM · GPT token IDs');
+    const random = vi.spyOn(Math, 'random');
+    random.mockReturnValue(0.99);
+    const firstWinner = rankModels(tied)[0].n;
+    random.mockReturnValue(0.01);
+    const secondWinner = rankModels(tied)[0].n;
+    random.mockRestore();
+    expect(['BERT', 'RoBERTa', 'ELECTRA']).toContain(firstWinner);
+    expect(firstWinner).not.toBe(secondWinner);
   });
 
-  it('still lets a strictly better non-LSTM model win', () => {
+  it('still lets a strictly better model win', () => {
     const models = [
-      { n: 'LSTM · GPT token IDs', acc: 0.9, F: 0.9 },
-      { n: 'Logistic Regression', acc: 0.94, F: 0.94 },
+      { n: 'BERT', acc: 0.9, F: 0.9 },
+      { n: 'RoBERTa', acc: 0.94, F: 0.94 },
     ];
-    expect(rankModels(models)[0].n).toBe('Logistic Regression');
+    expect(rankModels(models)[0].n).toBe('RoBERTa');
   });
 });
 

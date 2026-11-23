@@ -5,7 +5,7 @@ import { MLLabPage } from './MLLabPage';
 const setOfflineTrainingOptions = () => {
   fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
   fireEvent.change(screen.getByLabelText(/gpt tokenizer/i), { target: { value: 'builtin' } });
-  fireEvent.change(screen.getByLabelText(/lstm epochs/i), { target: { value: '2' } });
+  fireEvent.change(screen.getByLabelText(/deep model epochs/i), { target: { value: '2' } });
   fireEvent.click(screen.getByRole('button', { name: /hide advanced options/i }));
 };
 
@@ -14,7 +14,7 @@ describe('MLLabPage', () => {
     render(<MLLabPage userId="mllab-train-user" />);
 
     expect(screen.getByText(/upload a file to get started/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /train 10 models/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /train 10 deep models/i })).not.toBeInTheDocument();
 
     setOfflineTrainingOptions();
     fireEvent.click(screen.getByRole('button', { name: /load demo data/i }));

@@ -645,7 +645,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   />
                 </label>
                 <label className="block text-xs font-semibold text-[var(--muted)]">
-                  LSTM epochs: {epochs}
+                  Deep model epochs: {epochs}
                   <input
                     type="range"
                     min={2}
@@ -660,7 +660,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
               </div>
 
               <Button variant="primary" className="w-full" onClick={handleTrain} disabled={!dataset || busy || training}>
-                {training ? `Training ${progress.done}/${progress.total}…` : 'Train 10 models'}
+                {training ? `Training ${progress.done}/${progress.total}…` : 'Train 10 deep models'}
               </Button>
 
               {training && (
@@ -722,7 +722,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                 {showAdvanced && (
                   <div className="mt-4 space-y-3">
                     <div className="text-xs font-semibold">
-                      {result.best.n} · {result.metrics.length} models compared
+                      {result.best.n} · {result.metrics.length} deep models compared
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
@@ -789,15 +789,15 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                     </div>
                     <div className="space-y-2">
                       <div className="rounded-lg border border-[var(--line)] p-2.5">
-                        <div className="text-[11px] font-semibold mb-1">LSTM loss</div>
-                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM loss chart">
+                        <div className="text-[11px] font-semibold mb-1">Training loss</div>
+                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training loss chart">
                           <polyline points={sparkline(result.history.lt, lossMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
                           <polyline points={sparkline(result.history.le, lossMax)} fill="none" stroke="var(--amber)" strokeWidth="2" />
                         </svg>
                       </div>
                       <div className="rounded-lg border border-[var(--line)] p-2.5">
-                        <div className="text-[11px] font-semibold mb-1">LSTM accuracy</div>
-                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="LSTM accuracy chart">
+                        <div className="text-[11px] font-semibold mb-1">Training accuracy</div>
+                        <svg viewBox="0 0 320 120" className="w-full h-20" role="img" aria-label="Training accuracy chart">
                           <polyline points={sparkline(result.history.at, accuracyMax)} fill="none" stroke="var(--accent)" strokeWidth="2" />
                           <polyline points={sparkline(result.history.ae, accuracyMax)} fill="none" stroke="var(--green)" strokeWidth="2" />
                         </svg>

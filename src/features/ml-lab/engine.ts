@@ -3,9 +3,13 @@
  *
  * This is the user-added feature layer. Everything here is dataset-driven:
  * CSV/TSV/XLSX/XLS/ODS ingestion, schema inference, dynamic targets and text
- * fields, 10 in-browser classifiers, real Hugging Face GPT tokenizers with a
- * byte-level BPE fallback, best-model suggestions, and schema-aware RAG.
+ * fields, 10 in-browser deep-learning classifiers (BERT, RoBERTa, ELECTRA,
+ * DeBERTa-v3, DistilBERT, TextCNN, LSTM, BiLSTM, GRU and Transformer Encoder)
+ * trained on pretrained CDN embeddings with a deterministic offline fallback,
+ * plus best-model suggestions and schema-aware RAG.
  */
+
+import { buildDeepFeatures, DEEP_MODEL_NAMES, trainDeepModels } from './deepModels';
 
 export type Row = Record<string, string>;
 
@@ -160,7 +164,7 @@ export interface RAGResult {
 
 type Matrix = number[][];
 type Store = { predict?: (x: number[]) => number; proba?: (x: number[]) => number[] };
-type ModelFn = (X: Matrix, y: number[], Xt: Matrix, K: number, store: Store) => number[];
+export type ModelFn = (X: Matrix, y: number[], Xt: Matrix, K: number, store: Store) => number[];
 
 interface Tree {
   leaf?: number;
@@ -254,26 +258,35 @@ export interface RankableModel {
 }
 
 /**
- * Rank models by quality, then prefer the LSTM when their scores are identical.
- * On near-constant datasets every classifier can land on the same accuracy and
- * F1; in that case the text-aware LSTM is the more useful default winner.
+ * Rank models by error status, accuracy and F1. When scores are identical the
+ * tied group is shuffled with Math.random so no architecture is favoured.
  */
 export function rankModels<T extends RankableModel>(models: T[]): T[] {
-  const isLSTM = (model: T) => /^LSTM\b/i.test(model.n);
-  return models
-    .map((model, index) => ({ model, index }))
-    .sort((a, b) => {
-      const first = a.model;
-      const second = b.model;
-      return (
-        (first.err ? 1 : 0) - (second.err ? 1 : 0) ||
-        second.acc - first.acc ||
-        second.F - first.F ||
-        Number(isLSTM(second)) - Number(isLSTM(first)) ||
-        a.index - b.index
-      );
-    })
-    .map(({ model }) => model);
+  const score = (m: T) => (m.err ? 1 : 0) + '|' + m.acc + '|' + m.F;
+  const groups = new Map<string, Array<{ model: T; index: number }>>();
+  models.forEach((model, index) => {
+    const key = score(model);
+    const group = groups.get(key) || [];
+    group.push({ model, index });
+    groups.set(key, group);
+  });
+  const keys = Array.from(groups.keys()).sort((a, b) => {
+    const [ae, aa, af] = a.split('|');
+    const [be, ba, bf] = b.split('|');
+    return Number(ae) - Number(be) || Number(ba) - Number(aa) || Number(bf) - Number(af);
+  });
+  const ranked: T[] = [];
+  for (const key of keys) {
+    const group = groups.get(key)!;
+    for (let i = group.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = group[i];
+      group[i] = group[j];
+      group[j] = tmp;
+    }
+    ranked.push(...group.map((entry) => entry.model));
+  }
+  return ranked;
 }
 
 /* ------------------------------------------------------------------ */
@@ -815,7 +828,7 @@ function softmax(z: number[]): number[] {
   return e.map((v) => v / s);
 }
 
-function logistic(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function logistic(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const D = X[0].length + 1;
   const W = Array.from({ length: K }, () => new Array<number>(D).fill(0));
   const sm = (x: number[]) => {
@@ -848,7 +861,7 @@ function logistic(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): 
   });
 }
 
-function knn(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function knn(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const one = (x: number[]) => {
     const d = X.map((r, i) => [r.reduce((a, v, j) => a + (v - x[j]) ** 2, 0), y[i]] as [number, number])
       .sort((a, b) => a[0] - b[0])
@@ -861,7 +874,7 @@ function knn(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): numbe
   return Xt.map(one);
 }
 
-function nb(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function nb(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const D = X[0].length;
   const st: Array<{ m: number[]; v: number[]; p: number }> = [];
   for (let k = 0; k < K; k++) {
@@ -954,13 +967,13 @@ function predTree(t: Tree, x: number[]): number {
   return t.leaf !== undefined ? t.leaf : predTree((x[t.f as number] <= (t.th as number) ? t.l : t.r) as Tree, x);
 }
 
-function tree(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function tree(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const t = buildTree(X, y, X.map((_, i) => i), K, 0, 6, X[0].length, mulberry(13));
   if (store) store.predict = (x) => predTree(t, x);
   return Xt.map((x) => predTree(t, x));
 }
 
-function forest(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function forest(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const r = mulberry(11);
   const mf = Math.max(1, Math.round(Math.sqrt(X[0].length)));
   const ts: Tree[] = [];
@@ -989,7 +1002,7 @@ function thresholds(X: Matrix, f: number, m: number): number[] {
   return o;
 }
 
-function adaboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function adaboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const n = X.length;
   const D = X[0].length;
   const TH = Array.from({ length: D }, (_, f) => thresholds(X, f, 12));
@@ -1040,7 +1053,7 @@ interface GBTree {
   r?: GBTree;
 }
 
-function gboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function gboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const n = X.length;
   const D = X[0].length;
   const lr = 0.2;
@@ -1112,7 +1125,7 @@ function gboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): nu
   return Xt.map(one);
 }
 
-function catboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function catboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const n = X.length;
   const D = X[0].length;
   const lr = 0.15;
@@ -1180,7 +1193,7 @@ function catboost(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): 
   return Xt.map(one);
 }
 
-function svm(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
+export function svm(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): number[] {
   const D = X[0].length;
   const r = mulberry(5);
   const W = Array.from({ length: K }, () => new Array<number>(D + 1).fill(0));
@@ -1219,7 +1232,7 @@ function svm(X: Matrix, y: number[], Xt: Matrix, K: number, store: Store): numbe
   return Xt.map(one);
 }
 
-function metrics(yt: number[], p: number[], K: number): { acc: number; P: number; R: number; F: number } {
+export function metrics(yt: number[], p: number[], K: number): { acc: number; P: number; R: number; F: number } {
   const acc = yt.filter((v, i) => v === p[i]).length / yt.length;
   let P = 0;
   let R = 0;
@@ -1495,7 +1508,7 @@ function builtinEncoder(texts: string[], maxV: number): TextEncoderLike {
   };
 }
 
-function makeLSTM(V: number, E: number, H: number, K: number, seed = 11): LSTMModel {
+export function makeLSTM(V: number, E: number, H: number, K: number, seed = 11): LSTMModel {
   const r = mulberry(seed);
   const rnd = (s: number) => (r() * 2 - 1) * s;
   const P: Record<string, Float32Array> = {
@@ -1872,93 +1885,42 @@ export async function trainAll(
     }
   }
 
-  const models: Array<[string, ModelFn]> = [
-    ['Logistic Regression', logistic],
-    ['k-Nearest Neighbors (k=7)', knn],
-    ['Gaussian Naive Bayes', nb],
-    ['Decision Tree', tree],
-    ['Random Forest (25 trees)', forest],
-    ['AdaBoost (SAMME, stumps)', adaboost],
-    ['Gradient Boosting (trees)', gboost],
-    ['CatBoost (oblivious trees)', catboost],
-    ['Linear SVM (hinge loss)', svm],
-  ];
+  void Xtr;
+  void Xte;
+  void ytr;
+  void yte;
+  void encoder;
 
-  const results: Array<ModelMetric & { art: Artifact | null }> = [];
-  for (let i = 0; i < models.length; i++) {
-    onProgress(i, 10, 'Training ' + (i + 1) + '/10: ' + models[i][0]);
-    onStatus('Training model ' + (i + 1) + ' of 10: ' + models[i][0]);
-    await new Promise((r) => setTimeout(r, 18));
-    const t0 = performance.now();
-    const store: Store = {};
-    try {
-      const p = models[i][1](Xtr, ytr, Xte, K, store);
-      const art: Artifact | null = store.predict
-        ? {
-            name: models[i][0],
-            predict: (row) => (store.predict as (x: number[]) => number)(encoder.transform(row)),
-            proba: store.proba ? (row) => (store.proba as (x: number[]) => number[])(encoder.transform(row)) : undefined,
-          }
-        : null;
-      results.push({ n: models[i][0], ...metrics(yte, p, K), ms: Math.round(performance.now() - t0), art });
-    } catch {
-      results.push({ n: models[i][0], acc: 0, P: 0, R: 0, F: 0, ms: 0, err: true, art: null });
-    }
-  }
+  onStatus('Preparing pretrained deep-learning embeddings…');
+  const deepFeatures = await buildDeepFeatures(texts, onStatus);
+  tokenizerNote += ' · deep embeddings: ' + deepFeatures.source;
 
-  onProgress(9, 10, 'Training 10/10: LSTM on ' + tokenizerNote);
-  onStatus('Training 10/10: LSTM on ' + tokenizerNote);
-  const net = makeLSTM(enc.size, options.bpeEmb, options.bpeHidden, K, 99);
-  const seqs = texts.map((t) => {
-    const a = enc.encode(t).slice(0, 48);
-    return a.length ? a : [1];
-  });
-  const tIdx = tr.length > 600 ? shuffleIdx(tr.length, 77).slice(0, 600).map((i) => tr[i]) : tr.slice();
-  const evaluate = (idx: number[]) => {
-    let loss = 0;
-    let cor = 0;
-    const ps: number[] = [];
-    for (const i of idx) {
-      const p = net.forward(seqs[i]) as Float32Array;
-      const pv = argmax(p);
-      ps.push(pv);
-      loss += -Math.log(Math.max(p[y[i]], 1e-12));
-      if (pv === y[i]) cor++;
-    }
-    return { loss: loss / idx.length, acc: cor / idx.length, ps };
-  };
-  const history = { lt: [] as number[], le: [] as number[], at: [] as number[], ae: [] as number[] };
   const epochs = options.bpeEpochs > 0 ? options.bpeEpochs : options.epochs;
-  for (let ep = 1; ep <= epochs; ep++) {
-    for (const i of shuffleIdx(tIdx.length, 100 + ep).map((j) => tIdx[j])) net.train(seqs[i], y[i], 0.008);
-    const a = evaluate(tIdx);
-    const b = evaluate(te);
-    history.lt.push(a.loss);
-    history.le.push(b.loss);
-    history.at.push(a.acc);
-    history.ae.push(b.acc);
-    onStatus('LSTM epoch ' + ep + '/' + epochs + ' · test accuracy ' + pct(b.acc));
-    onProgress(9 + ep / epochs, 10, 'Training 10/10: LSTM epoch ' + ep + '/' + epochs);
-    await new Promise((r) => setTimeout(r, 0));
-  }
+  onProgress(0, 10, 'Training 10 deep models on ' + deepFeatures.source);
+  const deepTrained = trainDeepModels(deepFeatures, allY, tr, te, K, epochs, (name, epoch, total) => {
+    const index = DEEP_MODEL_NAMES.indexOf(name as (typeof DEEP_MODEL_NAMES)[number]);
+    onProgress(index + epoch / total, 10, 'Training ' + (index + 1) + '/10: ' + name + ' · epoch ' + epoch + '/' + total);
+    onStatus('Training ' + name + ' · epoch ' + epoch + '/' + total);
+  });
 
-  const fin = evaluate(te);
-  const mm = metrics(yte, fin.ps, K);
-  const lname = 'LSTM · GPT token IDs';
-  const seqFor = (row: Row) => {
-    const a = enc.encode(String(row[textCol] ?? '')).slice(0, 48);
-    return a.length ? a : [1];
-  };
-  const lstmArtifact: Artifact = {
-    name: lname,
-    predict: (row) => argmax(net.forward(seqFor(row)) as Float32Array),
-    proba: (row) => Array.from(net.forward(seqFor(row)) as Float32Array),
-  };
-  results.push({ n: lname, ...mm, ms: 0, art: lstmArtifact });
+  const results: Array<ModelMetric & { art: Artifact | null }> = deepTrained.map((model) => ({
+    ...model.metric,
+    art: {
+      name: model.name,
+      predict: (row) => model.predict(String(row[textCol] ?? '')),
+      proba: (row) => model.proba(String(row[textCol] ?? '')),
+    },
+  }));
   const ranked = rankModels(results);
   const best = ranked[0];
-  if (!best || !best.art) throw new Error('No model produced a usable prediction.');
+  if (!best || !best.art) throw new Error('No deep model produced a usable prediction.');
   const artifact = best.art;
+  const history = deepTrained.find((model) => model.name === best.n)?.history || {
+    lt: [] as number[],
+    le: [] as number[],
+    at: [] as number[],
+    ae: [] as number[],
+  };
 
   const idCol = (profile.idLike || []).find((c) => feats.includes(c) || dataset.cols.includes(c));
   const labelCols = (profile.cats || [])
