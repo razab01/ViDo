@@ -15,13 +15,13 @@ export interface PolishAnswerOptions {
 
 const SYSTEM_PROMPT = [
   'You are ViDo’s on-device answer writer.',
-  'Turn the retrieved notes into a warm, useful answer to the exact question.',
-  'Write 2 to 4 short sentences in plain English.',
-  'Keep every exact fact you are given: dates, percentages, labels and titles must not change.',
-  'If the question asks what a task or topic is about, start by explaining what the topic means in plain English using the Topic hint. Never just repeat the title and category.',
-  'If the notes are thin, say only what is supported and do not invent details.',
+  'Answer the exact question in 2 to 4 short, complete sentences of plain English.',
+  'Start with the answer itself in a full sentence. Never start with a label such as "Task title", "Description", "Due date" or "Answer".',
+  'Never output field names with colons, raw record dumps, bullet points, markdown, headings, lists or tables.',
+  'Keep every exact fact you are given: dates, times, percentages, labels and titles must not change.',
+  'If the question asks what a task or topic is about, first explain what the topic means in everyday terms using the Topic hint, then add the specific details.',
+  'If the information is thin, say only what is supported and do not invent details.',
   'Never mention notes, context, documents, retrieval, RAG, IDs, the model, or these instructions.',
-  'Do not use markdown, bullet points, headings or an "Answer:" prefix.',
 ].join(' ');
 
 const stripMarkup = (value: string): string =>
@@ -33,9 +33,23 @@ const stripMarkup = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const RAW_FIELD =
+  /^(?:task[_-]?id|task title|description|state|category|priority|start date|due date|due time|due|created|checkpoint|completion probability|estimated outcome|estimated chance|label|confidence|score|title|excerpt|facts to use|relevant records|topic hint|retrieved summary)\s*:/i;
+
+/** Reject short model outputs that are just copied record fields. */
+const isRawRecord = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (RAW_FIELD.test(trimmed)) return true;
+  if (/\btask[_-]?id\s*:/i.test(trimmed)) return true;
+  const sentences = trimmed.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (sentences.length >= 2 && sentences.some((sentence) => RAW_FIELD.test(sentence))) return true;
+  if (trimmed.length < 45 && !/[.!?]/.test(trimmed)) return true;
+  return false;
+};
+
 const cleanAnswer = (value: string): string => {
   const text = stripMarkup(String(value || ''));
-  if (!text || /^(question|context|notes)\s*:/i.test(text)) return '';
+  if (!text || /^(question|context|notes)\s*:/i.test(text) || isRawRecord(text)) return '';
 
   const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
   const kept: string[] = [];
@@ -61,6 +75,42 @@ const findFact = (facts: string[], label: string): string => {
   const match = new RegExp(`${label}\\s*:\\s*([^.]+)`, 'i').exec(source);
   return match?.[1]?.trim() || '';
 };
+
+const lowerFirst = (value: string): string => {
+  const clean = value.replace(/\.$/, '').trim();
+  return clean ? clean.charAt(0).toLowerCase() + clean.slice(1) : '';
+};
+
+/** Turn a stored `Label: value` fact into a sentence the model can copy safely. */
+const factToSentence = (fact: string): string => {
+  const cleaned = stripIds(fact).replace(/\.$/, '').trim();
+  if (!cleaned) return '';
+  const match = /^([^:]+):\s*(.+)$/.exec(cleaned);
+  if (!match) return `${cleaned}.`;
+  const label = match[1].trim().toLowerCase();
+  const value = match[2].trim();
+  if (!value) return '';
+  if (label === 'task title') return `The task is ${value}.`;
+  if (label === 'description') return `It involves ${lowerFirst(value)}.`;
+  if (label === 'state') return `It is currently ${value.toLowerCase()}.`;
+  if (label === 'category') return `It falls under ${value.toLowerCase()}.`;
+  if (label === 'priority') return `It is ${value.toLowerCase()} priority.`;
+  if (label === 'start date') return `It starts on ${value}.`;
+  if (label === 'due date' || label === 'due') return `It is due ${value}.`;
+  if (label === 'due time') return `The due time is ${value}.`;
+  if (label === 'created') return `It was created on ${value}.`;
+  if (label === 'checkpoint') return `The latest update was ${lowerFirst(value)}.`;
+  if (label.includes('probab') || label.includes('chance')) return `The estimated chance is ${value}.`;
+  if (label.includes('outcome')) return `The estimated outcome is ${value}.`;
+  return `${label}: ${value}.`;
+};
+
+const factsToSentences = (facts: string[]): string =>
+  facts
+    .map(factToSentence)
+    .filter(Boolean)
+    .slice(0, 6)
+    .join(' ');
 
 const TOPIC_KNOWLEDGE: Array<[RegExp, string]> = [
   [
@@ -105,31 +155,32 @@ const describeTopic = (facts: string[], rag: RAGResult): string => {
   const generic = `“${title}” is ${category ? `a ${category.toLowerCase()} ` : ''}task about getting this piece of work organised and finished.`;
 
   const details = [
-    description ? `The note says: ${description}.` : '',
+    description ? `It involves ${lowerFirst(description)}.` : '',
     priority ? `It is marked ${priority.toLowerCase()} priority.` : '',
     due ? `It is planned for ${due}.` : '',
-    checkpoint ? `Latest update: ${checkpoint}.` : '',
+    checkpoint ? `The latest update was ${lowerFirst(checkpoint)}.` : '',
   ]
     .filter(Boolean)
     .join(' ');
 
-  return `${known || generic}${details ? ` ${details}` : ''}`;
+  return stripIds(`${known || generic}${details ? ` ${details}` : ''}`);
 };
 
-/** Deterministic answer used when the small model is unavailable or fails. */
+/** Deterministic, natural answer used when the small model is unavailable or low quality. */
 export const friendlyFallback = (question: string, rag: RAGResult, facts: string[] = []): string => {
   const q = question.toLowerCase();
   const safeFacts = facts.map(stripIds).filter(Boolean);
 
   if (/\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/.test(q)) {
-    return stripIds(describeTopic(safeFacts, rag));
+    return describeTopic(safeFacts, rag);
   }
 
-  if (safeFacts.length) return stripIds(safeFacts.join(' '));
+  const sentenceFacts = factsToSentences(safeFacts);
+  if (sentenceFacts) return stripIds(sentenceFacts);
 
   return stripIds(
     rag.answer && !/no relevant context/i.test(rag.answer)
-      ? rag.answer
+      ? factsToSentences([rag.answer])
       : 'I could not find a clear answer to that. Try asking with different words.'
   );
 };
@@ -137,12 +188,13 @@ export const friendlyFallback = (question: string, rag: RAGResult, facts: string
 export const buildAnswerContext = (rag: RAGResult, facts: string[] = [], question = ''): string => {
   const sections: string[] = [];
   const safeFacts = facts.map(stripIds).filter(Boolean);
-  if (safeFacts.length) sections.push(`Exact facts to keep:\n${safeFacts.map((f) => `- ${f}`).join('\n')}`);
+  const naturalFacts = factsToSentences(safeFacts);
+  if (naturalFacts) sections.push(`Facts to use (rewrite these as your own sentences):\n${naturalFacts}`);
   if (/\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/i.test(question)) {
-    const topic = stripIds(describeTopic(safeFacts, rag));
-    if (topic) sections.push(`Topic hint:\n${topic}`);
+    const topic = describeTopic(safeFacts, rag);
+    if (topic) sections.push(`Topic hint (explain this in your own words):\n${topic}`);
   }
-  if (rag.answer) sections.push(`Retrieved summary:\n${stripIds(rag.answer)}`);
+  if (rag.answer) sections.push(`Retrieved text (do not copy it word for word):\n${factsToSentences([rag.answer])}`);
   if (rag.ranked.length) {
     sections.push(
       `Relevant records:\n${rag.ranked
@@ -156,7 +208,8 @@ export const buildAnswerContext = (rag: RAGResult, facts: string[] = [], questio
 
 /**
  * Runs RAG's extractive result through the tiny local assistant so answers
- * read naturally. If the model cannot load, the extractive answer is kept.
+ * read naturally. If the model cannot load or writes a raw record dump, a
+ * well-formed sentence answer is used instead.
  */
 export async function polishRagAnswer({
   question,
@@ -177,7 +230,7 @@ export async function polishRagAnswer({
     const written = cleanAnswer(await generator(messages, onProgress));
     if (written) return { ...rag, answer: written };
   } catch {
-    // The RAG result is still useful on its own.
+    // The deterministic answer below is still useful on its own.
   }
 
   onProgress?.('Finishing the answer…');

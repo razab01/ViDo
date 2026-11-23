@@ -60,17 +60,42 @@ describe('answerEngine', () => {
     expect(answer).toContain('99.9%');
   });
 
-  it('builds a compact context that keeps exact facts and drops ids', () => {
+  it('builds a compact context of natural sentences that keeps exact facts and drops ids', () => {
     const context = buildAnswerContext(rag, ['Due date: 2026-11-17.', 'task_id: T12']);
 
-    expect(context).toContain('Due date: 2026-11-17.');
-    expect(context).toContain('task_id: T12'); // retained only inside the retrieved excerpt
-    expect(context.match(/task_id/g)).toHaveLength(1);
+    expect(context).toContain('It is due 2026-11-17.');
+    expect(context).not.toMatch(/^task_id|TASK_ID\s*:/m);
+    expect(context.match(/task_id/g)).toHaveLength(1); // retained only inside the retrieved excerpt
     expect(context.length).toBeLessThan(3201);
 
     const aboutContext = buildAnswerContext(rag, ['Task title: Boating.'], 'What is this task about?');
-    expect(aboutContext).toContain('Topic hint:');
+    expect(aboutContext).toContain('Topic hint');
     expect(aboutContext).toMatch(/on the water/i);
+  });
+
+  it('rejects a raw record dump from the model and explains the topic instead', async () => {
+    const result = await polishRagAnswer({
+      question: 'What is this task about?',
+      rag,
+      facts: ['Task title: Boating.', 'Description: Visit parents.'],
+      generator: async () => 'Task title: Boating task: Visit parents',
+    });
+
+    expect(result.answer).not.toMatch(/task title/i);
+    expect(result.answer).toMatch(/on the water/i);
+    expect(result.answer).toMatch(/visit parents/i);
+  });
+
+  it('turns plain facts into a natural fallback answer', () => {
+    const answer = friendlyFallback('When is this task due?', rag, [
+      'Task title: Boating.',
+      'Due date: 2026-11-23.',
+      'Due time: 23:59.',
+    ]);
+
+    expect(answer).toContain('It is due 2026-11-23.');
+    expect(answer).toContain('The due time is 23:59.');
+    expect(answer).not.toMatch(/^(Task title|Due date|Due time)\s*:/i);
   });
 
   it('falls back safely when generation throws', async () => {

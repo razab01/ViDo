@@ -59,12 +59,19 @@ const loadGenerator = async (): Promise<Generator> => {
     post({ type: 'stage', requestId: '*', stage: 'Waking up the assistant…' });
     const { pipeline, env } = await import('@huggingface/transformers');
 
-    // A single WASM thread works without special cross-origin isolation headers.
+    // Keep model files in the browser Cache API so they survive reloads and
+    // every later answer starts from cache instead of the network.
     const runtime = env as unknown as {
       allowLocalModels?: boolean;
+      useBrowserCache?: boolean;
+      useCustomCache?: boolean;
       backends?: { onnx?: { wasm?: { numThreads?: number } } };
     };
     runtime.allowLocalModels = false;
+    runtime.useBrowserCache = true;
+    runtime.useCustomCache = false;
+
+    // A single WASM thread works without special cross-origin isolation headers.
     if (runtime.backends?.onnx?.wasm) runtime.backends.onnx.wasm.numThreads = 1;
 
     post({ type: 'stage', requestId: '*', stage: 'Loading the small language model…' });

@@ -92,7 +92,7 @@ describe('TaskRagPanel', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
 
-    expect(await screen.findByText(/Ensure departmental forecasts/)).toBeInTheDocument();
+    expect(await screen.findByText(/ensure departmental forecasts/i)).toBeInTheDocument();
     expect(screen.queryByText(/task[_-]?id/i)).not.toBeInTheDocument();
   });
 

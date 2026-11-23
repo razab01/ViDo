@@ -37,8 +37,8 @@ export type ModelWorkerResponse =
   | { type: 'error'; requestId: string; message: string };
 
 const REQUEST_TIMEOUT_MS = 180_000;
-const WARMUP_IDLE_TIMEOUT_MS = 8000;
-const WARMUP_FALLBACK_DELAY_MS = 2000;
+const WARMUP_IDLE_TIMEOUT_MS = 2000;
+const WARMUP_FALLBACK_DELAY_MS = 800;
 
 let worker: Worker | null = null;
 let requestCounter = 0;
@@ -167,6 +167,15 @@ export function scheduleLocalModelWarmup(): void {
   warmupScheduled = true;
 
   const run = () => {
+    // Ask the browser to keep the cached model files even when storage is low.
+    const storage = navigator.storage;
+    if (storage?.persist) {
+      void Promise.resolve(storage.persisted?.())
+        .then((persisted) => {
+          if (!persisted) void storage.persist?.();
+        })
+        .catch(() => undefined);
+    }
     void warmLocalLanguageModel().catch(() => undefined);
   };
 

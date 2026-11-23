@@ -86,6 +86,18 @@ function notifyResult(userId: string, result: TrainingResult | null) {
   resultListeners.get(userId)?.forEach((listener) => listener(result));
 }
 
+/** True when this browser has at least one saved ML Lab dataset/model. */
+export function hasAnySavedSnapshot(): boolean {
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      if (localStorage.key(index)?.startsWith(STORAGE_PREFIX)) return true;
+    }
+  } catch {
+    // Storage can be disabled.
+  }
+  return false;
+}
+
 export function readSnapshot(userId: string): StoredMLLabState | null {
   if (snapshots.has(userId)) return snapshots.get(userId) ?? null;
   try {
