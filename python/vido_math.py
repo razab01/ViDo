@@ -185,7 +185,12 @@ def _parse_matrix(text: str):
     inner = text.strip()[1:-1]
     rows = []
     for row_text in re.findall(r"\[([^\]]+)\]", inner):
-        rows.append([_parse_math(value.strip()) for value in row_text.split(",") if value.strip()])
+        # Accept both [[1,2],[3,4]] and [[1 2 3],[4 5 6]]: whitespace inside a
+        # row is treated the same as a comma.
+        values: List[str] = []
+        for chunk in row_text.split(","):
+            values.extend(part for part in re.split(r"\s+", chunk.strip()) if part)
+        rows.append([_parse_math(value) for value in values])
     return Matrix(rows)
 
 

@@ -3,6 +3,7 @@ uvicorn>=0.42
 pydantic>=2
 torch>=2.5
 transformers>=4.45
+tokenizers>=0.20
 numpy>=2.0
 networkx>=3.4
 sympy>=1.13

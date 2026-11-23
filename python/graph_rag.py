@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Sequence
 import networkx as nx
 
 from vido_math import handle_query
+from wikipedia import answer as wikipedia_answer
 
 
 STOP_WORDS = {
@@ -115,6 +116,8 @@ WORLD_FACTS = {
     "usa": "The current President of the United States is Donald Trump.",
     "united states": "The current President of the United States is Donald Trump.",
     "america": "The current President of the United States is Donald Trump.",
+    "india": "The current President of India is Droupadi Murmu.",
+    "bharat": "The current President of India is Droupadi Murmu.",
     "netherlands": (
         "The Netherlands is a constitutional monarchy, so it has no president. "
         "The head of state is King Willem-Alexander and the head of government is "
@@ -126,6 +129,22 @@ WORLD_FACTS = {
         "Prime Minister Dick Schoof."
     ),
 }
+
+
+def _is_general_knowledge(question: str) -> bool:
+    """True for 'Tell me about X' style questions that need Wikipedia first."""
+    low = question.lower().strip()
+    if not re.match(
+        r"^(?:tell me about|explain|describe|what is|what are|who is|who was|what was)\b",
+        low,
+    ):
+        return False
+    dataset_words = re.search(
+        r"\b(?:compare|pattern|predict|likely|dataset|records?|task|task_id|"
+        r"completed|completion|probability|deadline|due|priority)\b",
+        low,
+    )
+    return dataset_words is None
 
 
 def _world_fact_answer(question: str) -> Optional[str]:
@@ -278,6 +297,13 @@ def answer(
     if world_answer:
         return world_answer
 
+    # Explicit general-knowledge questions should not be answered from an
+    # incidental dataset keyword match. Search Wikipedia through HF first.
+    if _is_general_knowledge(question):
+        wiki_answer = wikipedia_answer(question)
+        if wiki_answer:
+            return wiki_answer
+
     suggestions = list(suggestions or [])
     trained = trained or {}
     graph = build_graph(rows, cols, suggestions)
@@ -297,6 +323,11 @@ def answer(
     graph_answer = _graph_answer(question, rows, cols, graph)
     if graph_answer:
         return graph_answer
+
+    # Last resort: anything not answered locally still gets a Wikipedia search.
+    wiki_answer = wikipedia_answer(question)
+    if wiki_answer:
+        return wiki_answer
 
     return (
         "I understand the question, but I do not have enough information in this dataset yet. "
