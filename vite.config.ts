@@ -394,11 +394,16 @@ function localTeamSyncPlugin(): Plugin {
   };
 }
 
+// Python ML/Graph-RAG service. Keep this before the catch-all `/api` proxy so
+// ViDo's own backend does not swallow the Python routes.
+const pythonProxy = { target: 'http://127.0.0.1:8000', changeOrigin: true };
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), firebaseEmulatorPlugin(), localTeamSyncPlugin()],
   server: {
     proxy: {
+      '/api/python': pythonProxy,
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
@@ -409,6 +414,11 @@ export default defineConfig({
           return undefined;
         },
       },
+    },
+  },
+  preview: {
+    proxy: {
+      '/api/python': pythonProxy,
     },
   },
 });

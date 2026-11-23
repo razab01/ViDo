@@ -23,6 +23,8 @@ test-results/
 *.db
 *.db-journal
 server/dist/
+__pycache__/
+*.py[cod]
 
 # Environment variables
 .env

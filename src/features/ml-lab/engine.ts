@@ -90,6 +90,21 @@ export interface ModelCandidate {
   artifact: Artifact;
 }
 
+/** Context returned by the Python training run; never persisted to localStorage. */
+export interface PythonModelContext {
+  run_id: string;
+  labels: string[];
+  features: string[];
+  text_col: string;
+  target: string;
+  cols: string[];
+  dates: string[];
+  target_source: string | null;
+  best_model: string;
+  model_names: string[];
+  device: string;
+}
+
 export interface TrainingOptions {
   target: string;
   textCol: string;
@@ -125,6 +140,7 @@ export interface TrainingResult {
   history: { lt: number[]; le: number[]; at: number[]; ae: number[] };
   metrics: ModelMetric[];
   models: ModelCandidate[];
+  python?: PythonModelContext;
   best: ModelMetric;
   artifact: Artifact;
   suggestions: Suggestion[];

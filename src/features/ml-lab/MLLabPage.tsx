@@ -47,6 +47,14 @@ import {
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import {
+  answerWithPython,
+  isPythonAvailable,
+  pythonBackendLabel,
+  pythonPredictionKey,
+  trainWithPython,
+  warmPythonPrediction,
+} from './pythonApi';
 import { KNOWLEDGE_DOCS } from './knowledge';
 import { enrichAnswerWithTopic } from './topicEnrichment';
 import { topicPhrase } from './topicLanguage';
@@ -105,6 +113,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [selectedModel, setSelectedModel] = useState('');
   const [deadlineTask, setDeadlineTask] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
+  const [backendLabel, setBackendLabel] = useState('browser engine');
+  const [warmedKey, setWarmedKey] = useState('');
 
   const [ragQuery, setRagQuery] = useState('');
   const [ragResult, setRagResult] = useState<RAGResult | null>(null);
@@ -126,7 +136,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setTokenizer(snapshot?.tokenizer ?? 'cl100k');
     setSplit(snapshot?.split ?? 'auto');
     setVocab(snapshot?.vocab ?? 2048);
-    setResult(resultFromStored(snapshot?.result ?? null, active));
+    const restored = resultFromStored(snapshot?.result ?? null, active);
+    setResult(restored);
+    setBackendLabel(pythonBackendLabel(restored?.python));
     setModelReady(Boolean(active));
     setPredictionValues(snapshot?.predictionValues ?? {});
     setPrediction(null);
@@ -161,6 +173,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       subscribeActiveResult(userId, (active) => {
         if (!active) return;
         setResult(active);
+        setBackendLabel(pythonBackendLabel(active.python));
         setModelReady(true);
         setStatus('Saved model ready.');
       }),
@@ -268,13 +281,39 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
         bpeHidden: 24,
         bpeEpochs: epochs,
       };
-      const trained = await trainAll(
-        activeDataset,
-        activeProfile,
-        options,
-        () => undefined,
-        (done, total, label) => setProgress({ done, total, label })
-      );
+      let trained: TrainingResult;
+      if (await isPythonAvailable()) {
+        try {
+          trained = await trainWithPython(
+            activeDataset,
+            activeProfile,
+            options,
+            (message) => setStatus(message),
+            (done, total, label) => setProgress({ done, total, label })
+          );
+          setBackendLabel(pythonBackendLabel(trained.python));
+        } catch (pythonError) {
+          setStatus('Python backend unavailable here — using the browser engine.');
+          trained = await trainAll(
+            activeDataset,
+            activeProfile,
+            options,
+            () => undefined,
+            (done, total, label) => setProgress({ done, total, label })
+          );
+          setBackendLabel('browser engine');
+          console.warn('[ViDo] Python training failed; used browser fallback.', pythonError);
+        }
+      } else {
+        trained = await trainAll(
+          activeDataset,
+          activeProfile,
+          options,
+          () => undefined,
+          (done, total, label) => setProgress({ done, total, label })
+        );
+        setBackendLabel('browser engine');
+      }
       setResult(trained);
       setActiveResult(userId, trained);
       setModelReady(true);
@@ -400,9 +439,17 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     ];
   }, [target, textCol, profile]);
 
-  const handlePredict = () => {
+  const handlePredict = async () => {
     if (!result) return;
-    setPrediction(predictWith(result, syncPredictionRow(result, predictionValues)));
+    const row = syncPredictionRow(result, predictionValues);
+    if (result.python) {
+      try {
+        await warmPythonPrediction(result, result.artifact.name, row);
+      } catch (pythonError) {
+        setError(`Python inference unavailable — showing the last cached result. ${errorMessage(pythonError)}`);
+      }
+    }
+    setPrediction(predictWith(result, row));
   };
 
   const handleRAG = async () => {
@@ -419,7 +466,46 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setRagResult(null);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
-      const retrieved = runRAG(question, USER_RAG_MODE, docs, result?.profile ?? profile, visibleSuggestions);
+      const activeDataset = result?.dataset ?? dataset;
+      const retrieved = runRAG(
+        question,
+        USER_RAG_MODE,
+        docs,
+        result?.profile ?? profile,
+        visibleSuggestions
+      );
+
+      // Python is the primary answer engine: maths, world facts and Graph RAG
+      // are all routed there first. The browser composer is fallback only.
+      if (await isPythonAvailable()) {
+        try {
+          setRagStage('Reasoning in Python…');
+          const answer = await answerWithPython({
+            question,
+            rows: activeDataset?.rows ?? [],
+            cols: activeDataset?.cols ?? [],
+            profile: result?.profile ?? profile,
+            suggestions: visibleSuggestions,
+            trained: result
+              ? {
+                  best: result.best,
+                  features: result.features,
+                  target: result.target,
+                  textCol: result.textCol,
+                }
+              : null,
+          });
+          // The Python answer is already complete; do not let live topic
+          // enrichment replace a direct fact with a generic encyclopedia blurb.
+          enrichmentCancel.current?.();
+          setRagResult({ ...retrieved, answer });
+          return;
+        } catch (pythonError) {
+          setRagNotice('Python answer service unavailable — used the local engine.');
+          console.warn('[ViDo] Python answer failed; used browser fallback.', pythonError);
+        }
+      }
+
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       setRagResult(next);
@@ -460,8 +546,12 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     : -1;
   const selectedArtifact =
     result?.models.find((model) => model.metric.n === selectedModel)?.artifact ?? result?.artifact;
-  const deadlineProbability = useMemo(() => {
-    if (!datasetLoaded || !result || !selectedArtifact?.proba || completionLabelIndex < 0) return null;
+  const pythonContext = result?.python;
+
+  // Build once so the async Python warm-up and the displayed probability use
+  // exactly the same derived row.
+  const deadlineRow = useMemo<Row | null>(() => {
+    if (!datasetLoaded || !result) return null;
     const row: Row = { ...(result.sample ?? {}) };
     row[result.textCol] = deadlineTask;
     if (deadlineColumn && deadlineDate) row[deadlineColumn] = deadlineDate;
@@ -478,12 +568,41 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           if (!isNaN(start) && !isNaN(end)) synced[derived] = String(Math.round(end - start));
         }
       }
-      const values = selectedArtifact.proba(synced);
-      return Number.isFinite(values[completionLabelIndex]) ? values[completionLabelIndex] : null;
+      return synced;
     } catch {
-      return null;
+      return row;
     }
-  }, [datasetLoaded, result, selectedArtifact, completionLabelIndex, deadlineTask, deadlineColumn, deadlineDate]);
+  }, [datasetLoaded, result, deadlineTask, deadlineColumn, deadlineDate]);
+
+  // Python owns inference: refresh the cache for the selected model/row before
+  // the synchronous artifact is read by the probability card.
+  const deadlineKey =
+    pythonContext && deadlineRow && selectedModel
+      ? pythonPredictionKey(pythonContext, selectedModel, deadlineRow)
+      : '';
+  useEffect(() => {
+    if (!result || !pythonContext || !deadlineRow || !selectedModel || !deadlineKey) return;
+    let cancelled = false;
+    void warmPythonPrediction(result, selectedModel, deadlineRow)
+      .then(() => {
+        if (!cancelled) setWarmedKey(deadlineKey);
+      })
+      .catch(() => {
+        // Keep the probability blank when Python cannot answer; never show a
+        // uniform placeholder as if it were a trained estimate.
+        if (!cancelled) setWarmedKey('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [result, pythonContext, deadlineRow, selectedModel, deadlineKey]);
+
+  const deadlineProbability = useMemo(() => {
+    if (!deadlineRow || !result || !selectedArtifact?.proba || completionLabelIndex < 0) return null;
+    if (pythonContext && warmedKey !== deadlineKey) return null;
+    const values = selectedArtifact.proba(deadlineRow);
+    return Number.isFinite(values[completionLabelIndex]) ? values[completionLabelIndex] : null;
+  }, [deadlineRow, result, selectedArtifact, completionLabelIndex, pythonContext, warmedKey, deadlineKey]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto space-y-5">
@@ -491,6 +610,9 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="accent" size="sm">Simple mode</Badge>
+            <Badge variant={backendLabel.startsWith('PyTorch') ? 'success' : 'neutral'} size="sm">
+              {backendLabel}
+            </Badge>
             {savedLabel && (
               <Badge variant="success" size="sm">Saved · {savedLabel}</Badge>
             )}

@@ -6,6 +6,7 @@ import { profileData, ragDocs, runRAG, USER_RAG_MODE } from './engine';
 import type { RAGResult } from './engine';
 import { hasDatasetUploaded, readSnapshot, subscribeSnapshot } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import { answerWithPython, isPythonAvailable } from './pythonApi';
 import { KNOWLEDGE_DOCS } from './knowledge';
 import { enrichAnswerWithTopic } from './topicEnrichment';
 import { topicPhrase } from './topicLanguage';
@@ -67,6 +68,34 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
+
+      if (await isPythonAvailable()) {
+        try {
+          setRagStage('Reasoning in Python…');
+          const answerText = await answerWithPython({
+            question,
+            rows: snapshot?.dataset?.rows ?? [],
+            cols: snapshot?.dataset?.cols ?? [],
+            profile,
+            suggestions,
+            trained: snapshot?.result
+              ? {
+                  best: snapshot.result.best,
+                  features: snapshot.result.features,
+                  target: snapshot.result.target,
+                  textCol: snapshot.result.textCol,
+                }
+              : null,
+          });
+          enrichmentCancel.current?.();
+          setAnswer({ ...retrieved, answer: answerText });
+          return;
+        } catch (pythonError) {
+          setNotice('Python answer service unavailable — used the local engine.');
+          console.warn('[ViDo] Dashboard Python answer failed; used browser fallback.', pythonError);
+        }
+      }
+
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       setAnswer(next);

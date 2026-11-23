@@ -16,7 +16,7 @@ import type {
   UploadedData,
 } from './engine';
 
-export type SerializableTrainingResult = Omit<TrainingResult, 'artifact' | 'models'> & {
+export type SerializableTrainingResult = Omit<TrainingResult, 'artifact' | 'models' | 'python'> & {
   artifactName: string;
 };
 
@@ -167,7 +167,7 @@ export function subscribeSnapshot(userId: string, listener: () => void): () => v
 }
 
 export function toSerializableResult(result: TrainingResult): SerializableTrainingResult {
-  const { artifact, models: _models, ...rest } = result;
+  const { artifact, models: _models, python: _python, ...rest } = result;
   return { ...rest, artifactName: artifact.name };
 }
 
@@ -182,7 +182,12 @@ export function resultFromStored(
     predict: () => 0,
   };
   const usableModels = artifact?.models ?? [];
-  return { ...rest, artifact: usableArtifact, models: usableModels } as TrainingResult;
+  return {
+    ...rest,
+    artifact: usableArtifact,
+    models: usableModels,
+    python: artifact?.python,
+  } as TrainingResult;
 }
 
 export function getActiveResult(userId: string): TrainingResult | null {

@@ -15,6 +15,7 @@ import {
 } from './mlStore';
 import type { TaskPrediction } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
+import { answerWithPython, isPythonAvailable } from './pythonApi';
 import { KNOWLEDGE_DOCS } from './knowledge';
 import { enrichAnswerWithTopic } from './topicEnrichment';
 import { RagWorking } from './WorkingIndicator';
@@ -197,10 +198,70 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
     await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
     try {
       const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
-      setRagStage('Connecting related ideas…');
+
+      // Structured task facts are answered locally so saved ids and dates stay
+      // out of the reply. "About" questions need ViDo's bundled knowledge and
+      // the composer, so they must not be replaced by a direct title echo or
+      // by a generic Python answer.
       const direct = directTaskAnswer(question, task, prediction);
       const isAbout = /\babout\b|\bdescribe\b|\bsummary\b|\bsummarize\b/i.test(question);
       const answerFacts = isAbout || !direct ? facts : [direct, ...facts];
+      if (direct && !isAbout) {
+        enrichmentCancel.current?.();
+        setAnswer({ ...retrieved, answer: direct });
+        return;
+      }
+      if (isAbout) {
+        setRagStage('Connecting related ideas…');
+        const next = await polishRagAnswer({
+          question,
+          rag: retrieved,
+          facts: answerFacts,
+          onProgress: setRagStage,
+        });
+        const finalAnswer = stripIdFragments(next.answer);
+        setAnswer({ ...next, answer: finalAnswer });
+        enrichmentCancel.current?.();
+        enrichmentCancel.current = enrichAnswerWithTopic(
+          { question, rag: retrieved, facts: answerFacts },
+          task.title,
+          finalAnswer,
+          (answer) =>
+            setAnswer((previous) =>
+              previous?.answer === finalAnswer ? { ...previous, answer: stripIdFragments(answer) } : previous
+            )
+        );
+        return;
+      }
+
+      if (await isPythonAvailable()) {
+        try {
+          setRagStage('Reasoning in Python…');
+          const answerText = await answerWithPython({
+            question,
+            rows: snapshot?.dataset?.rows ?? [],
+            cols: snapshot?.dataset?.cols ?? [],
+            profile,
+            suggestions,
+            trained: snapshot?.result
+              ? {
+                  best: snapshot.result.best,
+                  features: snapshot.result.features,
+                  target: snapshot.result.target,
+                  textCol: snapshot.result.textCol,
+                }
+              : null,
+          });
+          enrichmentCancel.current?.();
+          setAnswer({ ...retrieved, answer: stripIdFragments(answerText) });
+          return;
+        } catch (pythonError) {
+          setNotice('Python answer service unavailable — used the local engine.');
+          console.warn('[ViDo] Task Python answer failed; used browser fallback.', pythonError);
+        }
+      }
+
+      setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({
         question,
         rag: retrieved,
