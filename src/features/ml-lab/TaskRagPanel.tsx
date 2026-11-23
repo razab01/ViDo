@@ -211,7 +211,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
 
   return (
     <div className="mt-6 pt-5 border-t border-[var(--line)]">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
         <div>
           <h3 className="text-xs uppercase font-bold tracking-wider text-[var(--muted)] flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5 text-[var(--accent)]" /> Ask about this task
@@ -227,7 +227,6 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
             )}
           </p>
         </div>
-        <Badge size="sm" variant="neutral">{docs.length} sources</Badge>
       </div>
 
       {prediction && (

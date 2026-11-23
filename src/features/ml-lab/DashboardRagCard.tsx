@@ -103,10 +103,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
 
       <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-[var(--muted)]">
         {snapshot?.result ? (
-          <>
-            <Badge size="sm" variant="success">Model ready</Badge>
-            <span>{docs.length} searchable sources</span>
-          </>
+          <Badge size="sm" variant="success">Model ready</Badge>
         ) : (
           <span>Built-in knowledge is ready. Upload a CSV or Excel file in ML Lab to add your own data.</span>
         )}

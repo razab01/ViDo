@@ -498,25 +498,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Columns</div>
-                    <div className="font-bold text-sm">{dataset.cols.length}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Categorical</div>
-                    <div className="font-bold text-sm">{profile.cats?.length ?? 0}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Text fields</div>
-                    <div className="font-bold text-sm">{profile.texts?.length ?? 0}</div>
-                  </div>
-                  <div className="rounded-lg bg-[var(--canvas)] border border-[var(--line)] p-2.5">
-                    <div className="text-[var(--faint)]">Date fields</div>
-                    <div className="font-bold text-sm">{profile.dates?.length ?? 0}</div>
-                  </div>
-                </div>
-
                 <div className="flex flex-wrap gap-1.5">
                   {profile.idLike?.map((column) => (
                     <Badge key={column} size="sm" variant="warning">ID: {column}</Badge>
@@ -924,7 +905,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                   )}
                 </p>
               </div>
-              {showAdvanced && <Badge size="sm" variant="neutral">{docs.length} sources</Badge>}
             </div>
 
             {showAdvanced && (
