@@ -50,9 +50,13 @@ async function post<T>(path: string, body: unknown, timeoutMs = 60000): Promise<
 }
 
 export async function isPythonAvailable(): Promise<boolean> {
-  if (availability && Date.now() - availability.at < 30000) return availability.ok;
+  // Positive checks stay cached for 30s. A failed check is retried quickly so
+  // a slow-starting Python service does not force the browser fallback for
+  // half a minute.
+  const cacheMs = availability?.ok === false ? 2000 : 30000;
+  if (availability && Date.now() - availability.at < cacheMs) return availability.ok;
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 2000);
+  const timer = window.setTimeout(() => controller.abort(), 5000);
   try {
     const response = await fetch(`${BASE}/health`, { signal: controller.signal });
     availability = { ok: response.ok, at: Date.now() };
@@ -190,7 +194,13 @@ export interface PythonAnswerInput {
 }
 
 export async function answerWithPython(input: PythonAnswerInput): Promise<string> {
-  const response = await post<{ answer: string }>('/answer', input, 30000);
+  // The Python endpoint expects a dict for `trained`; normalize a missing
+  // model to {} so a fresh chat session never gets a 422 and falls back.
+  const response = await post<{ answer: string }>(
+    '/answer',
+    { ...input, trained: input.trained ?? {} },
+    30000
+  );
   return response.answer;
 }
 

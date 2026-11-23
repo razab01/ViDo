@@ -398,9 +398,88 @@ function localTeamSyncPlugin(): Plugin {
 // ViDo's own backend does not swallow the Python routes.
 const pythonProxy = { target: 'http://127.0.0.1:8000', changeOrigin: true };
 
+/**
+ * Start the bundled Python service automatically for `npm run dev` and
+ * `npm run preview`, just like the Firebase emulators. Without this, the app
+ * silently falls back to the browser answer engine and gives poor answers.
+ */
+function pythonApiPlugin(): Plugin {
+  const port = 8000;
+  let pythonProcess: ChildProcess | null = null;
+  let starting: Promise<void> | null = null;
+
+  const cleanup = () => {
+    if (pythonProcess && !pythonProcess.killed) {
+      try {
+        if (process.platform === 'win32') {
+          execSync(`taskkill /pid ${pythonProcess.pid} /T /F`, { stdio: 'ignore' });
+        } else {
+          pythonProcess.kill('SIGTERM');
+        }
+      } catch {
+        // Ignore shutdown errors.
+      }
+      pythonProcess = null;
+    }
+  };
+
+  const ensurePython = async () => {
+    if (starting) return starting;
+    starting = (async () => {
+      if (await checkPort(port)) {
+        console.log('\n\x1b[32m[ViDo Python]\x1b[0m Service already running on :8000.\n');
+        return;
+      }
+      const command = process.platform === 'win32' ? 'python' : 'python3';
+      console.log('\n\x1b[36m[ViDo Python]\x1b[0m Starting bundled API on :8000...\n');
+      pythonProcess = spawn(command, ['python/server.py'], {
+        cwd: process.cwd(),
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      pythonProcess.on('error', (err) => {
+        console.warn(`\x1b[31m[ViDo Python]\x1b[0m Failed to start: ${err.message}\n`);
+      });
+      for (let attempt = 1; attempt <= 40; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        if (await checkPort(port)) {
+          console.log('\n\x1b[32m[ViDo Python]\x1b[0m ready on :8000.\n');
+          return;
+        }
+      }
+      console.warn(
+        '\x1b[33m[ViDo Python]\x1b[0m Did not become ready. Run "npm run python:api" manually.\n'
+      );
+    })();
+    return starting;
+  };
+
+  process.once('SIGINT', cleanup);
+  process.once('SIGTERM', cleanup);
+
+  return {
+    name: 'python-api',
+    async configureServer() {
+      await ensurePython();
+    },
+    async configurePreviewServer() {
+      await ensurePython();
+    },
+    buildEnd() {
+      cleanup();
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), firebaseEmulatorPlugin(), localTeamSyncPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    firebaseEmulatorPlugin(),
+    localTeamSyncPlugin(),
+    pythonApiPlugin(),
+  ],
   server: {
     proxy: {
       '/api/python': pythonProxy,

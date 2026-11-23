@@ -11,6 +11,7 @@ import type { Dataset, Profile, RAGDoc, TrainingResult } from '../ml-lab/engine'
 import { KNOWLEDGE_DOCS } from '../ml-lab/knowledge';
 import { polishRagAnswer } from '../ml-lab/answerEngine';
 import { answerWithPython, isPythonAvailable } from '../ml-lab/pythonApi';
+import { localFallbackAnswer } from './localFallback';
 import {
   getActiveResult,
   readSnapshot,
@@ -107,16 +108,22 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({ userId = 'demo-user-ui
       }
 
       if (!answer) {
-        const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
-        const polished = await polishRagAnswer({ question, rag: retrieved });
-        answer = polished.answer;
+        answer = localFallbackAnswer(question) ?? '';
+        if (!answer) {
+          const retrieved = runRAG(question, USER_RAG_MODE, docs, profile, suggestions);
+          const polished = await polishRagAnswer({ question, rag: retrieved });
+          answer = polished.answer;
+        }
         engine = 'browser';
       }
 
+      // Keep the transcript conversational: hide source labels used by the
+      // routing layer without changing the answer itself.
+      const displayAnswer = answer.replace(/^Wikipedia:\s*/, '').trim();
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantMessageId
-            ? { ...message, text: answer, pending: false, engine }
+            ? { ...message, text: displayAnswer, pending: false, engine }
             : message
         )
       );

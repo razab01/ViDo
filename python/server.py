@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Dict
+from typing import Dict, Optional
 
 # Keep a local math.py from shadowing Python's standard library module.
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,7 +55,7 @@ class AnswerBody(BaseModel):
     cols: list = []
     profile: dict = {}
     suggestions: list = []
-    trained: dict = {}
+    trained: Optional[dict] = None
 
 
 @app.get("/api/python/health")

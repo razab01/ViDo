@@ -58,7 +58,7 @@ describe('ChatLabPage', () => {
     expect(mockedPolish).not.toHaveBeenCalled();
   });
 
-  it('falls back to the browser engine when Python is unavailable', async () => {
+  it('gives a correct local answer when Python is unavailable', async () => {
     mockedAvailable.mockResolvedValue(false);
     render(<ChatLabPage />);
     fireEvent.change(screen.getByPlaceholderText(/ask anything/i), {
@@ -67,14 +67,31 @@ describe('ChatLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Browser fallback answer.')).toBeInTheDocument();
+      expect(
+        screen.getByText('India is a country in South Asia. The current President of India is Droupadi Murmu.')
+      ).toBeInTheDocument();
     });
     expect(screen.getByText('Local')).toBeInTheDocument();
     expect(mockedAnswer).not.toHaveBeenCalled();
+    expect(mockedPolish).not.toHaveBeenCalled();
+  });
+
+  it('uses the dataset answer engine for questions the local safety net cannot handle', async () => {
+    mockedAvailable.mockResolvedValue(false);
+    render(<ChatLabPage />);
+    fireEvent.change(screen.getByPlaceholderText(/ask anything/i), {
+      target: { value: 'What patterns predict completed?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Browser fallback answer.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Local')).toBeInTheDocument();
     expect(mockedPolish).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the browser engine when the Python call fails', async () => {
+  it('solves basic arithmetic locally when the Python call fails', async () => {
     mockedAnswer.mockRejectedValue(new Error('service down'));
     render(<ChatLabPage />);
     fireEvent.change(screen.getByPlaceholderText(/ask anything/i), {
@@ -83,9 +100,10 @@ describe('ChatLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Browser fallback answer.')).toBeInTheDocument();
+      expect(screen.getByText('2+2 = 4')).toBeInTheDocument();
     });
     expect(screen.getByText('Local')).toBeInTheDocument();
+    expect(mockedPolish).not.toHaveBeenCalled();
   });
 
   it('sends on Enter and keeps multi-turn history', async () => {
