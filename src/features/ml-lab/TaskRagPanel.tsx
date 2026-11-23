@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Sparkles } from 'lucide-react';
 import { Badge, Button } from '../../components/ui';
 import type { SampleTask } from '../../data/sampleTasks';
@@ -15,6 +15,7 @@ import {
 import type { TaskPrediction } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
 import { KNOWLEDGE_DOCS } from './knowledge';
+import { enrichAnswerWithTopic } from './topicEnrichment';
 import { RagWorking } from './WorkingIndicator';
 
 export interface TaskRagPanelProps {
@@ -121,6 +122,7 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   const [notice, setNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
   const [ragStage, setRagStage] = useState('');
+  const enrichmentCancel = useRef<(() => void) | null>(null);
   const [prediction, setPrediction] = useState<TaskPrediction | null>(() =>
     predictTask(userId, {
       title: task.title,
@@ -157,12 +159,15 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
   }, [userId, task]);
 
   useEffect(() => {
+    enrichmentCancel.current?.();
     setAnswer(null);
     setNotice('');
     setQuery('');
     setRagBusy(false);
     setRagStage('');
   }, [task.id]);
+
+  useEffect(() => () => enrichmentCancel.current?.(), []);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
   const suggestions = snapshot?.result?.suggestions ?? [];
@@ -196,7 +201,18 @@ export const TaskRagPanel: React.FC<TaskRagPanelProps> = ({
         facts: answerFacts,
         onProgress: setRagStage,
       });
-      setAnswer({ ...next, answer: stripIdFragments(next.answer) });
+      const finalAnswer = stripIdFragments(next.answer);
+      setAnswer({ ...next, answer: finalAnswer });
+      enrichmentCancel.current?.();
+      enrichmentCancel.current = enrichAnswerWithTopic(
+        { question, rag: retrieved, facts: answerFacts },
+        task.title,
+        finalAnswer,
+        (answer) =>
+          setAnswer((previous) =>
+            previous?.answer === finalAnswer ? { ...previous, answer: stripIdFragments(answer) } : previous
+          )
+      );
     } finally {
       setRagBusy(false);
       setRagStage('');

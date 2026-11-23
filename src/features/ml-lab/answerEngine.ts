@@ -1,5 +1,7 @@
 import type { RAGResult } from './engine';
 import { findKnowledge, type KnowledgeEntry } from './knowledge';
+import { describeSubject } from './topicLanguage';
+import type { TopicSummary } from './topicLookup';
 
 export type AnswerProgress = (stage: string) => void;
 
@@ -8,6 +10,8 @@ export interface ComposeAnswerOptions {
   rag: RAGResult;
   facts?: string[];
   onProgress?: AnswerProgress;
+  /** Optional live Wikipedia summary, used only when already available. */
+  topic?: TopicSummary | null;
 }
 
 const MAX_ANSWER_CHARS = 520;
@@ -171,7 +175,9 @@ const aboutParts = (
   facts: string[],
   rag: RAGResult,
   knowledge: KnowledgeEntry | null,
-  intentKnowledge: boolean
+  intentKnowledge: boolean,
+  subject: string,
+  topic: TopicSummary | null
 ): string[] => {
   const title = findFact(facts, 'Task title') || rag.ranked[0]?.title || '';
   const description = findFact(facts, 'Description');
@@ -181,11 +187,18 @@ const aboutParts = (
   const checkpoint = findFact(facts, 'Checkpoint');
   const parts: string[] = [];
 
-  if (knowledge && !intentKnowledge) parts.push(firstSentence(knowledge.text));
-  else if (title)
-    parts.push(
-      `${listPhrase([title])} is ${category ? `a ${category.toLowerCase()} ` : ''}item about getting this work organised and finished.`
-    );
+  // Best available explanation first: live topic, then bundled article, then
+  // a sentence assembled from the meaning of each word in the title.
+  if (topic) parts.push(firstSentence(topic.extract));
+  else if (knowledge && !intentKnowledge) parts.push(firstSentence(knowledge.text));
+  else {
+    const described = describeSubject(subject);
+    if (described) parts.push(described);
+    else if (title)
+      parts.push(
+        `${listPhrase([title])} is ${category ? `a ${category.toLowerCase()} ` : ''}item about getting this work organised and finished.`
+      );
+  }
 
   if (description) parts.push(detailSentence(description));
   if (priority) parts.push(`It is marked ${priority.toLowerCase()} priority.`);
@@ -209,10 +222,14 @@ const compareParts = (rag: RAGResult, knowledge: KnowledgeEntry | null): string[
 const generalParts = (
   facts: string[],
   rag: RAGResult,
-  knowledge: KnowledgeEntry | null
+  knowledge: KnowledgeEntry | null,
+  subject: string,
+  topic: TopicSummary | null
 ): string[] => {
   const parts: string[] = [];
-  if (knowledge) parts.push(firstTwoSentences(knowledge.text));
+  if (topic) parts.push(firstTwoSentences(topic.extract));
+  else if (knowledge) parts.push(firstTwoSentences(knowledge.text));
+  else if (describeSubject(subject)) parts.push(describeSubject(subject));
   else if (facts.length) {
     const title = findFact(facts, 'Task title');
     const description = findFact(facts, 'Description');
@@ -234,7 +251,7 @@ const generalParts = (
  * facts and ViDo's bundled knowledge. No model call is involved, so the reply
  * is immediate and identical for the same question.
  */
-export function composeAnswer({ question, rag, facts = [] }: ComposeAnswerOptions): string {
+export function composeAnswer({ question, rag, facts = [], topic = null }: ComposeAnswerOptions): string {
   const cleanQuestion = String(question || '').trim();
   if (!cleanQuestion) return '';
 
@@ -261,13 +278,13 @@ export function composeAnswer({ question, rag, facts = [] }: ComposeAnswerOption
       parts = nextStepParts(safeFacts, rag, knowledge);
       break;
     case 'about':
-      parts = aboutParts(safeFacts, rag, knowledge, intentKnowledge);
+      parts = aboutParts(safeFacts, rag, knowledge, intentKnowledge, primarySubject, topic);
       break;
     case 'compare':
       parts = compareParts(rag, knowledge);
       break;
     default:
-      parts = generalParts(safeFacts, rag, knowledge);
+      parts = generalParts(safeFacts, rag, knowledge, primarySubject, topic);
   }
 
   const answer = tidy(parts);

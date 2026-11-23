@@ -16,6 +16,12 @@ describe('bundled knowledge', () => {
     expect(findKnowledge('')).toBeNull();
   });
 
+  it('does not match an article from one shared, generic word', () => {
+    expect(findKnowledge('financial report for this quarter')).toBeNull();
+    expect(findKnowledge('What is this task about?')).toBeNull();
+    expect(findKnowledge('probability confidence prediction chance')?.id).toBe('kb-confidence');
+  });
+
   it('answers from graph retrieval with no uploaded dataset', () => {
     const profile = profileData([], []);
     const result = runRAG('What is prioritisation?', USER_RAG_MODE, KNOWLEDGE_DOCS, profile, []);

@@ -402,27 +402,87 @@ const words = (value: string): string[] =>
     .toLowerCase()
     .match(/[a-z0-9][a-z0-9'_-]*/g) || [];
 
-/** Find the article that best matches a subject phrase. */
+const STOP_WORDS = new Set([
+  'a', 'about', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'do', 'does', 'for', 'from',
+  'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'our', 'that', 'the', 'this',
+  'to', 'was', 'what', 'when', 'which', 'who', 'why', 'with', 'you', 'your',
+]);
+
+/** Small, conservative stemmer so "planning" and "plan" compare as one word. */
+const stem = (word: string): string => {
+  if (word.length <= 4) return word;
+  return word
+    .replace(/ies$/, 'y')
+    .replace(/(isation|ization)$/, 'ise')
+    .replace(/(ation|ition)$/, '')
+    .replace(/(ise|ize)$/, '')
+    .replace(/(ing|ed|es|s)$/, '')
+    .replace(/e$/, '');
+};
+
+const tokens = (value: string): string[] =>
+  Array.from(
+    new Set(
+      words(value)
+        .filter((word) => word.length > 1 && !STOP_WORDS.has(word))
+        .map(stem)
+        .filter(Boolean)
+    )
+  );
+
+const KEY_TOKENS = KNOWLEDGE_ENTRIES.map((entry) =>
+  Array.from(new Set(entry.keys.flatMap(tokens)))
+);
+const DOC_FREQUENCY = new Map<string, number>();
+KEY_TOKENS.forEach((entryTokens) =>
+  entryTokens.forEach((token) => DOC_FREQUENCY.set(token, (DOC_FREQUENCY.get(token) || 0) + 1))
+);
+/** Rare words carry more meaning than common ones such as "time" or "plan". */
+const weight = (token: string): number =>
+  1 + Math.log((KNOWLEDGE_ENTRIES.length + 1) / ((DOC_FREQUENCY.get(token) || 0) + 1));
+
+/**
+ * Find an article using the whole subject, not one lucky keyword.
+ * A single shared word is only accepted when it is specific ("boating") and
+ * the subject is short, so "financial report for this quarter" no longer
+ * collapses into an unrelated status-report article.
+ */
 export function findKnowledge(subject: string): KnowledgeEntry | null {
-  const text = words(subject).join(' ');
-  if (!text.trim()) return null;
+  const subjectTokens = tokens(subject);
+  if (!subjectTokens.length) return null;
 
   let best: KnowledgeEntry | null = null;
   let bestScore = 0;
 
-  for (const entry of KNOWLEDGE_ENTRIES) {
+  KNOWLEDGE_ENTRIES.forEach((entry, index) => {
+    const matched = new Set<string>();
     let score = 0;
-    for (const key of entry.keys) {
-      const phrase = words(key).join(' ');
-      if (!phrase) continue;
-      if (text.includes(phrase)) score += phrase.split(' ').length * 3;
-    }
-    if (words(entry.title).some((word) => word.length > 3 && text.includes(word))) score += 2;
-    if (score > bestScore) {
-      bestScore = score;
-      best = entry;
-    }
-  }
 
-  return bestScore > 0 ? best : null;
+    entry.keys.forEach((key) => {
+      const keyTokens = tokens(key);
+      if (!keyTokens.length || !keyTokens.every((token) => subjectTokens.includes(token))) return;
+      keyTokens.forEach((token) => matched.add(token));
+      score += keyTokens.reduce((sum, token) => sum + weight(token), 0) * (keyTokens.length > 1 ? 1.6 : 1);
+    });
+
+    const titleTokens = tokens(entry.title);
+    subjectTokens.forEach((token) => {
+      if (!titleTokens.includes(token)) return;
+      matched.add(token);
+      score += weight(token) * 0.7;
+    });
+
+    const coverage = matched.size / subjectTokens.length;
+    const isWholePhrase = entry.keys.some((key) => tokens(key).join(' ') === subjectTokens.join(' '));
+    const strongSingleWord =
+      subjectTokens.length <= 2 && matched.size === 1 && weight([...matched][0]) >= 2.2;
+    const accepted = isWholePhrase || strongSingleWord || (coverage >= 0.5 && matched.size >= 2);
+
+    if (accepted && score > bestScore) {
+      bestScore = score;
+      best = KNOWLEDGE_ENTRIES[index];
+    }
+  });
+
+  return best;
 }

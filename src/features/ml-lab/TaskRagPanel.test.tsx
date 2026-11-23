@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SAMPLE_TASKS } from '../../data/sampleTasks';
 import type { SampleTask } from '../../data/sampleTasks';
@@ -44,7 +44,10 @@ describe('TaskRagPanel', () => {
     localStorage.clear();
     clearSnapshot('task-rag-user');
     clearActiveResult('task-rag-user');
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('shows the auto-detected source and answers questions about the selected task', async () => {
     const dataset = result.dataset;
@@ -117,5 +120,30 @@ describe('TaskRagPanel', () => {
 
     expect(await screen.findByText(/Boating is spending time on the water/i)).toBeInTheDocument();
     expect(screen.queryByText('This task is “Boating” in the personal category.')).not.toBeInTheDocument();
+  });
+
+  it('explains a financial report from every word instead of a status-report keyword', async () => {
+    const report: SampleTask = {
+      id: 'report-task',
+      title: 'financial report for this quarter',
+      priority: 'medium',
+      state: 'active',
+      category: 'work',
+      createdAt: '2026-11-20T09:00:00Z',
+      dueDate: '2026-11-23',
+      dueTime: '23:59',
+    };
+
+    render(<TaskRagPanel task={report} userId="task-rag-user" />);
+
+    fireEvent.change(screen.getByLabelText('Ask about this task'), {
+      target: { value: 'What is this task about?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText(/clear summary of what happened/i)).toBeInTheDocument();
+    expect(screen.getByText(/money, budgets and accounts/i)).toBeInTheDocument();
+    expect(screen.getByText(/three-month period/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a good status report/i)).not.toBeInTheDocument();
   });
 });

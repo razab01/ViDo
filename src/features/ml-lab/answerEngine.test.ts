@@ -31,6 +31,37 @@ describe('answerEngine', () => {
     expect(result.answer).not.toMatch(/task title\s*:/i);
   });
 
+  it('explains a report title from all its words instead of a status-report keyword', () => {
+    const answer = composeAnswer({
+      question: 'What is this task about?',
+      rag: { ...rag, ranked: [], answer: 'No relevant context found' },
+      facts: [
+        'Task title: financial report for this quarter.',
+        'Priority: medium.',
+        'Due date: 2026-11-23.',
+      ],
+    });
+
+    expect(answer).toMatch(/clear summary of what happened/i);
+    expect(answer).toMatch(/money, budgets and accounts/i);
+    expect(answer).toMatch(/three-month period/i);
+    expect(answer).not.toMatch(/status report/i);
+  });
+
+  it('uses a supplied Wikipedia summary when one is available', () => {
+    const answer = composeAnswer({
+      question: 'What is quantum computing?',
+      rag: { ...rag, ranked: [], answer: 'No relevant context found' },
+      facts: [],
+      topic: {
+        title: 'Quantum computing',
+        extract: 'Quantum computing uses quantum mechanics to process information in new ways.',
+      },
+    });
+
+    expect(answer).toContain('Quantum computing uses quantum mechanics to process information in new ways.');
+  });
+
   it('keeps exact dates and times in natural sentences', () => {
     const answer = composeAnswer({
       question: 'When is this task due?',

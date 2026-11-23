@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, BarChart3, CheckCircle2, Database, Search, Sparkles, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input } from '../../components/ui';
 import {
@@ -43,6 +43,8 @@ import {
 import type { StoredMLLabState } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
 import { KNOWLEDGE_DOCS } from './knowledge';
+import { enrichAnswerWithTopic } from './topicEnrichment';
+import { topicPhrase } from './topicLanguage';
 import { RagWorking, TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
@@ -99,6 +101,8 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [ragNotice, setRagNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
   const [ragStage, setRagStage] = useState('');
+  const enrichmentCancel = useRef<(() => void) | null>(null);
+  useEffect(() => () => enrichmentCancel.current?.(), []);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
@@ -383,6 +387,14 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       setRagResult(next);
+      enrichmentCancel.current?.();
+      enrichmentCancel.current = enrichAnswerWithTopic(
+        { question, rag: retrieved },
+        topicPhrase(question),
+        next.answer,
+        (answer) =>
+          setRagResult((previous) => (previous?.answer === next.answer ? { ...previous, answer } : previous))
+      );
     } finally {
       setRagBusy(false);
       setRagStage('');
@@ -909,7 +921,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
 
             {showAdvanced && (
               <p className="text-[10px] text-[var(--faint)] mb-3">
-                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, then writes a clear answer instantly.
+                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, answers instantly, then quietly refines the topic with a cached Wikipedia summary when you are online.
               </p>
             )}
 

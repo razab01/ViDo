@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Badge, Button, Card } from '../../components/ui';
@@ -7,6 +7,8 @@ import type { RAGResult } from './engine';
 import { readSnapshot, subscribeSnapshot } from './mlStore';
 import { polishRagAnswer } from './answerEngine';
 import { KNOWLEDGE_DOCS } from './knowledge';
+import { enrichAnswerWithTopic } from './topicEnrichment';
+import { topicPhrase } from './topicLanguage';
 import { RagWorking } from './WorkingIndicator';
 
 export interface DashboardRagCardProps {
@@ -24,6 +26,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   const [notice, setNotice] = useState('');
   const [ragBusy, setRagBusy] = useState(false);
   const [ragStage, setRagStage] = useState('');
+  const enrichmentCancel = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setSnapshot(readSnapshot(userId));
@@ -31,11 +34,14 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   }, [userId]);
 
   useEffect(() => {
+    enrichmentCancel.current?.();
     setAnswer(null);
     setNotice('');
     setRagBusy(false);
     setRagStage('');
   }, [userId]);
+
+  useEffect(() => () => enrichmentCancel.current?.(), []);
 
   const profile = useMemo(() => snapshot?.profile ?? profileData([], []), [snapshot]);
   const suggestions = snapshot?.result?.suggestions ?? [];
@@ -61,6 +67,14 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
       setRagStage('Connecting related ideas…');
       const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
       setAnswer(next);
+      enrichmentCancel.current?.();
+      enrichmentCancel.current = enrichAnswerWithTopic(
+        { question, rag: retrieved },
+        topicPhrase(question),
+        next.answer,
+        (answer) =>
+          setAnswer((previous) => (previous?.answer === next.answer ? { ...previous, answer } : previous))
+      );
     } finally {
       setRagBusy(false);
       setRagStage('');
@@ -84,7 +98,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
             </h2>
           </div>
           <p className="text-xs text-[var(--muted)] max-w-xl">
-            ViDo answers from built-in knowledge and anything you saved in ML Lab, then writes a clear answer for you.
+            ViDo answers instantly from built-in knowledge and anything you saved in ML Lab, then refines the topic with a cached Wikipedia summary when online.
             {snapshot?.upload && (
               <span className="block text-[11px] text-[var(--faint)] mt-0.5">
                 Auto-detected source: {snapshot.upload.name}
