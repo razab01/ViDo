@@ -23,6 +23,8 @@ export interface SampleTask {
   createdAt: string;
   completedAt?: string;
   isArchived?: boolean;
+  /** Pinned tasks appear first in the todo and list views. */
+  isPinned?: boolean;
   checkpoints?: TaskCheckpoint[];
   flowchart?: TaskFlowchart;
 }

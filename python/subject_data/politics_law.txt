@@ -1,0 +1,50 @@
+Federalism||federalism||Federalism is a system where power is constitutionally divided between central and regional governments.||India, USA, Germany||Regional units usually have their own elected governments and defined powers.
+Constitution||constitution||A constitution is the fundamental law defining government structure, powers and rights.||written, unwritten||Supreme law in many legal systems.
+Democracy||democracy||Democracy is a system where political power rests with the people, usually through elections.||direct, representative||Includes free elections and political participation.
+Republic||republic||A republic is a state without a monarch, where power is held by elected representatives or a head of state.||India, USA, France||Can be parliamentary or presidential.
+Monarchy||monarchy||Monarchy is a system where a king, queen or other monarch is head of state, often hereditary.||constitutional, absolute||In constitutional monarchies the monarch's powers are limited by law.
+Parliament||parliament||A parliament is a legislative body that represents the people and makes laws.||Lok Sabha, Rajya Sabha||Usually has elected and sometimes appointed members.
+Congress||congress||Congress is the legislative body of the United States and some other countries.||Senate, House of Representatives||Separated from executive and judiciary.
+Judiciary||judiciary,courts||The judiciary interprets laws, resolves disputes and reviews government action.||supreme court, high court||Independence from executive is important for rule of law.
+Executive||executive||The executive enforces laws and administers government.||president, prime minister, cabinet||Controls bureaucracy and policy implementation.
+Legislature||legislature||A legislature makes, amends and repeals laws.||parliament, congress, assembly||May be unicameral or bicameral.
+Separation of powers||separation of powers||Separation of powers divides government among legislative, executive and judicial branches.||checks and balances||Prevents concentration of authority.
+Judicial review||judicial review||Judicial review lets courts examine laws or government actions for constitutionality.||Marbury v Madison||Powerful check on the other branches.
+Fundamental rights||fundamental rights||Fundamental rights are basic liberties protected by a constitution.||speech, equality, life||Can usually be enforced through courts.
+Rule of law||rule of law||Rule of law means government and citizens are subject to known, fair laws.||equality before law||Opposite of arbitrary rule.
+Civil law||civil law||Civil law deals with disputes between individuals or organizations over rights and duties.||contract, tort, property||Usually compensation rather than punishment.
+Criminal law||criminal law||Criminal law defines offences against the state or society and their punishments.||murder, theft||Requires proof beyond reasonable doubt in many systems.
+Contract law||contract law||Contract law governs legally enforceable agreements between parties.||offer, acceptance, consideration||Breach can lead to damages.
+Tort law||tort||Tort law handles civil wrongs that cause harm, such as negligence.||negligence, defamation||Aim is usually compensation.
+Property law||property law||Property law defines rights of ownership and use of land and goods.||real property, personal property||Includes transfer, tenancy and inheritance.
+International law||international law||International law governs relations between states and international organizations.||treaties, customary law||Enforcement can be weaker than domestic law.
+Human rights law||human rights law||Human rights law protects basic rights and freedoms through treaties and courts.||UDHR, ICCPR||Applies to states and sometimes non-state actors.
+Election||election||An election is a formal process where citizens choose representatives or decide issues.||general election, by-election||Free and fair elections are core to democracy.
+Political party||party||A political party is an organized group seeking to gain political power through elections.||ruling party, opposition||Aggregates interests and presents policies.
+Suffrage||suffrage,voting rights||Suffrage is the right to vote in public elections.||universal adult suffrage||Expanded through reform movements.
+Pressure group||interest group,lobby group||A pressure group tries to influence government policy without directly governing.||unions, business groups||Uses lobbying, protests and campaigns.
+Public policy||policy||Public policy is the set of actions government chooses to address public problems.||policy cycle||Includes agenda setting, implementation and evaluation.
+Bureaucracy||bureaucracy||Bureaucracy is the administrative system that implements government decisions.||civil servants||Can provide stability but may be slow.
+Local government||local government||Local government administers cities, towns and districts.||municipality, panchayat||Handles local services like roads and sanitation.
+Devolution||devolution||Devolution transfers powers from central government to regional or local bodies.||Scotland, Wales||Different from federalism because powers can be revoked.
+Nationalism||nationalism||Nationalism is loyalty to a nation and often a desire for self-government.||civic, ethnic||Can unite or conflict with other identities.
+Liberalism||liberalism||Liberalism emphasizes individual rights, limited government, markets and equality before law.||classical, modern||Found in many constitutional democracies.
+Conservatism||conservatism||Conservatism values tradition, social stability and gradual change.||right-wing politics||Views vary by country and context.
+Socialism politics||socialism politics||Socialism advocates social ownership or control of key resources to reduce inequality.||public ownership||Can be democratic or authoritarian in form.
+Communism||communism||Communism aims for a classless society, often through revolutionary theory and state control of production.||Marx, Lenin||Different from socialism in theory and practice.
+Capitalism politics||capitalism politics||Capitalism emphasizes private property, markets and profit-driven production.||free market||Politically linked to liberal and conservative traditions.
+Feminism||feminism||Feminism advocates gender equality and challenges patriarchal structures.||waves of feminism||Includes liberal, radical and intersectional approaches.
+Environmentalism||environmentalism||Environmentalism seeks to protect the environment and address climate and pollution problems.||green politics||Influences regulation and sustainability policy.
+Federal vs unitary||unitary system,federal vs unitary||Federal systems split power constitutionally; unitary systems keep ultimate power at the centre.||India federal, UK unitary||Unitary states may still have local governments.
+Bicameralism||bicameral||Bicameralism is a legislature with two chambers, often representing people and states.||upper house, lower house||Can slow legislation and provide review.
+Impeachment||impeachment||Impeachment is a formal process to charge and try a public official for misconduct.||US president impeachment||Does not always mean removal.
+Veto||veto||A veto is the power to reject a law or decision.||presidential veto||Can be overridden in some systems.
+Amendment||constitutional amendment||An amendment is a formal change to a constitution.||First Amendment||Usually requires a special procedure.
+Supreme Court||supreme court||A supreme court is the highest judicial authority in a country or state.||final appeal||Interprets constitution and law.
+Attorney General||attorney general||An attorney general is a senior legal officer representing the government in legal matters.||chief law officer||Role varies by country.
+Police||police||Police are state agents responsible for maintaining order, preventing crime and enforcing law.||law enforcement||Subject to legal accountability.
+Prison||prison||A prison is a facility for people serving criminal sentences.||incarceration||Goals include punishment, deterrence and rehabilitation.
+Media freedom||freedom of press||Media freedom allows journalism without improper government control or censorship.||public interest||Balanced against privacy and defamation law.
+Corruption||corruption||Corruption is misuse of public power for private gain.||bribery, nepotism||Undermines trust and development.
+Governance||governance||Governance is the process of making and enforcing decisions in a society or organization.||good governance||Includes accountability, transparency and participation.
+Secularism||secularism,secular state||Secularism keeps government institutions and public policy independent from religious authority while protecting freedom of belief.||state and religion separate||Forms vary from strict separation to equal respect for all religions.

@@ -10,8 +10,10 @@ import {
   resetChatStore,
   selectThread,
   setThreadDocument,
+  setThreadPinned,
   setThreadTaskDraft,
   subscribeThreads,
+  toggleThreadPinned,
 } from './chatStore';
 
 const USER = 'chat-store-user';
@@ -75,6 +77,27 @@ describe('chatStore', () => {
     expect(readThreads(USER).map((thread) => thread.id)).toEqual([second.id]);
     expect(getActiveChatId(USER)).toBe(second.id);
     unsubscribe();
+  });
+
+  it('persists pinned threads and protects them from history trimming', () => {
+    const pinned = createThread(USER);
+    addMessage(USER, pinned.id, { id: 'u1', role: 'user', text: 'keep this chat' });
+    setThreadPinned(USER, pinned.id, true);
+
+    for (let index = 0; index < 35; index += 1) {
+      createThread(USER);
+    }
+
+    expect(readThreads(USER)).toHaveLength(30);
+    expect(readThreads(USER)).toContainEqual(
+      expect.objectContaining({ id: pinned.id, pinned: true })
+    );
+
+    resetChatStore();
+    expect(readThreads(USER).find((thread) => thread.id === pinned.id)?.pinned).toBe(true);
+
+    toggleThreadPinned(USER, pinned.id);
+    expect(readThreads(USER).find((thread) => thread.id === pinned.id)?.pinned).toBeUndefined();
   });
 
   it('persists and clears an in-progress task draft', () => {

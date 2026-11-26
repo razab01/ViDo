@@ -1,62 +1,52 @@
 import React from 'react';
-import { Badge } from '../../components/ui';
-import { Eye, History, Shield, MessageSquareOff } from 'lucide-react';
+import { Eye, History, MessageSquareOff, Shield } from 'lucide-react';
 
 export const LandingBenefits: React.FC = () => {
   const principles = [
     {
-      icon: <Eye className="w-5 h-5 text-[var(--accent)]" />,
+      icon: <Eye className="text-[var(--accent)]" aria-hidden="true" />,
       title: 'Clarity over complexity',
       desc: 'No endless configuration screens or micro-toggles. Everything is organized so you can answer what needs to be done in seconds.',
     },
     {
-      icon: <History className="w-5 h-5 text-[var(--green)]" />,
+      icon: <History className="text-[var(--green)]" aria-hidden="true" />,
       title: 'History over guesswork',
       desc: 'Measurable progress checkpoints and completion timestamps replace vague "in progress" statuses with observable evidence.',
     },
     {
-      icon: <Shield className="w-5 h-5 text-[var(--amber)]" />,
+      icon: <Shield className="text-[var(--amber)]" aria-hidden="true" />,
       title: 'Privacy by default',
       desc: 'Your private tasks are strictly your own. Sharing is an intentional action, keeping your personal life separate from work.',
     },
     {
-      icon: <MessageSquareOff className="w-5 h-5 text-indigo-600" />,
+      icon: <MessageSquareOff className="text-indigo-600" aria-hidden="true" />,
       title: 'Collaboration without noise',
       desc: 'Clear task ownership and chronological checkpoint timelines answer "what is the status?" without scheduling another meeting.',
     },
   ];
 
   return (
-    <section id="benefits" className="px-6 max-w-6xl mx-auto py-16 border-t border-[var(--line)]">
-      <div className="text-center mb-12">
-        <Badge variant="neutral" className="mb-2">
-          Product Principles
-        </Badge>
-        <h2 className="text-3xl font-bold tracking-tight text-[var(--ink)]">
-          Built on principles that respect your attention
-        </h2>
-        <p className="text-sm text-[var(--muted)] mt-2 max-w-xl mx-auto">
+    <section id="benefits" className="vdb-section vdb-benefits">
+      <div className="vdb-section-heading">
+        <span className="vdb-section-label">Product Principles</span>
+        <h2 className="vdb-section-title">Built on principles that respect your attention</h2>
+        <p className="vdb-section-copy">
           ViDo is purposefully restrained. We resist adding features that clutter your day with unnecessary notifications or guilt.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="vdb-principle-grid">
         {principles.map((p, i) => (
-          <div
-            key={i}
-            className="p-5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-xs flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-10 h-10 rounded-lg bg-[var(--canvas)] flex items-center justify-center mb-4">
-                {p.icon}
-              </div>
-              <h3 className="text-base font-bold text-[var(--ink)] mb-2">{p.title}</h3>
-              <p className="text-xs text-[var(--muted)] leading-relaxed">{p.desc}</p>
-            </div>
-          </div>
+          <article key={p.title} className="vdb-principle-card">
+            <span className="vdb-principle-index">
+              {String(i + 1).padStart(2, '0')} / 04
+            </span>
+            <span className="vdb-principle-icon">{p.icon}</span>
+            <h3 className="vdb-principle-title">{p.title}</h3>
+            <p className="vdb-principle-desc">{p.desc}</p>
+          </article>
         ))}
       </div>
     </section>
   );
 };
-

@@ -1,0 +1,50 @@
+Derivative||derivative,differentiation,rate of change,dy/dx||The derivative measures instantaneous rate of change of a function; geometrically it is the slope of the tangent line.||f'(x)=lim(h→0)[f(x+h)-f(x)]/h||Power rule: d(x^n)/dx = n x^(n-1); derivative of a constant is 0.
+Integral||integral,integration,antiderivative,area under curve||Integration adds many tiny pieces to find a total, such as area under a curve, and reverses differentiation.||∫f(x)dx = F(x)+C where F'=f||Power rule: ∫x^n dx = x^(n+1)/(n+1)+C for n≠-1.
+Limit||limit,limits,approaches||A limit describes the value a function approaches as its input approaches a point, even if the function is not defined there.||lim(x→a) f(x)=L||Used to define continuity, derivatives and integrals; one-sided limits approach from left or right.
+Continuity||continuous,continuity||A function is continuous at a point if its limit exists there and equals its value.||lim(x→a)f(x)=f(a)||No gap, jump or infinite break; differentiability implies continuity but not vice versa.
+Matrix||matrix,matrices,array of numbers||A matrix is a rectangular array of numbers arranged in rows and columns, used to represent data and linear transformations.||A ∈ R^(m×n)||Rows are horizontal; columns are vertical; square matrices have equal rows and columns.
+Determinant||determinant,det||The determinant is a scalar that describes how a square matrix scales area or volume and whether it is invertible.||det(A), |A||det=0 means singular; det(AB)=det(A)det(B).
+Eigenvalue||eigenvalue,eigenvalues,characteristic value||An eigenvalue is a scalar λ for which Av=λv for some nonzero vector v.||det(A-λI)=0||Eigenvalues of a nilpotent matrix are all 0; trace equals sum of eigenvalues.
+Eigenvector||eigenvector,eigenvectors||An eigenvector is a nonzero vector that changes only by a scalar factor when a linear transformation is applied.||Av=λv||Direction is preserved or reversed; any nonzero scalar multiple is also an eigenvector.
+Nilpotent matrix||nilpotent,nilpotent matrix,nilpotent matrices||A nilpotent matrix N satisfies N^k=0 for some positive integer k.||N^k=0||All eigenvalues are 0; determinant is 0; trace is 0.
+Skew-symmetric matrix||skew symmetric,skew-symmetric,antisymmetric matrix||A skew-symmetric matrix satisfies Aᵀ=-A, so diagonal entries are 0.||Aᵀ=-A||Odd-order determinant is 0; even-order determinant may be nonzero.
+Schur complement||schur complement,schur component,block matrix complement||For block matrix M=[[A,B],[C,D]] with A invertible, the Schur complement of A is D-C A⁻¹ B.||S=D-C A⁻¹ B||det(M)=det(A)det(S); useful in elimination and matrix inverses.
+Rank||rank of matrix,matrix rank||Rank is the number of linearly independent rows or columns of a matrix.||rank(A)||Full rank means rank equals min(rows,columns); rank 0 only for zero matrix.
+Trace||trace of matrix,matrix trace||Trace is the sum of diagonal entries of a square matrix.||tr(A)=ΣA_ii||Trace equals sum of eigenvalues; trace(AB)=trace(BA).
+Vector space||vector space,linear space||A vector space is a set of vectors closed under addition and scalar multiplication satisfying vector axioms.||V over field F||Examples include R^n, polynomials and matrices.
+Linear transformation||linear transformation,linear map||A linear transformation maps vectors while preserving addition and scalar multiplication.||T(u+v)=T(u)+T(v), T(cv)=cT(v)||Matrices represent linear transformations between finite-dimensional spaces.
+Dot product||dot product,scalar product||The dot product multiplies corresponding components and sums them, measuring alignment.||a·b=Σa_i b_i||a·b=|a|·|b|cosθ; zero dot product means perpendicular.
+Cross product||cross product,vector product||The cross product of two 3D vectors gives a vector perpendicular to both.||a×b||Magnitude is |a|·|b|sinθ; direction by right-hand rule.
+Norm||norm,magnitude,length of vector||A norm assigns a non-negative length to a vector.||‖v‖=sqrt(v·v)||Euclidean norm is common; norm is zero only for zero vector.
+Probability||probability,chance||Probability measures how likely an event is, from 0 impossible to 1 certain.||P(A)=favorable/total for equally likely outcomes||P(A∪B)=P(A)+P(B)-P(A∩B); probabilities sum to 1.
+Random variable||random variable||A random variable maps outcomes of a random experiment to numbers.||X: Ω→R||Discrete random variables take countable values; continuous take intervals.
+Expected value||expected value,mean,expectation||Expected value is the long-run weighted average of a random variable.||E[X]=ΣxP(X=x) or ∫x f(x)dx||Linearity: E[aX+b]=aE[X]+b.
+Variance||variance||Variance measures average squared spread around the mean.||Var(X)=E[(X-μ)^2]||Var(aX+b)=a²Var(X); standard deviation is sqrt(variance).
+Standard deviation||standard deviation,sd||Standard deviation is the square root of variance and measures typical spread in original units.||σ=sqrt(Σ(x-μ)²/n)||Smaller SD means values cluster closer to the mean.
+Normal distribution||normal distribution,gaussian,bell curve||A symmetric continuous distribution defined by mean μ and standard deviation σ.||X~N(μ,σ²)||About 68% of data lies within 1σ, 95% within 2σ.
+Binomial theorem||binomial theorem,binomial expansion||The binomial theorem expands powers of a sum into terms with binomial coefficients.||(a+b)^n=Σ C(n,k)a^(n-k)b^k||Coefficients come from Pascal's triangle.
+Permutation||permutation,arrangement||A permutation is an ordered arrangement of objects.||P(n,r)=n!/(n-r)!||Order matters.
+Combination||combination,selection||A combination is a selection where order does not matter.||C(n,r)=n!/(r!(n-r)!)||Order does not matter.
+Prime number||prime,prime number||A prime number is a natural number greater than 1 with exactly two divisors: 1 and itself.||2,3,5,7,11...||1 is not prime; every composite has a prime factor.
+GCD and LCM||gcd,lcm,hcf,greatest common divisor,least common multiple||GCD is the largest common divisor; LCM is the smallest common multiple.||gcd(a,b)×lcm(a,b)=ab||Euclidean algorithm finds GCD efficiently.
+Modular arithmetic||modulo,modular arithmetic,congruence||Modular arithmetic works with remainders after division by a modulus.||a≡b mod n||Used in cryptography, clocks and number theory.
+Complex number||complex number,imaginary number||A complex number has real and imaginary parts and is written a+bi where i²=-1.||z=a+bi||Conjugate is a-bi; modulus is sqrt(a²+b²).
+Polynomial||polynomial||A polynomial is a sum of terms with non-negative integer powers and constant coefficients.||p(x)=a_n x^n+...+a_0||Degree is highest power; roots are values where p(x)=0.
+Quadratic equation||quadratic equation||A quadratic equation has degree 2 and can have up to two real roots.||ax²+bx+c=0||x=(-b±sqrt(b²-4ac))/(2a); discriminant decides root type.
+Exponential function||exponential,exponential function||An exponential function has a constant base raised to a variable exponent.||f(x)=a^x||e^x is its own derivative; models growth and decay.
+Logarithm||log,logarithm,ln||A logarithm is the inverse of exponentiation, giving the exponent needed for a base to reach a value.||log_b(x)=y ⇔ b^y=x||log(ab)=log a+log b; ln uses base e.
+Trigonometric function||trigonometry,sin,cos,tan||Trigonometric functions relate angles to side ratios in right triangles and to circular motion.||sinθ=opposite/hypotenuse||cosθ=adjacent/hypotenuse; tanθ=opposite/adjacent.
+Sequence||sequence||A sequence is an ordered list of numbers following a rule.||a₁,a₂,a₃,...||Arithmetic has constant difference; geometric has constant ratio.
+Series||series,summation||A series is the sum of terms of a sequence.||Σa_n||Finite series has limited terms; infinite series may converge or diverge.
+Taylor series||taylor series||A Taylor series represents a smooth function as an infinite sum of derivatives at a point.||f(x)=Σ f^(n)(a)(x-a)^n/n!||Near a, more terms give better approximation.
+Differential equation||differential equation,ode,pde||A differential equation relates a function to its derivatives.||dy/dx=f(x,y)||ODE has one variable; PDE has partial derivatives in several variables.
+Partial derivative||partial derivative||A partial derivative differentiates a multivariable function with respect to one variable while holding others fixed.||∂f/∂x||Used in gradients, optimization and physics.
+Gradient||gradient||The gradient vector points in the direction of steepest increase of a scalar field.||∇f=(∂f/∂x,∂f/∂y,...)||Perpendicular to level curves/surfaces; zero at critical points.
+Optimization||optimization,maxima,minima||Optimization finds maximum or minimum values subject to constraints.||∇f=0 for interior critical points||Check endpoints and constraints; second derivative test classifies extrema.
+Set theory||set,sets,set theory||Set theory studies collections of distinct objects called elements.||A={1,2,3}||Union combines; intersection overlaps; complement contains elements not in set.
+Logic||logic,propositional logic||Logic studies valid reasoning using statements and connectives.||p⇒q||AND, OR, NOT and implication form basic connectives.
+Graph theory||graph theory,graph,vertex,edge||Graph theory studies vertices connected by edges to model relationships.||G=(V,E)||Degree counts incident edges; paths connect vertices.
+Number system||number system,decimal,binary,integer,rational,irrational||A number system is a way of representing quantities using symbols and base rules.||binary base 2, decimal base 10||Rational numbers are fractions; irrational numbers cannot be written as fractions.
+Ratio and proportion||ratio,proportion||A ratio compares quantities; proportion states two ratios are equal.||a:b = c:d||Cross multiplication checks equality: ad=bc.
+Percentage||percentage,percent||Percentage expresses a number as a fraction of 100.||x%=x/100||Percent change = (new-old)/old ×100%.
+Pythagorean theorem||pythagorean theorem,pythagoras||In a right triangle, the square of the hypotenuse equals the sum of squares of the other two sides.||c²=a²+b²||Used in geometry, distance formula and vectors.

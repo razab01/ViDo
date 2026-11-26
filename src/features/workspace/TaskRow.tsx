@@ -1,13 +1,26 @@
 import React from 'react';
 import { SampleTask } from '../../data/sampleTasks';
 import { Badge } from '../../components/ui';
-import { Clock, AlertCircle, CheckCircle2, ChevronRight, MessageSquare } from 'lucide-react';
+import {
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  MessageSquare,
+  Pencil,
+  Pin,
+  PinOff,
+  Trash2,
+} from 'lucide-react';
 import { getTodayDateString, getCurrentTimeString } from '../../utils/dateUtils';
 
 export interface TaskRowProps {
   task: SampleTask;
   onClick: (task: SampleTask) => void;
   onToggle?: (task: SampleTask) => void;
+  onEdit?: (task: SampleTask) => void;
+  onTogglePin?: (task: SampleTask) => void;
+  onDelete?: (task: SampleTask) => void;
   isPreview?: boolean;
 }
 
@@ -15,6 +28,9 @@ export const TaskRow: React.FC<TaskRowProps> = ({
   task,
   onClick,
   onToggle,
+  onEdit,
+  onTogglePin,
+  onDelete,
   isPreview = true,
 }) => {
   const todayStr = getTodayDateString();
@@ -41,7 +57,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
         }
       }}
       aria-label={`Task: ${task.title}`}
-      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 hover:bg-[var(--canvas)]/60 transition-colors cursor-pointer select-none"
+      className="vdb-task-row group flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 hover:bg-[var(--canvas)]/60 transition-colors cursor-pointer select-none"
     >
       {/* Left: Status icon, Title, Category */}
       <div className="flex items-center gap-3.5 min-w-0">
@@ -82,6 +98,10 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             >
               {task.title}
             </span>
+
+            {task.isPinned && (
+              <Pin className="w-3.5 h-3.5 shrink-0 text-amber-500" aria-hidden="true" />
+            )}
 
             {task.priority === 'high' && (
               <Badge size="sm" variant="danger">
@@ -135,6 +155,64 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             <span className="text-[var(--muted)]">{task.dueDate}</span>
           )}
         </div>
+
+        {(onEdit || onTogglePin || onDelete) && (
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <button
+                type="button"
+                aria-label={`Edit "${task.title}"`}
+                title="Edit task"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-lg text-[var(--faint)] hover:text-[var(--accent)] hover:bg-[var(--canvas)] cursor-pointer opacity-60 group-hover:opacity-100 focus:opacity-100"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onTogglePin && (
+              <button
+                type="button"
+                aria-label={task.isPinned ? `Unpin "${task.title}"` : `Pin "${task.title}"`}
+                title={task.isPinned ? 'Unpin task' : 'Pin task'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePin(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className={`p-1.5 rounded-lg hover:bg-[var(--canvas)] cursor-pointer group-hover:opacity-100 focus:opacity-100 ${
+                  task.isPinned
+                    ? 'text-amber-500 opacity-100'
+                    : 'text-[var(--faint)] hover:text-amber-500 opacity-60'
+                }`}
+              >
+                {task.isPinned ? (
+                  <PinOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Pin className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                aria-label={`Delete "${task.title}"`}
+                title="Delete task"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-lg text-[var(--faint)] hover:text-red-500 hover:bg-[var(--canvas)] cursor-pointer opacity-60 group-hover:opacity-100 focus:opacity-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         <ChevronRight className="w-4 h-4 text-[var(--faint)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all hidden sm:block" />
       </div>

@@ -3,41 +3,32 @@ import { Link } from 'react-router-dom';
 
 export const LandingFooter: React.FC = () => {
   return (
-    <footer className="border-t border-[var(--line)] bg-[var(--surface)] py-12 px-6">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <footer className="vdb-footer">
+      <div className="vdb-footer-inner">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded bg-[var(--dark)] text-white flex items-center justify-center font-bold text-xs">
-              V
-            </div>
-            <span className="font-bold text-base text-[var(--ink)]">ViDo</span>
+          <div className="vdb-footer-brand">
+            <span>V</span>
+            <span>ViDo</span>
           </div>
-          <p className="text-xs text-[var(--muted)] max-w-sm">
+          <p className="vdb-footer-tagline">
             Simple enough for anyone. Structured enough for serious work.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6 text-xs text-[var(--muted)] font-medium">
-          <Link to="/preview" className="hover:text-[var(--ink)] transition-colors">
-            Live Preview
-          </Link>
-          <Link to="/style-lab" className="hover:text-[var(--ink)] transition-colors">
-            Themes
-          </Link>
+        <nav className="vdb-footer-links" aria-label="Footer navigation">
+          <Link to="/preview">Live Preview</Link>
+          <Link to="/style-lab">Themes</Link>
           <a
             href="https://github.com/vicharanashala/ViDo"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-[var(--ink)] transition-colors"
           >
             GitHub Repository
           </a>
-        </div>
+        </nav>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-[var(--line)] text-center text-xs text-[var(--faint)]">
-        &copy; 2026 ViDo. All rights reserved.
-      </div>
+      <div className="vdb-footer-bottom">&copy; 2026 ViDo. All rights reserved.</div>
     </footer>
   );
 };

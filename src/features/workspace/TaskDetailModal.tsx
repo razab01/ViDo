@@ -3,7 +3,20 @@ import { SampleTask } from '../../data/sampleTasks';
 import { Badge, Button } from '../../components/ui';
 import { TaskRagPanel } from '../ml-lab/TaskRagPanel';
 import { FlowchartPreview } from './FlowchartPreview';
-import { X, Clock, Calendar, CheckCircle2, AlertCircle, History, Tag, Workflow } from 'lucide-react';
+import {
+  X,
+  Clock,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  History,
+  Tag,
+  Workflow,
+  Pin,
+  PinOff,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { getTodayDateString, getCurrentTimeString } from '../../utils/dateUtils';
 
 export interface TaskDetailModalProps {
@@ -11,6 +24,9 @@ export interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onToggleTask?: (task: SampleTask) => void;
+  onEditTask?: (task: SampleTask) => void;
+  onTogglePin?: (task: SampleTask) => void;
+  onDeleteTask?: (task: SampleTask) => void;
   isPreview?: boolean;
   userId?: string;
 }
@@ -20,6 +36,9 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   isOpen,
   onClose,
   onToggleTask,
+  onEditTask,
+  onTogglePin,
+  onDeleteTask,
   isPreview = true,
   userId,
 }) => {
@@ -94,6 +113,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               }
             >
               Priority: {task.priority}
+            </Badge>
+          )}
+
+          {task.isPinned && (
+            <Badge size="sm" variant="warning">
+              <Pin className="w-3 h-3 mr-1" /> Pinned
             </Badge>
           )}
 
@@ -219,15 +244,54 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-6 pt-4 border-t border-[var(--line)] flex items-center justify-between gap-3">
-          {onToggleTask && task && (
-            <Button
-              variant={isCompleted ? 'secondary' : 'primary'}
-              size="sm"
-              onClick={() => onToggleTask(task)}
-            >
-              {isCompleted ? 'Reopen Task' : 'Mark as Complete'}
-            </Button>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {onEditTask && task && (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={`Edit "${task.title}"`}
+                onClick={() => onEditTask(task)}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </Button>
+            )}
+            {onToggleTask && task && (
+              <Button
+                variant={isCompleted ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={() => onToggleTask(task)}
+              >
+                {isCompleted ? 'Reopen Task' : 'Mark as Complete'}
+              </Button>
+            )}
+            {onTogglePin && task && (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={task.isPinned ? `Unpin "${task.title}"` : `Pin "${task.title}"`}
+                onClick={() => onTogglePin(task)}
+              >
+                {task.isPinned ? (
+                  <PinOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Pin className="w-3.5 h-3.5" />
+                )}
+                {task.isPinned ? 'Unpin' : 'Pin'}
+              </Button>
+            )}
+            {onDeleteTask && task && (
+              <Button
+                variant="danger"
+                size="sm"
+                aria-label={`Delete "${task.title}"`}
+                onClick={() => onDeleteTask(task)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </Button>
+            )}
+          </div>
           <Button variant="secondary" size="sm" onClick={onClose}>
             Close
           </Button>

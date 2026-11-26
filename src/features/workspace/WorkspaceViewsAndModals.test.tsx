@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { SAMPLE_TASKS } from '../../data/sampleTasks';
+import { SAMPLE_TASKS, type SampleTask } from '../../data/sampleTasks';
 import { parseFlowchartSteps } from '../../data/flowchart';
 import { getHomeDashboardTasks } from '../../data/taskFilters';
 import { HomeView } from './views/HomeView';
@@ -135,6 +135,25 @@ describe('Workspace Views and Modals', () => {
         expect(screen.queryByText(task.title)).not.toBeInTheDocument();
       });
     });
+
+    it('exposes a direct edit action on dashboard task rows', () => {
+      const handleEdit = vi.fn();
+      const task = SAMPLE_TASKS[0];
+
+      render(
+        <MemoryRouter>
+          <HomeView
+            tasks={[task]}
+            onTaskClick={vi.fn()}
+            onEditTask={handleEdit}
+            initialTab="tasks"
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: `Edit "${task.title}"` }));
+      expect(handleEdit).toHaveBeenCalledWith(task);
+    });
   });
 
   describe('ListView Rendering and Category Filtering', () => {
@@ -161,6 +180,26 @@ describe('Workspace Views and Modals', () => {
 
       // Verify personal tasks are rendered
       expect(screen.getByText(/submit vehicle registration renewal/i)).toBeInTheDocument();
+    });
+
+    it('exposes a direct edit action on list task cards', () => {
+      const handleEdit = vi.fn();
+      const task = SAMPLE_TASKS[0];
+
+      render(
+        <MemoryRouter>
+          <ListView
+            title="Today Tasks"
+            description="All tasks due today"
+            tasks={[task]}
+            onTaskClick={vi.fn()}
+            onEditTask={handleEdit}
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: `Edit "${task.title}"` }));
+      expect(handleEdit).toHaveBeenCalledWith(task);
     });
   });
 
@@ -190,6 +229,23 @@ describe('Workspace Views and Modals', () => {
 
       expect(screen.getByText(/task flowchart/i)).toBeInTheDocument();
       expect(screen.getByRole('img', { name: /flowchart preview/i })).toBeInTheDocument();
+    });
+
+    it('opens the edit flow from the detail modal action', () => {
+      const handleEdit = vi.fn();
+      const task = SAMPLE_TASKS[0];
+
+      render(
+        <TaskDetailModal
+          task={task}
+          isOpen={true}
+          onClose={vi.fn()}
+          onEditTask={handleEdit}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: `Edit "${task.title}"` }));
+      expect(handleEdit).toHaveBeenCalledWith(task);
     });
   });
 
@@ -488,6 +544,102 @@ describe('Workspace Views and Modals', () => {
         })
       );
     });
+
+    it('pre-fills edit mode and saves all editable fields while preserving task identity', () => {
+      const handleClose = vi.fn();
+      const handleUpdate = vi.fn();
+      const initialTask: SampleTask = {
+        id: 'task-edit-1',
+        title: 'Original title',
+        description: 'Original description',
+        startDate: '2026-12-01',
+        dueDate: '2026-12-05',
+        dueTime: '09:00',
+        priority: 'low',
+        state: 'active',
+        category: 'home',
+        createdAt: '2026-12-01T08:00:00Z',
+        isPinned: true,
+        checkpoints: [
+          {
+            id: 'cp-original',
+            timestamp: '2026-12-02T08:00:00Z',
+            note: 'Original checkpoint',
+          },
+        ],
+        flowchart: parseFlowchartSteps('Draft -> Review') ?? undefined,
+      };
+
+      render(
+        <TaskCreateModal
+          isOpen={true}
+          onClose={handleClose}
+          initialTask={initialTask}
+          onUpdateTask={handleUpdate}
+          referenceDate="2026-12-03"
+        />
+      );
+
+      expect(screen.getByRole('heading', { name: /edit task/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/task title \*/i)).toHaveValue('Original title');
+      expect(screen.getByPlaceholderText(/add key context/i)).toHaveValue('Original description');
+      expect(screen.getByLabelText(/start date \(optional\)/i)).toHaveValue('2026-12-01');
+      expect(screen.getByLabelText(/target due date \*/i)).toHaveValue('2026-12-05');
+      expect(screen.getByLabelText(/due time \(optional\)/i)).toHaveValue('09:00');
+      expect(screen.getByLabelText(/priority level/i)).toHaveValue('low');
+      expect(screen.getByLabelText(/category/i)).toHaveValue('home');
+      expect(screen.getByLabelText(/flowchart steps/i)).toHaveValue('Draft -> Review');
+
+      fireEvent.change(screen.getByLabelText(/task title \*/i), {
+        target: { value: 'Updated title' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/add key context/i), {
+        target: { value: 'Updated description' },
+      });
+      fireEvent.change(screen.getByLabelText(/start date \(optional\)/i), {
+        target: { value: '2026-12-02' },
+      });
+      fireEvent.change(screen.getByLabelText(/target due date \*/i), {
+        target: { value: '2026-12-06' },
+      });
+      fireEvent.change(screen.getByLabelText(/due time \(optional\)/i), {
+        target: { value: '14:30' },
+      });
+      fireEvent.change(screen.getByLabelText(/priority level/i), {
+        target: { value: 'high' },
+      });
+      fireEvent.change(screen.getByLabelText(/category/i), {
+        target: { value: 'work' },
+      });
+      fireEvent.change(screen.getByLabelText(/flowchart steps/i), {
+        target: { value: 'Draft -> Review -> Publish' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^save changes$/i }));
+
+      expect(handleUpdate).toHaveBeenCalledTimes(1);
+      const updatedTask = handleUpdate.mock.calls[0][0] as SampleTask;
+      expect(updatedTask).toMatchObject({
+        id: 'task-edit-1',
+        title: 'Updated title',
+        description: 'Updated description',
+        startDate: '2026-12-02',
+        dueDate: '2026-12-06',
+        dueTime: '14:30',
+        priority: 'high',
+        category: 'work',
+        state: 'active',
+        createdAt: '2026-12-01T08:00:00Z',
+        isPinned: true,
+      });
+      expect(updatedTask.checkpoints).toEqual(initialTask.checkpoints);
+      expect(updatedTask.flowchart?.nodes.map((node) => node.label)).toEqual([
+        'Draft',
+        'Review',
+        'Publish',
+      ]);
+      expect(handleClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('WorkspaceLayout Integration', () => {
@@ -510,8 +662,9 @@ describe('Workspace Views and Modals', () => {
       expect(screen.getByRole('link', { name: /back to landing page/i })).toHaveAttribute('href', '/');
 
       // Sidebar two primary tabs exist: Dashboard and Tasks
-      expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /^tasks/i })).toBeInTheDocument();
+      const sidebar = within(screen.getByLabelText('Workspace navigation'));
+      expect(sidebar.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+      expect(sidebar.getByRole('link', { name: /^tasks/i })).toBeInTheDocument();
     });
 
     it('navigates between Dashboard and Tasks via sidebar without in-page dual navigation', () => {
@@ -528,7 +681,8 @@ describe('Workspace Views and Modals', () => {
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
       // Click Tasks in sidebar
-      const tasksLink = screen.getByRole('link', { name: /^tasks/i });
+      const sidebar = within(screen.getByLabelText('Workspace navigation'));
+      const tasksLink = sidebar.getByRole('link', { name: /^tasks/i });
       fireEvent.click(tasksLink);
 
       // Now on Tasks view: Filter builder is visible, in-page tablist is NOT present
@@ -536,7 +690,7 @@ describe('Workspace Views and Modals', () => {
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
       // Click Dashboard in sidebar
-      const dashboardLink = screen.getByRole('link', { name: /dashboard/i });
+      const dashboardLink = sidebar.getByRole('link', { name: /dashboard/i });
       fireEvent.click(dashboardLink);
 
       // Back to Dashboard
@@ -613,6 +767,35 @@ describe('Workspace Views and Modals', () => {
       expect(screen.queryByText('Launch Critical Project Today')).not.toBeInTheDocument();
     });
 
+    it('edits a dashboard task from its row and shows the updated task', () => {
+      render(
+        <MemoryRouter initialEntries={['/preview']}>
+          <Routes>
+            <Route path="/preview/*" element={<WorkspaceLayout />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      const originalTitle = 'Review Q4 Budget & Resource Allocations';
+      const updatedTitle = 'Reviewed Q4 Budget & Resource Allocations';
+      expect(screen.getByText(originalTitle)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: `Edit "${originalTitle}"` }));
+
+      expect(screen.getByRole('heading', { name: /edit task/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/task title \*/i)).toHaveValue(originalTitle);
+
+      fireEvent.change(screen.getByLabelText(/task title \*/i), {
+        target: { value: updatedTitle },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /^save changes$/i }));
+
+      expect(screen.queryByRole('heading', { name: /edit task/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(originalTitle)).not.toBeInTheDocument();
+      expect(screen.getByText(updatedTitle)).toBeInTheDocument();
+      expect(screen.getByText(/task "reviewed q4 budget & resource allocations" updated/i)).toBeInTheDocument();
+    });
+
     it('renders team space view when navigating to /preview/team/:teamId', async () => {
       render(
         <MemoryRouter initialEntries={['/preview/team/team-alpha-launch']}>
@@ -678,6 +861,9 @@ describe('Workspace Views and Modals', () => {
       expect(isKnownWorkspacePath('/workspace/archived', '/workspace')).toBe(true);
       expect(isKnownWorkspacePath('/workspace/calendar', '/workspace')).toBe(true);
       expect(isKnownWorkspacePath('/workspace/analytics', '/workspace')).toBe(true);
+      expect(isKnownWorkspacePath('/workspace/converse', '/workspace')).toBe(true);
+      expect(isKnownWorkspacePath('/workspace/chat-zone', '/workspace')).toBe(true);
+      expect(isKnownWorkspacePath('/workspace/chat-lab', '/workspace')).toBe(true);
       expect(isKnownWorkspacePath('/workspace/team/alpha-1', '/workspace')).toBe(true);
 
       // Invalid sub-endpoints (MUST be rejected and return false)

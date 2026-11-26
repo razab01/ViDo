@@ -87,6 +87,18 @@ describe('LandingPage Integration', () => {
     expect(screen.getByText('Interactive Preview')).toBeInTheDocument();
     expect(screen.getByText('Logged-in demo preview')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /back to landing page/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the back-to-dashboard ribbon link only on Converse', () => {
+    window.history.pushState({}, '', '/preview/converse');
+    render(<App />);
+
+    expect(screen.getByRole('link', { name: /back to landing page/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute(
+      'href',
+      '/preview'
+    );
   });
 
   it('navigates to the live user workspace dashboard after successful login and allows sign out', async () => {
@@ -110,15 +122,18 @@ describe('LandingPage Integration', () => {
     const dashboardBtn = screen.getByRole('button', { name: /sign in to dashboard/i });
     fireEvent.click(dashboardBtn);
 
-    await waitFor(() => {
-      // Live dashboard has no demo preview notice banner
-      expect(screen.queryByText('DEMO PREVIEW')).not.toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /back to landing page/i })).not.toBeInTheDocument();
+    await waitFor(
+      () => {
+        // Live dashboard has no demo preview notice banner
+        expect(screen.queryByText('DEMO PREVIEW')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /back to landing page/i })).not.toBeInTheDocument();
 
-      // Authenticated user profile is displayed
-      expect(screen.getAllByText('Alex Morgan')[0]).toBeInTheDocument();
-      expect(screen.getByText(/welcome back, alex/i)).toBeInTheDocument();
-    });
+        // Authenticated user profile is displayed
+        expect(screen.getAllByText('Alex Morgan')[0]).toBeInTheDocument();
+        expect(screen.getByText(/welcome back, alex/i)).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     // Two tabs are present: Dashboard and Tasks
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();

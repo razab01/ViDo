@@ -15,7 +15,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Dict, List, Optional, Sequence
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence, Tuple
 
 API = "https://en.wikipedia.org/w/api.php"
 USER_AGENT = "ViDo/1.0 (local answer engine; contact: local-user)"
@@ -26,16 +27,40 @@ CACHE: Dict[str, str] = {}
 # answers. They are filtered out before ranking so chat replies stay useful.
 DISAMBIGUATION = re.compile(r"\b(?:may refer to|could refer to|disambiguation|redirects here)\b", re.I)
 FILLER_PREFIX = re.compile(
-    r"^(?:ok(?:ay)?|so|and|now|well|yeah|yes|but|please|also)\b[\s,!.]*",
+    r"^(?:ok(?:ay)?|so|and|now|well|yeah|yes|but|please|also|hi|hello|hey|greetings|"
+    r"good\s+(?:morning|afternoon|evening))\b[\s,!.]*",
+    re.I,
+)
+# A source framing is an instruction about evidence, not part of the question.
+# Strip it so concept routing answers the real question while the evidence
+# callback still checks that source internally and never becomes a chat badge.
+SOURCE_PREFIX = re.compile(
+    r"^(?:according\s+to\s+wikipedia|as\s+per\s+wikipedia|"
+    r"wikipedia\s+says(?:\s+that)?)\b[\s,:\-]*",
+    re.I,
+)
+# Procedural wording is an instruction, not a Wikipedia article title. Without
+# this guard, "how to create a new database" can match a book such as "How to
+# Create a Mind" instead of answering the actual question.
+PROCEDURAL_QUESTION = re.compile(
+    r"^(?:how\s+to|how\s+do\s+i|how\s+can\s+i|steps?\s+to|guide\s+to|tutorial\s+on)\b",
     re.I,
 )
 COMMON_TYPOS = (
     (re.compile(r"\boart\b", re.I), "part"),
     (re.compile(r"\bthus\b", re.I), "this"),
+    (re.compile(r"\bschur\s+components?\b", re.I), "schur complement"),
 )
 # A few common terms have a disambiguation page with the exact title. Prefer
 # the article that matches the meaning people usually ask about.
 TOPIC_ALIASES = {"blue chip": "Blue chip (stock market)"}
+
+# Evidence checks are internal. They never become part of the chat answer.
+EVIDENCE_STOP_WORDS = {
+    "about", "an", "and", "are", "as", "at", "describe", "explain", "for", "how",
+    "is", "it", "me", "of", "on", "tell", "that", "the", "this", "to", "what",
+    "when", "where", "which", "who", "why", "with", "was", "were",
+}
 
 _TOKENIZER = None
 _TOKENIZER_TRIED = False
@@ -44,11 +69,23 @@ _LAST_REQUEST_AT = 0.0
 MIN_REQUEST_INTERVAL = 1.2
 
 
+@dataclass(frozen=True)
+class Evidence:
+    """Metadata for a Wikipedia support check, kept out of answer text."""
+
+    topic: str
+    title: Optional[str]
+    extract: Optional[str]
+    overlap: Tuple[str, ...]
+    supported: bool
+
+
 def strip_leading_fillers(question: str) -> str:
     """Remove conversational lead-ins and fix common typos before routing."""
     value = str(question or "").strip()
     while True:
         updated = FILLER_PREFIX.sub("", value).lstrip()
+        updated = SOURCE_PREFIX.sub("", updated).lstrip()
         if updated == value:
             break
         value = updated
@@ -279,18 +316,62 @@ def _search_topics(question: str, topic: str) -> List[str]:
     return [value for index, value in enumerate(topics) if value and value not in topics[:index]]
 
 
+def _evidence_for_topic(question: str, topic: str) -> Tuple[Optional[str], Optional[str]]:
+    for candidate_topic in _search_topics(question, topic):
+        candidates = _search(candidate_topic)
+        extract = _best_extract(question, topic, candidates)
+        if extract:
+            title = next(
+                (str(item.get("title") or "") for item in candidates if item.get("extract") == extract),
+                str(candidates[0].get("title") or "") if candidates else None,
+            )
+            return title or None, extract
+    return None, None
+
+
 def answer(question: str) -> Optional[str]:
-    """Return a Wikipedia-backed answer when local routing found nothing."""
+    """Return a clean Wikipedia-backed answer when local routing found nothing."""
+    if PROCEDURAL_QUESTION.search(strip_leading_fillers(question)):
+        return None
     topic = topic_phrase(question)
     if len(topic) < 3 or len(topic.split()) > 8:
         return None
     key = topic.lower()
     if key not in CACHE:
-        extract = ""
-        for candidate_topic in _search_topics(question, topic):
-            candidates = _search(candidate_topic)
-            extract = _best_extract(question, topic, candidates)
-            if extract:
-                break
+        _, extract = _evidence_for_topic(question, topic)
         CACHE[key] = _trim(extract) if extract else ""
-    return f"Wikipedia: {CACHE[key]}" if CACHE[key] else None
+    return CACHE[key] or None
+
+
+def evidence(question: str, answer_text: Optional[str] = None, topic: Optional[str] = None) -> Evidence:
+    """Check Wikipedia support for a locally answered question.
+
+    This is used by the evaluation sweep and by optional callbacks in the answer
+    router. It returns metadata only; callers decide whether to display anything.
+    """
+    subject = str(topic or topic_phrase(question)).strip()
+    if len(subject) < 3 or len(subject.split()) > 8:
+        return Evidence(subject, None, None, (), False)
+
+    title, extract = _evidence_for_topic(question, subject)
+    if not extract:
+        return Evidence(subject, title, None, (), False)
+
+    source = f"{subject} {answer_text or ''}".lower()
+    support = f"{title or ''} {extract[:1200]}".lower()
+    source_tokens = {
+        token for token in re.findall(r"[a-z0-9]+", source)
+        if token not in EVIDENCE_STOP_WORDS
+    }
+    support_tokens = set(re.findall(r"[a-z0-9]+", support))
+    overlap = tuple(sorted(source_tokens & support_tokens))
+    return Evidence(subject, title, extract, overlap, bool(overlap))
+
+
+__all__ = [
+    "Evidence",
+    "answer",
+    "evidence",
+    "strip_leading_fillers",
+    "topic_phrase",
+]

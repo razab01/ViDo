@@ -2,7 +2,7 @@
  * Conversational personal-task creation.
  *
  * This module is pure: it parses a user's message into a draft, asks for the
- * next missing detail and finally builds a normal SampleTask. Chat Lab owns the
+ * next missing detail and finally builds a normal SampleTask. Converse owns the
  * UI side and calls the app's existing task-create callback when a draft is
  * complete.
  */
@@ -550,7 +550,7 @@ const continueDraft = (draft: TaskDraft, now: Date): TaskDraftResponse => {
 };
 
 /**
- * Main entry point used by Chat Lab. Returns handled=false for ordinary chat
+ * Main entry point used by Converse. Returns handled=false for ordinary chat
  * questions so they continue to the Python/answer pipeline.
  */
 export function handleTaskDraftMessage(

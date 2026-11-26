@@ -1,0 +1,50 @@
+Newton's first law||newton first law,law of inertia,inertia||An object stays at rest or in uniform straight-line motion unless a net external force acts on it.||ΣF=0 ⇒ constant velocity||Also called law of inertia; defines inertial frames.
+Newton's second law||newton second law,F=ma||Acceleration is proportional to net force and inversely proportional to mass.||F=ma||Vector equation; acceleration is in direction of net force.
+Newton's third law||newton third law,action reaction||For every action there is an equal and opposite reaction.||F_AB=-F_BA||Forces act on different bodies, so they do not cancel on one body.
+Force||force,net force||A force is a push or pull that can change an object's motion or shape.||F=ma||SI unit is newton (N); forces are vectors.
+Mass and weight||mass,weight||Mass is amount of matter; weight is gravitational force on mass.||W=mg||Mass is constant; weight changes with gravitational field.
+Friction||friction,static friction,kinetic friction||Friction opposes relative motion between surfaces in contact.||f≤μN||Static friction prevents motion; kinetic friction acts during sliding.
+Work||work done,mechanical work||Work is done when a force causes displacement in its direction.||W=F·d cosθ||SI unit is joule; zero if force perpendicular to displacement.
+Energy||energy,kinetic energy,potential energy||Energy is the capacity to do work and can change form but is conserved in isolated systems.||KE=½mv², PE=mgh||SI unit is joule; mechanical energy = KE+PE.
+Power||power,watt||Power is the rate of doing work or transferring energy.||P=W/t=Fv||SI unit is watt (W), equal to one joule per second.
+Momentum||momentum,linear momentum||Momentum is mass times velocity and measures quantity of motion.||p=mv||SI unit kg·m/s; conserved in isolated collisions.
+Impulse||impulse||Impulse is force applied over time and equals change in momentum.||J=FΔt=Δp||Area under force-time graph gives impulse.
+Circular motion||circular motion,uniform circular motion||Circular motion is motion along a circular path, often with inward acceleration.||a_c=v²/r=ω²r||Velocity is tangent; acceleration points to centre.
+Centripetal force||centripetal force||Centripetal force is the inward net force needed for circular motion.||F_c=mv²/r||Not a new force; it can be gravity, tension or friction.
+Gravitation||gravity,gravitation,newton law of gravitation||Every mass attracts every other mass with force proportional to product of masses and inverse square of distance.||F=Gm₁m₂/r²||G is universal gravitational constant.
+Escape velocity||escape velocity||Escape velocity is the minimum speed needed to leave a gravitational field without further propulsion.||v_e=sqrt(2GM/R)||For Earth it is about 11.2 km/s.
+Kinematics||kinematics,motion equations||Kinematics describes motion using displacement, velocity, acceleration and time without considering forces.||v=u+at, s=ut+½at²||Applies for constant acceleration.
+Projectile motion||projectile||Projectile motion is 2D motion under gravity with horizontal velocity constant and vertical acceleration g.||R=u²sin2θ/g||Horizontal and vertical components are independent.
+Free fall||free fall||Free fall is motion under gravity alone, ignoring air resistance.||a=g≈9.8 m/s² downward||All objects fall with same acceleration in vacuum.
+Oscillation||oscillation,periodic motion||Oscillation is repeated back-and-forth motion about an equilibrium position.||T=1/f||Period is time for one cycle; frequency is cycles per second.
+Simple harmonic motion||shm,simple harmonic motion||SHM is oscillation where restoring force is proportional to displacement and opposite in direction.||a=-ω²x||Examples include mass-spring and simple pendulum for small angles.
+Wave||wave,wavelength,frequency||A wave is a disturbance that transfers energy without transferring matter overall.||v=fλ||Transverse waves vibrate perpendicular; longitudinal waves vibrate parallel.
+Doppler effect||doppler effect||Doppler effect is the apparent change in frequency due to relative motion between source and observer.||f'=f(v±v_o)/(v∓v_s)||Approaching source increases observed frequency.
+Reflection||reflection of light||Reflection is the bouncing back of light from a surface.||angle of incidence = angle of reflection||Measured from the normal; plane mirrors form virtual images.
+Refraction||refraction||Refraction is bending of light as it passes between media with different optical densities.||n₁sinθ₁=n₂sinθ₂||Light bends toward normal in denser medium.
+Lens||lens,convex lens,concave lens||A lens refracts light to converge or diverge rays forming images.||1/f=1/v+1/u||Convex lenses can form real or virtual images; concave always forms virtual diminished images.
+Mirror||mirror,plane mirror,concave mirror||A mirror reflects light to form images.||f=R/2 for spherical mirrors||Plane mirrors give virtual, erect, same-size images.
+Snell's law||snell law,refraction law||Snell's law relates angles of incidence and refraction to refractive indices.||n₁sinθ₁=n₂sinθ₂||Explains bending of light at interfaces.
+Electric charge||charge,electric charge||Electric charge is a property of matter that causes electric force; it is conserved and quantized.||Q=ne||Like charges repel; unlike charges attract.
+Coulomb's law||coulomb law||The force between point charges is proportional to product of charges and inverse square of separation.||F=k|q₁q₂|/r²||Force is attractive for opposite signs, repulsive for same signs.
+Electric field||electric field||Electric field is force per unit positive test charge at a point.||E=F/q||Field lines point away from positive and toward negative charges.
+Electric potential||potential,voltage||Electric potential is potential energy per unit charge at a point.||V=W/q||SI unit is volt; potential difference drives current.
+Current||electric current,current||Current is the rate of flow of electric charge.||I=Q/t||SI unit is ampere; conventional current flows from positive to negative.
+Resistance||resistance,resistor||Resistance opposes electric current and converts electrical energy to heat.||R=V/I||SI unit is ohm; depends on material, length, area and temperature.
+Ohm's law||ohm law||For many conductors at constant temperature, current is proportional to voltage.||V=IR||Not universal; non-ohmic devices do not follow a straight V-I relation.
+Series and parallel circuits||series circuit,parallel circuit||In series, components share current; in parallel, they share voltage.||Series R=R₁+R₂; parallel 1/R=1/R₁+1/R₂||Parallel circuits reduce equivalent resistance.
+Magnetic field||magnetic field||Magnetic field is a vector field that exerts force on moving charges and magnetic materials.||B unit tesla||Field lines form closed loops; direction by right-hand rule.
+Faraday's law||faraday law,electromagnetic induction||A changing magnetic flux induces an emf in a circuit.||ε=-dΦ_B/dt||Lenz's law gives the induced direction opposing the change.
+Electromagnetic induction||induction,generator effect||Electromagnetic induction is producing emf by changing magnetic flux.||ε=-N dΦ/dt||Basis of generators and transformers.
+AC and DC||ac,dc,alternating current,direct current||DC flows one direction; AC reverses direction periodically.||AC: v=V₀sinωt||Mains supply is AC; batteries provide DC.
+First law of thermodynamics||thermodynamics first law||Energy cannot be created or destroyed; heat supplied changes internal energy and work done.||ΔU=Q-W||Sign convention depends on whether work is by or on system.
+Heat||heat,thermal energy||Heat is energy transferred due to temperature difference.||Q=mcΔT||SI unit joule; heat flows from hot to cold.
+Specific heat||specific heat capacity||Specific heat is heat needed to raise 1 kg of a substance by 1 K.||Q=mcΔT||Water has high specific heat about 4186 J/kg·K.
+Entropy||entropy||Entropy measures energy dispersal or disorder; total entropy of an isolated system never decreases.||ΔS≥0||Second law of thermodynamics uses entropy.
+Ideal gas law||ideal gas equation,pv=nrt||Ideal gas law relates pressure, volume, temperature and moles for an ideal gas.||PV=nRT||R is gas constant; temperature must be in kelvin.
+Kinetic theory||kinetic theory of gases||Kinetic theory explains gas pressure as molecular collisions with container walls.||PV=⅓Nm v²_rms||Average kinetic energy is proportional to absolute temperature.
+Photoelectric effect||photoelectric||Photoelectric effect is emission of electrons from a metal when light above threshold frequency shines on it.||hf=ϕ+K_max||Light behaves as photons; intensity affects number of electrons, not their max energy.
+Quantum mechanics||quantum,quantum mechanics||Quantum mechanics describes matter and energy at atomic scales using wavefunctions and quantized states.||ψ evolves by Schrödinger equation||Energy levels are discrete; measurement gives probabilistic outcomes.
+Relativity||special relativity,relativity||Special relativity describes physics in inertial frames when speeds approach light speed.||E=mc², t'=γt||Speed of light is invariant; mass-energy equivalence.
+Big Bang theory||big bang,big bang theory||The Big Bang theory is the leading model for the origin and expansion of the universe from an extremely hot, dense early state.||universe expanded from hot dense state||Evidence includes galaxy redshift, cosmic microwave background and light-element abundance.
+Nuclear fission and fusion||nuclear fission,nuclear fusion,fission,fusion||Fission splits heavy nuclei and fusion joins light nuclei; both release nuclear energy because binding energy per nucleon changes.||E=Δmc²||Fission powers reactors; fusion powers stars and experimental reactors.

@@ -1,5 +1,5 @@
 /**
- * Persistent chat history for Chat Lab.
+ * Persistent chat history for Converse.
  *
  * Mirrors the mlStore pattern: module-level state with subscriptions so both
  * the chat page and the workspace sidebar stay in sync without prop drilling.
@@ -8,6 +8,7 @@
 import type { TaskFlowchart } from '../../data/flowchart';
 import type { SampleTask } from '../../data/sampleTasks';
 import type { TaskDraft } from '../../data/taskCreation';
+import type { PythonBookingState } from '../ml-lab/pythonApi';
 import type { ChatDocument } from './documentAnswer';
 
 export interface ChatMessage {
@@ -30,6 +31,10 @@ export interface ChatThread {
   lastTask?: SampleTask;
   /** Document loaded in this chat, used as context for answers. */
   document?: ChatDocument;
+  /** In-flight Graph RAG plan booking, persisted so clarifications resume. */
+  booking?: PythonBookingState | null;
+  /** Pinned chats stay at the top of the history list. */
+  pinned?: boolean;
 }
 
 const STORAGE_PREFIX = 'vido_chat_lab_v1_';
@@ -111,7 +116,15 @@ const backfillDocumentMessage = (thread: ChatThread): ChatThread => {
 };
 
 function persist(userId: string, threads: ChatThread[]) {
-  const trimmed = threads.slice(0, MAX_THREADS);
+  // Keep pinned (and the active) conversation safe from the history cap.
+  const protectedIds = new Set<string>(
+    threads.filter((thread) => thread.pinned).map((thread) => thread.id)
+  );
+  const activeId = activeByUser.get(userId);
+  if (activeId) protectedIds.add(activeId);
+  const protectedThreads = threads.filter((thread) => protectedIds.has(thread.id));
+  const remainingThreads = threads.filter((thread) => !protectedIds.has(thread.id));
+  const trimmed = [...protectedThreads, ...remainingThreads].slice(0, MAX_THREADS);
   threadsByUser.set(userId, trimmed);
   try {
     localStorage.setItem(keyFor(userId), JSON.stringify({ version: 1, threads: trimmed }));
@@ -295,6 +308,24 @@ export function setThreadLastTask(
   persist(userId, threads);
 }
 
+/** Persist an in-flight plan-booking clarification for one chat thread. */
+export function setThreadBooking(
+  userId: string,
+  threadId: string,
+  booking: PythonBookingState | null
+) {
+  const threads = readThreads(userId).map((thread) =>
+    thread.id === threadId
+      ? {
+          ...thread,
+          updatedAt: Date.now(),
+          ...(booking ? { booking } : { booking: undefined }),
+        }
+      : thread
+  );
+  persist(userId, threads);
+}
+
 /** Attach or remove the document used as answer context in one chat. */
 export function setThreadDocument(
   userId: string,
@@ -311,4 +342,22 @@ export function setThreadDocument(
       : thread
   );
   persist(userId, threads);
+}
+
+/** Pin or unpin a conversation so it stays at the top of the history list. */
+export function setThreadPinned(userId: string, threadId: string, pinned: boolean) {
+  const threads = readThreads(userId).map((thread) =>
+    thread.id === threadId
+      ? {
+          ...thread,
+          ...(pinned ? { pinned: true } : { pinned: undefined }),
+        }
+      : thread
+  );
+  persist(userId, threads);
+}
+
+export function toggleThreadPinned(userId: string, threadId: string) {
+  const thread = readThreads(userId).find((item) => item.id === threadId);
+  setThreadPinned(userId, threadId, !thread?.pinned);
 }

@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 import ml
 from document_text import DocumentError, extract_text
-from graph_rag import answer as answer_with_graph
+from graph_rag import answer_with_booking
 from ml import RunBundle
 
 
@@ -60,6 +60,7 @@ class AnswerBody(BaseModel):
     suggestions: list = []
     trained: Optional[dict] = None
     documents: list = []
+    booking: Optional[dict] = None
 
 
 class DocumentBody(BaseModel):
@@ -107,17 +108,16 @@ def predict(body: PredictBody):
 @app.post("/api/python/answer")
 def answer(body: AnswerBody):
     try:
-        return {
-            "answer": answer_with_graph(
-                body.question,
-                body.rows,
-                body.cols,
-                body.profile,
-                body.suggestions,
-                body.trained,
-                body.documents,
-            )
-        }
+        return answer_with_booking(
+            body.question,
+            body.rows,
+            body.cols,
+            body.profile,
+            body.suggestions,
+            body.trained,
+            body.documents,
+            body.booking,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

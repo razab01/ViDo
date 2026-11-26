@@ -58,7 +58,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      // Publish the signed-in user before this promise resolves. Otherwise a
+      // caller that navigates immediately can reach a guard that still sees no
+      // user and bounce back to the landing page.
+      const firebaseUser = result?.user;
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName,
+          email: firebaseUser.email,
+          photoURL: firebaseUser.photoURL,
+        });
+      }
     } catch (error) {
       console.error('Google Sign-In error:', error);
       throw error;

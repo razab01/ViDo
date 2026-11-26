@@ -19,10 +19,15 @@ export interface TaskCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateTask?: (task: SampleTask) => void;
+  /** Supplying a task switches this modal into edit mode. */
+  initialTask?: SampleTask | null;
+  onUpdateTask?: (task: SampleTask) => void;
   initialStartDate?: string;
   initialDueDate?: string;
   initialDueTime?: string;
   initialFlowchart?: TaskFlowchart | null;
+  /** Reference "today" for validation/defaults. Preview passes its benchmark date. */
+  referenceDate?: string;
   predictTask?: (input: TaskPredictionInput) => TaskPrediction | null;
 }
 
@@ -30,16 +35,31 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   isOpen,
   onClose,
   onCreateTask,
+  initialTask,
+  onUpdateTask,
   initialStartDate,
   initialDueDate,
   initialDueTime,
   initialFlowchart,
+  referenceDate,
   predictTask,
 }) => {
+  // Preview mode has a fixed benchmark date. Editing uses it for validation so
+  // seeded tasks stay editable even when the real clock has moved on. Creation
+  // keeps the real clock because buildSampleTask timestamps against Date.now().
+  const validationNow = useMemo(
+    () => (referenceDate ? new Date(`${referenceDate}T12:00:00`) : new Date()),
+    [referenceDate]
+  );
+  const validationTodayStr = getTodayDateString(validationNow);
+  const realTodayStr = getTodayDateString();
+  const sevenDaysAgoStr = getSevenDaysAgoDateString(validationNow);
+  const currentTimeStr = getCurrentTimeString(validationNow);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(() => initialStartDate || '');
-  const [dueDate, setDueDate] = useState(() => initialDueDate || getTodayDateString());
+  const [dueDate, setDueDate] = useState(() => initialDueDate || realTodayStr);
   const [dueTime, setDueTime] = useState(() => initialDueTime ?? getDefaultDueTime());
   const [priority, setPriority] = useState<'high' | 'medium' | 'low' | ''>('medium');
   const [category, setCategory] = useState<'personal' | 'home' | 'work'>('personal');
@@ -48,18 +68,15 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const todayStr = getTodayDateString();
-  const sevenDaysAgoStr = getSevenDaysAgoDateString();
-  const currentTimeStr = getCurrentTimeString();
-
   // Compute live validation using useMemo
   const validation = useMemo(() => {
     return validateChronologicalDeadline({
       startDate,
       dueDate,
       dueTime,
+      now: validationNow,
     });
-  }, [startDate, dueDate, dueTime]);
+  }, [startDate, dueDate, dueTime, validationNow]);
 
   const isFormValid = Boolean(title.trim()) && validation.isValid;
 
@@ -77,7 +94,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
     [predictTask, title, description, priority, category, startDate, dueDate, dueTime]
   );
 
-  const isSelectedDateToday = dueDate === todayStr;
+  const isSelectedDateToday = dueDate === validationTodayStr;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,18 +104,50 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
     };
     if (isOpen) {
       window.addEventListener('keydown', handleKeyDown);
-      setSubmittedNotice(false);
-
-      const today = getTodayDateString();
-      if (!dueDate) {
-        setDueDate(today);
-      }
-      setTimeout(() => titleInputRef.current?.focus(), 50);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Re-seed the form each time it opens so editing one task, then another,
+  // never shows the previous task's values. Create mode keeps its own defaults.
+  useEffect(() => {
+    if (!isOpen) return;
+    setSubmittedNotice(false);
+    if (initialTask) {
+      setTitle(initialTask.title || '');
+      setDescription(initialTask.description || '');
+      setStartDate(initialTask.startDate || '');
+      setDueDate(initialTask.dueDate || validationTodayStr);
+      setDueTime(initialTask.dueTime ?? getDefaultDueTime());
+      setPriority(initialTask.priority ?? '');
+      setCategory(initialTask.category ?? 'personal');
+      setFlowchart(initialTask.flowchart ?? null);
+    } else {
+      setTitle('');
+      setDescription('');
+      setStartDate(initialStartDate || '');
+      setDueDate(initialDueDate || realTodayStr);
+      setDueTime(initialDueTime ?? getDefaultDueTime());
+      setPriority('medium');
+      setCategory('personal');
+      setFlowchart(initialFlowchart ?? null);
+    }
+    setTimeout(() => titleInputRef.current?.focus(), 50);
+  }, [
+    isOpen,
+    initialTask,
+    initialStartDate,
+    initialDueDate,
+    initialDueTime,
+    initialFlowchart,
+    validationTodayStr,
+    realTodayStr,
+  ]);
+
   if (!isOpen) return null;
+
+  const isEditMode = Boolean(initialTask);
+  const submitLabel = isEditMode ? 'Save Changes' : 'Create Task';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +158,34 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
         ? `Estimated completion chance: ${formatTaskProbability(probability.probability, probability.kind)}.`
         : `Estimated outcome: ${formatTaskProbability(probability.probability, probability.kind)} ${probability.label}.`
       : '';
+
+    if (initialTask) {
+      const updatedTask: SampleTask = {
+        ...initialTask,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startDate: startDate || undefined,
+        dueDate,
+        dueTime: dueTime || undefined,
+        priority: (priority as 'high' | 'medium' | 'low') || undefined,
+        category,
+        flowchart: flowchart ?? undefined,
+        checkpoints: probabilityNote
+          ? [
+              ...(initialTask.checkpoints || []),
+              {
+                id: `cp-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                note: `Task updated. ${probabilityNote}`,
+              },
+            ]
+          : initialTask.checkpoints,
+      };
+      setSubmittedNotice(true);
+      onUpdateTask?.(updatedTask);
+      onClose();
+      return;
+    }
 
     const newTask: SampleTask = buildSampleTask({
       title,
@@ -129,7 +206,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
     setTitle('');
     setDescription('');
     setStartDate('');
-    setDueDate(getTodayDateString());
+    setDueDate(realTodayStr);
     setDueTime(getDefaultDueTime());
     setPriority('medium');
     setCategory('personal');
@@ -152,24 +229,26 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
       >
         <button
           onClick={onClose}
-          aria-label="Close create task modal"
+          aria-label={isEditMode ? 'Close edit task modal' : 'Close create task modal'}
           className="absolute top-5 right-5 text-[var(--muted)] hover:text-[var(--ink)] p-1 rounded-lg hover:bg-[var(--canvas)] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <h2 id="create-task-title" className="text-xl font-bold text-[var(--ink)]">
-          Create New Task
+          {isEditMode ? 'Edit Task' : 'Create New Task'}
         </h2>
         <p className="text-xs text-[var(--muted)] mt-1 mb-5">
-          Define exact deadlines and chronological ownership for your next responsibility.
+          {isEditMode
+            ? 'Update the details, schedule, priority, or flowchart for this task.'
+            : 'Define exact deadlines and chronological ownership for your next responsibility.'}
         </p>
 
         {submittedNotice && (
           <div className="mb-5 p-3.5 rounded-xl bg-[var(--green-soft)] border border-[var(--green)]/30 text-xs text-[var(--green)] flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <p className="text-xs font-semibold leading-relaxed">
-              Task successfully saved to your workspace.
+              {isEditMode ? 'Task changes saved to your workspace.' : 'Task successfully saved to your workspace.'}
             </p>
           </div>
         )}
@@ -282,6 +361,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
                 <Tag className="w-3 h-3 text-[var(--faint)]" /> Category
               </label>
               <select
+                aria-label="Category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
                 className="w-full px-3 py-2 text-xs bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
@@ -297,6 +377,7 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
                 Priority Level
               </label>
               <select
+                aria-label="Priority Level"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
                 className="w-full px-3 py-2 text-xs bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
@@ -318,9 +399,9 @@ export const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
               variant="primary"
               size="sm"
               disabled={!isFormValid}
-              aria-label="Create Task"
+              aria-label={submitLabel}
             >
-              Create Task
+              {submitLabel}
             </Button>
           </div>
         </form>

@@ -90,7 +90,11 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-[var(--surface)]/95 backdrop-blur-xs border-b border-[var(--line)] px-6 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+    <header
+      className={`sticky z-20 bg-[var(--surface)]/95 backdrop-blur-xs border-b border-[var(--line)] px-6 sm:px-8 py-3.5 flex items-center justify-between gap-4 ${
+        isPreview ? 'top-[var(--preview-bar-height)]' : 'top-0'
+      }`}
+    >
       {/* Title & Subtitle */}
       <div>
         <div className="flex items-center gap-2.5">

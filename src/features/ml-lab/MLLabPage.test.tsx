@@ -23,7 +23,6 @@ const setOfflineTrainingOptions = () => {
 describe('MLLabPage', () => {
   beforeEach(() => {
     clearDatasetUploaded('mllab-train-user');
-    clearDatasetUploaded('mllab-empty-rag-user');
     clearDatasetUploaded('mllab-hide-pct-user');
   });
 
@@ -37,7 +36,7 @@ describe('MLLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /load demo data/i }));
 
     expect(await screen.findByText(/learning from your file/i)).toBeInTheDocument();
-    expect(await screen.findByText(/ready to answer questions/i, {}, { timeout: 30000 })).toBeInTheDocument();
+    expect(await screen.findByText(/your models are trained/i, {}, { timeout: 30000 })).toBeInTheDocument();
     expect(screen.getByText(/learned from 300 rows/i)).toBeInTheDocument();
     expect(screen.queryByText(/tokenizer verification/i)).not.toBeInTheDocument();
     expect(screen.getByText(/all model scores/i)).toBeInTheDocument();
@@ -52,31 +51,10 @@ describe('MLLabPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
     expect(screen.getByText(/tokenizer verification/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /suggestions/i })).toBeInTheDocument();
-    expect(screen.getByText(/always uses graph rag/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Graph' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Agentic' })).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/ask about your data or any topic/i), {
-      target: { value: 'Which task_text records look likely to be completed?' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
-
-    expect(screen.getByText(/finding the answer/i)).toBeInTheDocument();
-    expect(await screen.findByText(/^answer$/i)).toBeInTheDocument();
-  }, 60000);
-
-  it('shows a friendly hint instead of an error badge for an empty question', async () => {
-    localStorage.clear();
-    render(<MLLabPage userId="mllab-empty-rag-user" />);
-
-    setOfflineTrainingOptions();
-    fireEvent.click(screen.getByRole('button', { name: /load demo data/i }));
-    expect(await screen.findByText(/ready to answer questions/i, {}, { timeout: 30000 })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /find answer/i }));
-
-    expect(screen.getByText(/type a question or pick an example/i)).toBeInTheDocument();
-    expect(screen.queryByText('NONE')).not.toBeInTheDocument();
+    expect(screen.queryByText(/ask a question/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/ask about your data or any topic/i)).not.toBeInTheDocument();
   }, 60000);
 
   it('hides every saved-model percentage until a dataset is loaded in this session', async () => {
@@ -143,7 +121,7 @@ describe('MLLabPage', () => {
     });
 
     render(<MLLabPage userId={userId} />);
-    expect(await screen.findByText(/ready to answer questions/i)).toBeInTheDocument();
+    expect(await screen.findByText(/your models are trained/i)).toBeInTheDocument();
     expect(screen.queryByText(/accuracy on test rows/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/80\.0%/)).not.toBeInTheDocument();
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);

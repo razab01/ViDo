@@ -265,7 +265,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   return (
-    <div className="p-6 sm:p-8 max-w-[1400px] mx-auto space-y-5">
+    <div className="vdb-calendar p-6 sm:p-8 max-w-[1400px] mx-auto space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-[var(--ink)]">Planning Calendar</h2>

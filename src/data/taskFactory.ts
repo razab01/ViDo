@@ -54,6 +54,7 @@ export function buildSampleTask(input: SampleTaskInput): SampleTask {
     state: 'active',
     category: input.category,
     createdAt: timestamp,
+    isPinned: false,
     flowchart: input.flowchart ?? undefined,
     checkpoints: [
       {

@@ -8,14 +8,30 @@ graph before the TypeScript fallback is ever needed.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import networkx as nx
 
+import arxiv
+import concept_graph
+import plan_booking
+import rag_python
+import subject_advanced
+from arxiv import answer as arxiv_answer
 from smart_answers import answer as smart_answer
+from smart_answers import GREETING_ANSWER, correct_typos, greeting_answer
+from subject_advanced import is_advanced_request
+from subject_rag import answer as subject_answer
+from subject_rag import classify as classify_subject
+from subject_rag import load_cards as load_subject_cards
+from subject_solvers import solve as solve_subject_question
 from vido_math import handle_query
 from wikipedia import answer as wikipedia_answer
 from wikipedia import strip_leading_fillers
+
+
+EvidenceCallback = Callable[[str, str], None]
+ArxivEvidenceCallback = Callable[[str, "arxiv.Evidence"], None]
 
 
 STOP_WORDS = {
@@ -154,6 +170,23 @@ def _is_general_knowledge(question: str) -> bool:
         low,
     )
     return dataset_words is None
+
+
+def _wants_papers(question: str) -> bool:
+    """True for explicit paper requests, not definition or study questions."""
+    if not arxiv.RESEARCH_CUE.search(question):
+        return False
+    if re.search(r"\b(?:study|studies)\s+of\b", question, re.I):
+        return False
+    # "What is arXiv Paper Search?" and "Explain Preprint..." are concept
+    # questions; the research cue is the topic, not a request for papers.
+    if re.search(
+        r"^(?:tell me about|explain|describe|what is|what are|who is|who was|what was)\b",
+        question.strip(),
+        re.I,
+    ):
+        return False
+    return True
 
 
 def _world_fact_answer(question: str) -> Optional[str]:
@@ -307,6 +340,14 @@ def _pattern_answer(question: str, rows: Sequence[dict], cols: Sequence[str], tr
     low = question.lower()
     if not re.search(r"\bpattern|predict|driver|signal|feature|why\b", low):
         return None
+    # A bare "why" in an academic question must not become a task-data answer.
+    if not (rows or cols or trained or suggestions):
+        return None
+    if "why" in low and not re.search(
+        r"\btask|record|deadline|complet|dataset|row|column|feature|model\b",
+        low,
+    ):
+        return None
     if trained and trained.get("features"):
         features = ", ".join(str(item) for item in trained["features"][:5])
         parts = [f"The strongest available signals are {features}."]
@@ -413,6 +454,21 @@ def _graph_answer(question: str, rows: Sequence[dict], cols: Sequence[str], grap
     return f"The closest records in your data are {_quote_list(titles)}. Ask about one of them for a fuller explanation."
 
 
+def _advanced_hint_card(question: str):
+    """Find the concept card behind an applied advanced question."""
+    hint = subject_advanced.hint_for(question)
+    if not hint:
+        return None
+    subject_key, title = hint
+    return next(
+        (
+            card for card in load_subject_cards()
+            if card.subject_key == subject_key and card.title.lower() == title.lower()
+        ),
+        None,
+    )
+
+
 def answer(
     question: str,
     rows: Sequence[dict],
@@ -421,12 +477,126 @@ def answer(
     suggestions: Optional[Sequence[dict]] = None,
     trained: Optional[dict] = None,
     documents: Optional[Sequence[dict]] = None,
+    evidence_callback: Optional[EvidenceCallback] = None,
+    arxiv_evidence_callback: Optional[ArxivEvidenceCallback] = None,
 ) -> str:
+    raw_question = str(question or "").strip()
+
+    # A bare greeting is a conversation turn, not an empty question. Answer it
+    # warmly before filler stripping would turn it into nothing.
+    greeting = greeting_answer(raw_question)
+    if greeting:
+        return greeting
+
     # "ok so what is X" is the same question as "what is X". Strip the lead-in
     # once here so routing, Wikipedia lookup and graph retrieval all agree.
-    question = strip_leading_fillers(str(question or "").strip())
+    question = correct_typos(strip_leading_fillers(raw_question))
     if not question:
-        return "Type a question and I will answer it."
+        return GREETING_ANSWER
+
+    # Assigned before any paper lookup; declared here so the nested helper can
+    # safely refer to it even if routing returns early.
+    classification = None
+
+    def with_evidence(text: str) -> str:
+        """Let callers check Wikipedia in parallel without changing the answer."""
+        if evidence_callback:
+            try:
+                evidence_callback(question, text)
+            except Exception:
+                pass
+        return text
+
+    def paper_answer() -> Optional[str]:
+        """Return badge-free paper text and keep paper metadata internal."""
+        details: List[dict] = []
+        text = arxiv_answer(
+            question,
+            classification.subject_key if classification else None,
+            details,
+        )
+        if not text:
+            return None
+        if arxiv_evidence_callback and details:
+            try:
+                arxiv_evidence_callback(question, arxiv.evidence(question, details))
+            except Exception:
+                pass
+        # The Wikipedia callback still runs, so external evidence checks stay
+        # parallel and internal even when papers provide the visible answer.
+        return with_evidence(text)
+
+    # A loaded document is active chat context, so it beats generic answers.
+    doc_answer = _document_answer(question, documents)
+    if doc_answer:
+        return doc_answer
+
+    # An explicit paper request is a source-type request, not a concept lookup.
+    # It must win before the concept graph can claim a generic word such as
+    # "graph" from the question.
+    if _wants_papers(question):
+        classification = classify_subject(question)
+        arxiv_text = paper_answer()
+        if arxiv_text:
+            return arxiv_text
+
+    # Numeric physics questions are owned by exact computation even when they
+    # carry advanced framing. Check them before the advanced explanation route
+    # can return a generic card instead of the calculated result.
+    if not is_advanced_request(question):
+        rag_physics = rag_python.physics_answer(question)
+        if rag_physics:
+            return with_evidence(rag_physics)
+
+    # Advanced academic questions need the full explanation before a short
+    # curated answer (or a simple maths handler) can claim the same keyword.
+    if is_advanced_request(question):
+        # Applied questions ("pH of 0.01 M HCl") often fail strict card ranking
+        # and let an incidental word such as "limit" steal the classification.
+        # A narrow topic hint is stronger evidence, so try it first.
+        hint_card = _advanced_hint_card(question)
+        if hint_card:
+            deeper = subject_advanced.build(hint_card, [])
+            if hint_card.subject_key.startswith("physics"):
+                # Python still owns any numeric result; the card only supplies
+                # the requested depth. This keeps advanced numeric questions
+                # exact without letting a generic solver guess the concept.
+                physics_exact = rag_python.physics_answer(question)
+                if physics_exact:
+                    return with_evidence(f"{physics_exact}\n\n{deeper}")
+                return with_evidence(deeper)
+            advanced_solver = solve_subject_question(question, None)
+            if advanced_solver:
+                return with_evidence(f"{advanced_solver}\n\n{deeper}")
+            advanced_math = handle_query(question)
+            if advanced_math:
+                return with_evidence(f"{advanced_math}\n\n{deeper}")
+            # Some applied concepts have no numeric payload at all. The
+            # expanded card is still the correct advanced answer.
+            return with_evidence(deeper)
+
+        advanced_classification = classify_subject(question)
+        if advanced_classification:
+            advanced_solved = solve_subject_question(question, advanced_classification)
+            if advanced_solved:
+                return with_evidence(advanced_solved)
+            advanced_answer = subject_answer(question)
+            if advanced_answer:
+                return with_evidence(advanced_answer)
+
+    # The retrieval layer first understands which computation is being asked
+    # for; Python executes the exact calculation and the same layer replies.
+    rag_planned = rag_python.answer(question)
+    if rag_planned:
+        return rag_planned
+
+    # Applied physics questions such as Debye length or numerical heat schemes
+    # often resist a full parse but still have one exact governing relation.
+    # Answer them here, after advanced card routes have had their chance.
+    if not is_advanced_request(question):
+        physics_concept = rag_python.physics_concept_answer(question)
+        if physics_concept:
+            return physics_concept
 
     math_answer = handle_query(question)
     if math_answer:
@@ -443,17 +613,35 @@ def answer(
     if world_answer:
         return world_answer
 
-    # A loaded document is active chat context, so it beats generic Wikipedia.
-    doc_answer = _document_answer(question, documents)
-    if doc_answer:
-        return doc_answer
+    # Phase 2: classify first, then let Math/Physics/Chemistry solvers handle
+    # applied questions before the definition cards answer concept questions.
+    # A callback can check Wikipedia in parallel; it never edits this text.
+    classification = classify_subject(question)
+    solved = solve_subject_question(question, classification)
+    if solved:
+        return with_evidence(solved)
+
+    # One shared concept graph with subdomain partitions handles explanations,
+    # comparisons, relationships and why/how questions from the same card store.
+    # Deterministic handlers above still own maths, tasks and exact records.
+    concept_answer = concept_graph.answer(question)
+    if concept_answer:
+        return with_evidence(concept_answer)
+
+    # Phase 1 pilot: answer in-scope academic topics from the subject cards.
+    # High-confidence cards stay offline; Wikipedia still handles everything
+    # outside the ten pilot subjects.
+    subject_answer_text = subject_answer(question)
+    if subject_answer_text:
+        return with_evidence(subject_answer_text)
 
     # Explicit general-knowledge questions should not be answered from an
-    # incidental dataset keyword match. Search Wikipedia through HF first.
-    if _is_general_knowledge(question):
+    # incidental dataset keyword match. Search Wikipedia through HF first,
+    # unless the person explicitly asked for papers or research.
+    if _is_general_knowledge(question) and not _wants_papers(question):
         wiki_answer = wikipedia_answer(question)
         if wiki_answer:
-            return wiki_answer
+            return with_evidence(wiki_answer)
 
     suggestions = list(suggestions or [])
     trained = trained or {}
@@ -476,12 +664,63 @@ def answer(
     if graph_answer:
         return graph_answer
 
+    # Explicit research questions prefer paper results over a generic
+    # encyclopedia fallback. Wikipedia evidence is still checked internally by
+    # with_evidence, and paper metadata stays in its own callback.
+    if _wants_papers(question):
+        arxiv_text = paper_answer()
+        if arxiv_text:
+            return arxiv_text
+
     # Last resort: anything not answered locally still gets a Wikipedia search.
     wiki_answer = wikipedia_answer(question)
     if wiki_answer:
-        return wiki_answer
+        return with_evidence(wiki_answer)
+
+    # Second internal evidence source. arXiv is consulted after local cards,
+    # solvers and Wikipedia have all declined for non-research questions.
+    arxiv_text = paper_answer()
+    if arxiv_text:
+        return arxiv_text
 
     return (
         "I understand the question, but I do not have enough information in this dataset yet. "
         "Upload a labelled file or ask a maths, general-knowledge or task question and I will answer directly."
     )
+
+
+def answer_with_booking(
+    question: str,
+    rows: Sequence[dict],
+    cols: Sequence[str],
+    profile: Optional[dict] = None,
+    suggestions: Optional[Sequence[dict]] = None,
+    trained: Optional[dict] = None,
+    documents: Optional[Sequence[dict]] = None,
+    booking: Optional[dict] = None,
+    evidence_callback: Optional[EvidenceCallback] = None,
+    arxiv_evidence_callback: Optional[ArxivEvidenceCallback] = None,
+) -> Dict[str, Any]:
+    """Graph-RAG answer with an optional structured plan-booking action.
+
+    The reply text stays identical to `answer()` for every ordinary question.
+    Booking turns are owned by the same graph-RAG layer: it reads the active
+    document, plans the tasks, asks one clarification when needed, and hands
+    complete tasks back for the UI to create through its normal task callback.
+    """
+    result = plan_booking.plan(question, documents, booking)
+    if result is not None:
+        return result.as_response()
+
+    text = answer(
+        question,
+        rows,
+        cols,
+        profile,
+        suggestions,
+        trained,
+        documents,
+        evidence_callback,
+        arxiv_evidence_callback,
+    )
+    return {"answer": text}

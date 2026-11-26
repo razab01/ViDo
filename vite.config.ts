@@ -462,7 +462,16 @@ function pythonApiPlugin(): Plugin {
     async configureServer() {
       await ensurePython();
     },
-    async configurePreviewServer() {
+    async configurePreviewServer(server) {
+      // The HTML shell must never stay cached after a rebuild, or the browser
+      // keeps loading an old JS bundle and appears to ignore answer fixes.
+      server.middlewares.use((req, res, next) => {
+        const pathname = (req.url || '').split('?')[0];
+        if (!/\.[a-zA-Z0-9]+$/.test(pathname) || pathname.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-store');
+        }
+        next();
+      });
       await ensurePython();
     },
     buildEnd() {

@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { WorkspaceSidebar } from './WorkspaceSidebar';
-import { addMessage, createThread, resetChatStore } from '../chat-lab/chatStore';
+import {
+  SIDEBAR_WIDTH_STORAGE_KEY,
+  WorkspaceSidebar,
+} from './WorkspaceSidebar';
+import {
+  addMessage,
+  createThread,
+  resetChatStore,
+  setThreadPinned,
+} from '../chat-lab/chatStore';
 
 describe('WorkspaceSidebar', () => {
   beforeEach(() => {
@@ -25,6 +33,7 @@ describe('WorkspaceSidebar', () => {
       </MemoryRouter>
     );
 
+    expect(screen.getByLabelText('Workspace navigation')).toHaveClass('vdb-workspace-rail');
     expect(screen.getByText('DEMO')).toBeInTheDocument();
     expect(screen.getByText('Logged-in demo preview')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
@@ -32,8 +41,60 @@ describe('WorkspaceSidebar', () => {
     expect(screen.getByRole('link', { name: /calendar/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /analytics/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /ml lab/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /chat lab/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /themes/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /converse/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute(
+      'href',
+      '/preview/settings'
+    );
+  });
+
+  it('keeps the GitHub-style three-zone layout and persisted resized width', () => {
+    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, '320');
+
+    render(
+      <MemoryRouter initialEntries={['/preview']}>
+        <WorkspaceSidebar counts={mockCounts} />
+      </MemoryRouter>
+    );
+
+    const rail = screen.getByLabelText('Workspace navigation');
+    expect(rail).toHaveClass('workspace-sidebar-scrollbar');
+    expect(rail).toHaveStyle({ width: '320px' });
+    expect(rail.querySelector('.vdb-rail-top')).not.toBeNull();
+    expect(rail.querySelector('.vdb-rail-scroll')).not.toBeNull();
+    expect(rail.querySelector('.vdb-rail-footer')).not.toBeNull();
+
+    const separator = screen.getByRole('separator', { name: /resize sidebar/i });
+    expect(separator).toHaveAttribute('aria-valuenow', '320');
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('336');
+  });
+
+  it('calls the settings callback from the fixed footer', () => {
+    const handleOpenSettings = vi.fn();
+
+    render(
+      <MemoryRouter initialEntries={['/preview']}>
+        <WorkspaceSidebar counts={mockCounts} onOpenSettings={handleOpenSettings} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /settings/i }));
+    expect(handleOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the Converse link available while working in ML Lab', () => {
+    render(
+      <MemoryRouter initialEntries={['/preview/ml-lab']}>
+        <WorkspaceSidebar counts={mockCounts} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('link', { name: /ml lab/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /converse/i })).toHaveAttribute(
+      'href',
+      '/preview/converse'
+    );
   });
 
   it('triggers new task callback when button is clicked', () => {
@@ -134,6 +195,7 @@ describe('WorkspaceSidebar', () => {
     );
 
     expect(screen.getByLabelText('Chat history')).toBeInTheDocument();
+    expect(screen.getByText('Converse')).toBeInTheDocument();
     expect(screen.getByText('Conversations')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'what is 2+2' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'who is adam smith?' })).toBeInTheDocument();
@@ -146,5 +208,51 @@ describe('WorkspaceSidebar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /delete who is adam smith\?/i }));
     expect(screen.queryByRole('button', { name: 'who is adam smith?' })).not.toBeInTheDocument();
+  });
+
+  it('does not show an empty-state message when the chat history is empty', () => {
+    const user = { id: 'empty-sidebar-user', name: 'Demo User', email: 'empty@vido.app' };
+    render(
+      <MemoryRouter initialEntries={['/preview/converse']}>
+        <WorkspaceSidebar counts={mockCounts} user={user} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByLabelText('Chat history')).toBeInTheDocument();
+    expect(screen.getByText('Converse')).toBeInTheDocument();
+    expect(screen.queryByText('ViDo')).not.toBeInTheDocument();
+    expect(screen.queryByText(/no chats yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no conversations/i)).not.toBeInTheDocument();
+  });
+
+  it('pins chats to the top of the chat history and can unpin them', () => {
+    const user = { id: 'pin-sidebar-user', name: 'Demo User', email: 'demo@vido.app' };
+    const first = createThread(user.id);
+    addMessage(user.id, first.id, { id: 'u1', role: 'user', text: 'older chat' });
+    const second = createThread(user.id);
+    addMessage(user.id, second.id, { id: 'u2', role: 'user', text: 'newer chat' });
+    setThreadPinned(user.id, first.id, true);
+
+    render(
+      <MemoryRouter initialEntries={['/preview/chat-lab']}>
+        <WorkspaceSidebar counts={mockCounts} user={user} />
+      </MemoryRouter>
+    );
+
+    const historyNav = screen.getByLabelText('Chat history').querySelector('nav');
+    expect(historyNav).not.toBeNull();
+    const titleButtons = within(historyNav as HTMLElement)
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '');
+    expect(titleButtons[0]).toContain('older chat');
+    expect(screen.getByRole('button', { name: 'Unpin older chat' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unpin older chat' }));
+
+    expect(screen.getByRole('button', { name: 'Pin older chat' })).toBeInTheDocument();
+    const unpinnedTitles = within(historyNav as HTMLElement)
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '');
+    expect(unpinnedTitles[0]).toContain('newer chat');
   });
 });
