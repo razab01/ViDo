@@ -184,6 +184,33 @@ export interface PythonDocumentInput {
   text: string;
 }
 
+/** A plan item Graph RAG extracted from the active document or message. */
+export interface PythonPlanTask {
+  title: string;
+  description?: string;
+  startDate?: string;
+  dueDate?: string;
+  dueTime?: string;
+  priority?: 'high' | 'medium' | 'low';
+  category?: 'personal' | 'home' | 'work';
+  flowchartSteps?: string[];
+}
+
+/** Thread-local booking state returned while Graph RAG asks a clarification. */
+export interface PythonBookingState {
+  tasks: PythonPlanTask[];
+  pending?: {
+    taskIndex: number;
+    field: 'title' | 'dueDate' | 'startDate' | 'dueTime';
+    question: string;
+  };
+}
+
+export interface PythonAnswerResult {
+  actions: { type: 'book_plans'; tasks: PythonPlanTask[] } | null;
+  booking: PythonBookingState | null;
+}
+
 export interface PythonAnswerInput {
   question: string;
   rows: Row[];
@@ -197,6 +224,13 @@ export interface PythonAnswerInput {
     textCol: string;
   } | null;
   documents?: PythonDocumentInput[];
+  booking?: PythonBookingState | null;
+}
+
+interface PythonAnswerResponse {
+  answer: string;
+  actions?: PythonAnswerResult['actions'];
+  booking?: PythonBookingState | null;
 }
 
 export interface PythonDocumentResponse {
@@ -223,14 +257,20 @@ export async function extractDocumentWithPython(file: File): Promise<PythonDocum
   );
 }
 
-export async function answerWithPython(input: PythonAnswerInput): Promise<string> {
+export async function answerWithPython(
+  input: PythonAnswerInput,
+  onResult?: (result: PythonAnswerResult) => void
+): Promise<string> {
   // The Python endpoint expects a dict for `trained`; normalize a missing
   // model to {} so a fresh chat session never gets a 422 and falls back.
-  const response = await post<{ answer: string }>(
+  const response = await post<PythonAnswerResponse>(
     '/answer',
     { ...input, trained: input.trained ?? {} },
     30000
   );
+  if (onResult) {
+    onResult({ actions: response.actions ?? null, booking: response.booking ?? null });
+  }
   // Wikipedia is a source, not an engine badge; keep the reply conversational.
   return response.answer.replace(/^Wikipedia:\s*/, '').trim();
 }

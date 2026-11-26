@@ -5,6 +5,7 @@ import {
   getHomeDashboardTasks,
   buildHomeDashboard,
   HOME_LIMITS,
+  sortTasksPinnedFirst,
 } from './taskFilters';
 
 describe('taskFilters', () => {
@@ -99,6 +100,27 @@ describe('taskFilters', () => {
     expect(home.today.items.some((t) => t.id === 'task-real-today-1')).toBe(true);
     expect(home.upcoming.items.some((t) => t.id === 'task-real-today-1')).toBe(false);
     expect(home.upcoming.items.some((t) => t.id === 'task-real-future-1')).toBe(true);
+  });
+
+  it('sorts pinned tasks first without mutating the input', () => {
+    const tasks = SAMPLE_TASKS.slice(0, 3).map((task) => ({ ...task }));
+    tasks[2] = { ...tasks[2], isPinned: true };
+
+    const ordered = sortTasksPinnedFirst(tasks);
+
+    expect(ordered.map((task) => task.id)).toEqual([tasks[2].id, tasks[0].id, tasks[1].id]);
+    expect(tasks.map((task) => task.id)).toEqual([
+      SAMPLE_TASKS[0].id,
+      SAMPLE_TASKS[1].id,
+      SAMPLE_TASKS[2].id,
+    ]);
+
+    const views = getFilteredTasks([
+      { ...SAMPLE_TASKS[0] },
+      { ...SAMPLE_TASKS[1] },
+      { ...SAMPLE_TASKS[2], isPinned: true },
+    ]);
+    expect(views.today[0]?.isPinned).toBe(true);
   });
 });
 

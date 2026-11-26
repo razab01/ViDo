@@ -1,0 +1,50 @@
+Cognitive behavioral therapy||cbt,cognitive behavioral therapy||CBT is a therapy that changes distorted thoughts and behaviours to improve emotional wellbeing.||thoughts feelings behaviours||Effective for anxiety, depression and many disorders.
+Classical conditioning||classical conditioning,pavlov||Classical conditioning learns associations between a neutral stimulus and a reflexive response.||Pavlov's dogs|| UCS+NS becomes CS→CR.
+Operant conditioning||operant conditioning,skinner||Operant conditioning changes behaviour through reinforcement and punishment.||Skinner box||Reinforcement increases behaviour; punishment decreases it.
+Behaviorism||behaviourism,behaviorism||Behaviorism studies observable behaviour rather than internal mental states.||Watson, Skinner||Emphasizes learning and environment.
+Psychoanalysis||psychoanalysis,freud||Psychoanalysis explores unconscious conflicts, dreams and early experiences.||Freud||Concepts include id, ego and superego.
+Humanistic psychology||humanistic psychology||Humanistic psychology emphasizes personal growth, self-actualization and meaning.||Maslow, Rogers||Reacts against deterministic views.
+Cognitive psychology||cognitive psychology||Cognitive psychology studies mental processes such as memory, attention, perception and problem-solving.||information processing||Uses experiments and models.
+Memory||memory||Memory is the ability to encode, store and retrieve information.||encoding, storage, retrieval||Different systems include sensory, short-term and long-term memory.
+Short-term memory||stm,working memory||Short-term memory holds limited information briefly; working memory also manipulates it.||7±2 items||Duration about 18-30 seconds without rehearsal.
+Long-term memory||ltm||Long-term memory stores information for long periods with very large capacity.||explicit, implicit||Encoding and retrieval cues affect recall.
+Learning||learning psychology||Learning is a relatively lasting change in behaviour or knowledge from experience.||classical, operant, observational||Differs from temporary performance changes.
+Motivation||motivation||Motivation energizes, directs and sustains behaviour toward goals.||intrinsic, extrinsic||Theories include Maslow and self-determination theory.
+Emotion||emotion||Emotion is a complex state involving feelings, physiology, cognition and behaviour.||basic emotions||Expressions and appraisal differ across cultures.
+Personality||personality||Personality is a relatively stable pattern of thoughts, feelings and behaviours.||trait theories||Shaped by genes and environment.
+Big Five||big five,big five personality||The Big Five model describes personality using openness, conscientiousness, extraversion, agreeableness and neuroticism.||OCEAN||Widely supported by research.
+Intelligence||intelligence||Intelligence involves reasoning, problem-solving, learning and adapting to new situations.||fluid, crystallized||Multiple theories exist, including Gardner and Sternberg.
+IQ||iq,intelligence quotient||IQ is a score from standardized tests designed to measure cognitive ability relative to age norms.||average 100||Reliability and validity are debated.
+Perception||perception||Perception organizes and interprets sensory information to understand the world.||bottom-up, top-down||Influenced by expectations and context.
+Attention||attention||Attention is selective focus on certain stimuli while ignoring others.||selective, divided, sustained||Limited capacity makes multitasking costly.
+Sensation||sensation||Sensation is detection of physical stimuli by sensory organs.||vision, hearing, touch||Transduction converts stimuli into neural signals.
+Consciousness||consciousness||Consciousness is awareness of self, surroundings and mental experiences.||states of consciousness||Studied through behaviour, brain imaging and phenomenology.
+Sleep||sleep||Sleep is a recurring state of reduced activity with cycles of REM and non-REM stages.||circadian rhythm||Important for memory, mood and health.
+Dream||dream||Dreams are vivid mental experiences during sleep, especially REM sleep.||manifest content||Freud interpreted dreams; modern science links them to memory processing.
+Social psychology||social psychology||Social psychology studies how people think, feel and behave in social situations.||conformity, attitude, groups||Situations strongly influence behaviour.
+Conformity||conformity||Conformity is changing behaviour or beliefs to match a group.||Asch experiment||Normative and informational influence drive it.
+Obedience||obedience||Obedience is following instructions from an authority figure.||Milgram experiment||Situational factors can increase obedience.
+Group dynamics||group dynamics||Group dynamics studies how groups form, interact and influence members.||roles, norms, cohesion||Groups can improve or impair decisions.
+Prejudice||prejudice||Prejudice is a preconceived attitude toward a group or its members.||stereotypes, discrimination||Can be explicit or implicit.
+Aggression||aggression||Aggression is behaviour intended to harm another person physically or psychologically.||hostile, instrumental||Influenced by biology, learning and situational cues.
+Attachment||attachment||Attachment is the emotional bond between a child and caregiver influencing later relationships.||Bowlby||Secure, anxious and avoidant styles.
+Developmental psychology||developmental psychology||Developmental psychology studies physical, cognitive and social change across the lifespan.||Piaget, Erikson||Nature and nurture interact.
+Piaget stages||piaget||Piaget proposed sensorimotor, preoperational, concrete operational and formal operational stages.||coherent sequence||Children construct understanding through interaction.
+Erikson stages||erikson||Erikson proposed eight psychosocial stages with conflicts such as trust vs mistrust.||identity vs role confusion||Development continues across life.
+Kohlberg stages||kohlberg||Kohlberg proposed stages of moral reasoning from punishment avoidance to universal principles.||preconventional, conventional, postconventional||Based on moral judgement interviews.
+Abnormal psychology||abnormal psychology||Abnormal psychology studies patterns of thoughts, feelings and behaviours that cause distress or impairment.||diagnosis, treatment||Context and culture matter.
+Depression||depression||Depression involves persistent low mood, loss of interest and changes in sleep, appetite and energy.||major depressive disorder||Treatments include therapy, medication and lifestyle changes.
+Anxiety||anxiety||Anxiety is excessive worry and fear with physical symptoms such as restlessness and Increased heart rate.||GAD, panic disorder||Avoidance can maintain anxiety.
+PTSD||ptsd||PTSD can develop after traumatic events and involves intrusive memories, avoidance and hyperarousal.||trauma||Treatments include trauma-focused CBT.
+OCD||obsessive compulsive disorder||OCD involves obsessions and compulsions that cause distress or impairment.||obsessions, compulsions||Exposure and response prevention is effective.
+Schizophrenia||schizophrenia||Schizophrenia involves hallucinations, delusions, disorganized thinking and impaired functioning.||psychotic disorder||Usually begins in late adolescence or early adulthood.
+Bipolar disorder||bipolar||Bipolar disorder involves alternating manic or hypomanic episodes and depressive episodes.||mania||Mood stabilizers are common treatment.
+Eating disorder||eating disorder||Eating disorders involve disturbed eating behaviours and body image, such as anorexia or bulimia.||anorexia, bulimia||Serious medical and psychological risks.
+Addiction||addiction||Addiction is compulsive use of a substance or behaviour despite harmful consequences.||substance, behavioural||Involves reward, tolerance and withdrawal.
+Stress||stress||Stress is the body's response to demands or threats, involving physiological and psychological changes.||fight or flight||Acute stress can help; chronic stress harms health.
+Coping||coping||Coping strategies are efforts to manage stressful demands.||problem-focused, emotion-focused||Adaptive coping reduces harm.
+Counseling||counselling,counseling||Counselling is a supportive conversation helping people clarify problems and make decisions.||person-centred||Short-term and solution-focused approaches are common.
+Therapy||psychotherapy||Therapy is structured psychological treatment to reduce distress and improve functioning.||CBT, psychodynamic, family therapy||Approach depends on issue and evidence.
+Research methods||psychology research methods||Research methods include experiments, surveys, interviews, observations and case studies.||correlation, experiment||Experiments can test cause and effect.
+Experiment||experiment psychology||An experiment manipulates an independent variable to measure its effect on a dependent variable.||control group, random assignment||Randomization reduces confounding.
+Statistics in psychology||statistics psychology||Statistics helps psychologists test hypotheses and estimate effects.||p-value, effect size, confidence interval||Significance does not guarantee practical importance.

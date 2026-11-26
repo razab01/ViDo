@@ -1,118 +1,107 @@
 import React from 'react';
-import { Card, Badge } from '../../components/ui';
-import { User, Home, Briefcase, CheckSquare } from 'lucide-react';
+import { Briefcase, CheckSquare, Home, User } from 'lucide-react';
 
 export const LandingUseCases: React.FC = () => {
   return (
-    <section id="use-cases" className="px-6 max-w-6xl mx-auto py-16">
-      <div className="text-center mb-12">
-        <Badge variant="accent" className="mb-2">
-          Universal Application
-        </Badge>
-        <h2 className="text-3xl font-bold tracking-tight text-[var(--ink)]">
-          Built for every area of life
-        </h2>
-        <p className="text-sm text-[var(--muted)] mt-2 max-w-2xl mx-auto">
+    <section id="use-cases" className="vdb-section">
+      <div className="vdb-section-heading">
+        <span className="vdb-section-label">Universal Application</span>
+        <h2 className="vdb-section-title">Built for every area of life</h2>
+        <p className="vdb-section-copy">
           From personal doctor appointments to shared family chores and collaborative team releases, ViDo adapts without requiring separate apps.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Personal Use Case */}
-        <Card className="flex flex-col justify-between">
+      <div className="vdb-usecase-grid">
+        <article className="vdb-usecase-card flex flex-col justify-between">
+          <span className="vdb-usecase-no">01</span>
           <div>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[var(--accent)] flex items-center justify-center mb-4">
-              <User className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-[var(--ink)]">Personal Tasks</h3>
-            <p className="text-xs text-[var(--muted)] mt-1 mb-4 leading-relaxed">
+            <span className="vdb-usecase-icon">
+              <User aria-hidden="true" />
+            </span>
+            <h3 className="vdb-usecase-title">Personal Tasks</h3>
+            <p className="vdb-usecase-desc">
               A private space for individual responsibilities, daily errands, study schedules, and self-directed projects.
             </p>
-            <ul className="space-y-2 text-xs text-[var(--muted)]">
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--green)]" />
+            <ul className="vdb-usecase-list">
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Precise target dates and deadline times
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--green)]" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Clear active, overdue, and completed separation
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--green)]" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Private by default with strict user isolation
               </li>
             </ul>
           </div>
-          <div className="mt-6 pt-4 border-t border-[var(--line)]">
-            <span className="text-[11px] font-semibold text-[var(--accent)]">
-              Example: Renew driver's license, Finish Chapter 4
-            </span>
-          </div>
-        </Card>
+          <span className="vdb-usecase-example">
+            Example: Renew driver's license, Finish Chapter 4
+          </span>
+        </article>
 
-        {/* Home & Family Use Case */}
-        <Card className="flex flex-col justify-between">
+        <article className="vdb-usecase-card vdb-usecase-card--home flex flex-col justify-between">
+          <span className="vdb-usecase-no">02</span>
           <div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-[var(--amber)] flex items-center justify-center mb-4">
-              <Home className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-[var(--ink)]">Household & Living</h3>
-            <p className="text-xs text-[var(--muted)] mt-1 mb-4 leading-relaxed">
+            <span className="vdb-usecase-icon">
+              <Home aria-hidden="true" />
+            </span>
+            <h3 className="vdb-usecase-title">Household &amp; Living</h3>
+            <p className="vdb-usecase-desc">
               Keep household maintenance, utility deadlines, property taxes, and family chores transparent and on track.
             </p>
-            <ul className="space-y-2 text-xs text-[var(--muted)]">
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--amber)]" />
+            <ul className="vdb-usecase-list">
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Prevent missed utility bills and service dates
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--amber)]" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Section limits keep lists approachable
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-[var(--amber)]" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Honest status without guilt or stress
               </li>
             </ul>
           </div>
-          <div className="mt-6 pt-4 border-t border-[var(--line)]">
-            <span className="text-[11px] font-semibold text-[var(--amber)]">
-              Example: HVAC winter maintenance, Electricity bill
-            </span>
-          </div>
-        </Card>
+          <span className="vdb-usecase-example">
+            Example: HVAC winter maintenance, Electricity bill
+          </span>
+        </article>
 
-        {/* Professional & Work Use Case */}
-        <Card className="flex flex-col justify-between">
+        <article className="vdb-usecase-card vdb-usecase-card--work flex flex-col justify-between">
+          <span className="vdb-usecase-no">03</span>
           <div>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-indigo-600 flex items-center justify-center mb-4">
-              <Briefcase className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-[var(--ink)]">Work & Projects</h3>
-            <p className="text-xs text-[var(--muted)] mt-1 mb-4 leading-relaxed">
+            <span className="vdb-usecase-icon">
+              <Briefcase aria-hidden="true" />
+            </span>
+            <h3 className="vdb-usecase-title">Work &amp; Projects</h3>
+            <p className="vdb-usecase-desc">
               Structured accountability for deliverables, sprint targets, client roadmaps, and cross-functional commitments.
             </p>
-            <ul className="space-y-2 text-xs text-[var(--muted)]">
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+            <ul className="vdb-usecase-list">
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Explicit owner, priority, and due dates
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Chronological update and checkpoint history
               </li>
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+              <li>
+                <CheckSquare aria-hidden="true" />
                 Designed for complete team visibility and transparent execution
               </li>
             </ul>
           </div>
-          <div className="mt-6 pt-4 border-t border-[var(--line)]">
-            <span className="text-[11px] font-semibold text-indigo-600">
-              Example: Prepare Q4 budget, Deploy v1.2 release
-            </span>
-          </div>
-        </Card>
+          <span className="vdb-usecase-example">
+            Example: Prepare Q4 budget, Deploy v1.2 release
+          </span>
+        </article>
       </div>
     </section>
   );

@@ -120,7 +120,7 @@ export const DashboardRagCard: React.FC<DashboardRagCardProps> = ({
   }, [answer]);
 
   return (
-    <Card className="border-[var(--accent)]/20">
+    <Card className="vdb-rag-card border-[var(--accent)]/20">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">

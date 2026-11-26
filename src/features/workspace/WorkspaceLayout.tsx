@@ -8,7 +8,7 @@ import {
   Navigate,
   useParams,
 } from 'react-router-dom';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import {
   BENCHMARK_DATE_STR,
   BENCHMARK_DATE_TIME,
@@ -42,6 +42,7 @@ import { getTeamRepository } from '../teams/teamRepository';
 import { Team } from '../teams/types';
 import { useCalendar } from './useCalendar';
 import { usePlanningTargets } from './usePlanningTargets';
+import './workspace.css';
 
 export interface WorkspaceLayoutProps {
   isPreview?: boolean;
@@ -78,6 +79,8 @@ export const isKnownWorkspacePath = (pathname: string, basePath: string): boolea
     'analytics',
     'ml-lab',
     'chat-lab',
+    'chat-zone',
+    'converse',
   ]);
 
   if (exactKnownSubPaths.has(subPath)) return true;
@@ -104,6 +107,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       : location.pathname.startsWith('/preview');
   const isLive = !isPreview;
   const basePath = isPreview ? '/preview' : '/workspace';
+  const isConverseRoute =
+    location.pathname === `${basePath}/converse` ||
+    location.pathname === `${basePath}/chat-zone` ||
+    location.pathname === `${basePath}/chat-lab`;
   const referenceDate = isPreview ? BENCHMARK_DATE_STR : todayISO();
 
   const user = isPreview
@@ -211,6 +218,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const [selectedTask, setSelectedTask] = useState<SampleTask | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const todayStr = getTodayDateString();
@@ -253,6 +261,12 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const handleTaskClick = (task: SampleTask) => {
     setSelectedTask(task);
     setIsDetailOpen(true);
+  };
+
+  const handleEditTask = (task: SampleTask) => {
+    setSelectedTask(task);
+    setIsDetailOpen(false);
+    setIsEditOpen(true);
   };
 
   const handleCreateTask = (newTask: SampleTask) => {
@@ -321,6 +335,32 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const handleToggleTaskPin = (taskToPin: SampleTask) => {
+    const isNowPinned = !taskToPin.isPinned;
+    setTasks((prev) =>
+      prev.map((task) => (task.id === taskToPin.id ? { ...task, isPinned: isNowPinned } : task))
+    );
+    if (selectedTask?.id === taskToPin.id) {
+      setSelectedTask((prev) => (prev ? { ...prev, isPinned: isNowPinned } : null));
+    }
+    setToastMessage(
+      isNowPinned
+        ? `Task "${taskToPin.title}" pinned to the top.`
+        : `Task "${taskToPin.title}" unpinned.`
+    );
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteTask = (taskToDelete: SampleTask) => {
+    setTasks((prev) => prev.filter((task) => task.id !== taskToDelete.id));
+    if (selectedTask?.id === taskToDelete.id) {
+      setIsDetailOpen(false);
+      setSelectedTask(null);
+    }
+    setToastMessage(`Task "${taskToDelete.title}" deleted.`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   const handleSignOut = () => {
     if (!isPreview) {
       void signOut();
@@ -374,10 +414,14 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
         subtitle: 'Dataset-driven classifiers, GPT tokenizers, and schema-aware RAG',
       };
     }
-    if (path.endsWith('/chat-lab')) {
+    if (
+      path.endsWith('/converse') ||
+      path.endsWith('/chat-zone') ||
+      path.endsWith('/chat-lab')
+    ) {
       return {
-        title: 'Chat Lab',
-        subtitle: 'Ask anything — maths, world facts, and answers from your data',
+        title: 'Converse',
+        subtitle: '',
       };
     }
     if (path.includes('/team/')) {
@@ -400,7 +444,11 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
   const headerInfo = getHeaderInfo();
 
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--canvas)] text-[var(--ink)] antialiased">
+    <div
+      className={`${
+        isPreview ? 'vdb-workspace ' : ''
+      }flex flex-col min-h-screen bg-[var(--canvas)] text-[var(--ink)] antialiased`}
+    >
       {/* 1. Global Persistent Demo Preview Notice Bar - ONLY in Preview mode */}
       {isPreview && (
         <aside
@@ -408,13 +456,24 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           className="sticky top-0 z-50 bg-[var(--dark)] text-white px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 border-b border-white/10 shadow-sm"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--accent)] hover:opacity-90 text-white font-bold text-xs shadow-xs transition-all shrink-0 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Landing Page</span>
-            </Link>
+            <div className="flex flex-col items-stretch gap-0.5 shrink-0">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Landing Page</span>
+              </Link>
+              {isConverseRoute && (
+                <Link
+                  to={basePath}
+                  className="vdb-ribbon-dashboard inline-flex items-center justify-center gap-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
+                >
+                  <LayoutDashboard className="w-3 h-3" />
+                  <span>Back to Dashboard</span>
+                </Link>
+              )}
+            </div>
 
             <span className="h-4 w-px bg-white/20 hidden sm:inline-block" />
 
@@ -447,7 +506,7 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       )}
 
       {/* Main Workspace Body */}
-      <div className="flex flex-1 min-h-0">
+      <div className="vdb-shell-body flex flex-1 min-h-0">
         {/* Persistent Left Desktop Sidebar */}
         <WorkspaceSidebar
           isPreview={isPreview}
@@ -462,7 +521,10 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
             archived: views.archived.length,
           }}
           teams={teams}
-          onNewTaskClick={() => setIsCreateOpen(true)}
+          onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
           onCreateTeamClick={() => setIsCreateTeamOpen(true)}
           onSignOut={handleSignOut}
         />
@@ -486,7 +548,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           />
 
           <main className="flex-1 overflow-y-auto">
-            <Routes>
+            <div className="vdb-view">
+              <Routes>
               <Route
                 index
                 element={
@@ -500,7 +563,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     initialTab="dashboard"
                     onTaskClick={handleTaskClick}
                     onToggleTask={handleToggleTask}
-                    onNewTaskClick={() => setIsCreateOpen(true)}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
+                    onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
                   />
                 }
               />
@@ -521,7 +590,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     initialTab="tasks"
                     onTaskClick={handleTaskClick}
                     onToggleTask={handleToggleTask}
-                    onNewTaskClick={() => setIsCreateOpen(true)}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
+                    onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
                   />
                 }
               />
@@ -541,7 +616,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     }
                     tasks={views.today}
                     onTaskClick={handleTaskClick}
-                    onNewTaskClick={() => setIsCreateOpen(true)}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
+                    onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
                     isPreview={isPreview}
                   />
                 }
@@ -554,7 +635,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     description="Planned tasks due beyond today's horizon."
                     tasks={views.upcoming}
                     onTaskClick={handleTaskClick}
-                    onNewTaskClick={() => setIsCreateOpen(true)}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
+                    onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
                     isPreview={isPreview}
                   />
                 }
@@ -567,7 +654,13 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     description="Tasks past their target deadline or requiring urgent intervention."
                     tasks={views.needsAttention}
                     onTaskClick={handleTaskClick}
-                    onNewTaskClick={() => setIsCreateOpen(true)}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
+                    onNewTaskClick={() => {
+            setIsEditOpen(false);
+            setIsCreateOpen(true);
+          }}
                     isPreview={isPreview}
                   />
                 }
@@ -580,6 +673,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     description="Full historical record of delivered responsibilities."
                     tasks={views.completed}
                     onTaskClick={handleTaskClick}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
                     isPreview={isPreview}
                   />
                 }
@@ -592,6 +688,9 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                     description="Shelved tasks preserved with their complete checkpoint history."
                     tasks={views.archived}
                     onTaskClick={handleTaskClick}
+                    onEditTask={handleEditTask}
+                    onTogglePin={handleToggleTaskPin}
+                    onDeleteTask={handleDeleteTask}
                     isPreview={isPreview}
                   />
                 }
@@ -631,6 +730,26 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
               />
               <Route path="ml-lab" element={<MLLabPage userId={user.id} />} />
               <Route
+                path="converse"
+                element={
+                  <ChatLabPage
+                    userId={user.id}
+                    onCreateTask={handleCreateTask}
+                    onUpdateTask={handleUpdateTask}
+                  />
+                }
+              />
+              <Route
+                path="chat-zone"
+                element={
+                  <ChatLabPage
+                    userId={user.id}
+                    onCreateTask={handleCreateTask}
+                    onUpdateTask={handleUpdateTask}
+                  />
+                }
+              />
+              <Route
                 path="chat-lab"
                 element={
                   <ChatLabPage
@@ -641,7 +760,8 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 }
               />
               <Route path="*" element={<Navigate to={basePath} replace />} />
-            </Routes>
+              </Routes>
+            </div>
           </main>
         </div>
       </div>
@@ -655,14 +775,30 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
           setSelectedTask(null);
         }}
         onToggleTask={handleToggleTask}
+        onEditTask={handleEditTask}
+        onTogglePin={handleToggleTaskPin}
+        onDeleteTask={handleDeleteTask}
         isPreview={isPreview}
         userId={user.id}
       />
 
       <TaskCreateModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
+        isOpen={isCreateOpen || isEditOpen}
+        onClose={() => {
+          setIsCreateOpen(false);
+          setIsEditOpen(false);
+          setSelectedTask(null);
+        }}
         onCreateTask={handleCreateTask}
+        referenceDate={benchmarkDateStr}
+        initialTask={isEditOpen ? selectedTask : null}
+        onUpdateTask={(updatedTask) => {
+          handleUpdateTask(updatedTask);
+          setToastMessage(`Task "${updatedTask.title}" updated.`);
+          setTimeout(() => setToastMessage(null), 3000);
+          setIsEditOpen(false);
+          setSelectedTask(null);
+        }}
         predictTask={predictForTask}
       />
 

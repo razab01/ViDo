@@ -51,17 +51,29 @@ describe('ChatLabPage', () => {
   });
 
   const sendMessage = (value: string) => {
-    fireEvent.change(screen.getByPlaceholderText(/ask anything/i), { target: { value } });
+    fireEvent.change(screen.getByPlaceholderText(/chat, book a task/i), { target: { value } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
   };
 
-  it('renders the empty state with suggestions', async () => {
+  it('renders the empty state with booking prompts', async () => {
     render(<ChatLabPage />);
     expect(await screen.findByText('Start a conversation')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/ask anything/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'who is president of spain' })
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/chat, book a task/i)).toBeInTheDocument();
+    expect(screen.queryByText(/vido \/ workspace companion/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/offline-ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/think out loud\. turn it into action\./i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/natural conversation/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/task booking/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/attachment planning/i)).not.toBeInTheDocument();
+    const prompts = screen
+      .getAllByRole('button')
+      .filter((button) =>
+        /^(Book a task for tomorrow at 9am|Book the tasks in my attachment)$/.test(
+          button.textContent ?? ''
+        )
+      );
+    expect(prompts).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Hey, I just want to chat' })).not.toBeInTheDocument();
   });
 
   it('answers through Python without showing any engine badge', async () => {
@@ -79,11 +91,23 @@ describe('ChatLabPage', () => {
     expect(mockedAnswer).toHaveBeenCalledTimes(1);
   });
 
+  it('does not drop a message sent immediately after render', async () => {
+    render(<ChatLabPage />);
+    sendMessage('who is president of spain');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Spain has no president; the head of state is King Felipe VI.')
+      ).toBeInTheDocument();
+    });
+    expect(mockedAnswer).toHaveBeenCalledTimes(1);
+  });
+
   it('uses the local answer when Python is unavailable', async () => {
     mockedAvailable.mockResolvedValue(false);
     render(<ChatLabPage />);
     await screen.findByText('Start a conversation');
-    fireEvent.click(screen.getByRole('button', { name: 'Tell me about India' }));
+    sendMessage('Tell me about India');
 
     await waitFor(() => {
       expect(screen.getByText('India is a country in South Asia.')).toBeInTheDocument();
@@ -126,7 +150,7 @@ describe('ChatLabPage', () => {
     mockedAvailable.mockResolvedValue(false);
     render(<ChatLabPage />);
     await screen.findByText('Start a conversation');
-    fireEvent.click(screen.getByRole('button', { name: 'Tell me about India' }));
+    sendMessage('Tell me about India');
     await screen.findByText('India is a country in South Asia.');
 
     fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
@@ -220,7 +244,7 @@ describe('ChatLabPage', () => {
     expect(mockedLocal).not.toHaveBeenCalled();
   });
 
-  it('loads a text document and answers questions from it', async () => {
+  it('stages a document until the chat message is sent, then answers from it', async () => {
     mockedAvailable.mockResolvedValue(false);
     const actual = await vi.importActual<typeof import('./chatBrain')>('./chatBrain');
     mockedLocal.mockImplementation((question, context) =>
@@ -238,9 +262,14 @@ describe('ChatLabPage', () => {
       target: { files: [file] },
     });
 
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Loaded "plan.txt"/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Attached "plan.txt"/i)).not.toBeInTheDocument();
+    expect(readThreads('demo-user-uid')[0].document).toBeUndefined();
+    expect(readThreads('demo-user-uid')[0].messages).toHaveLength(0);
+
+    sendMessage('what is the project deadline?');
     expect(await screen.findByText(/Loaded "plan.txt"/i)).toBeInTheDocument();
-    expect(screen.getByText(/Attached "plan.txt"/i)).toBeInTheDocument();
-    expect(screen.getAllByText('plan.txt').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/Text · .* · text extracted/i)).toBeInTheDocument();
     expect(readThreads('demo-user-uid')[0].document).toEqual(
       expect.objectContaining({ name: 'plan.txt' })
@@ -249,13 +278,11 @@ describe('ChatLabPage', () => {
       expect.arrayContaining([
         expect.objectContaining({
           role: 'user',
-          text: 'Attached "plan.txt"',
+          text: 'what is the project deadline?',
           attachment: expect.objectContaining({ name: 'plan.txt' }),
         }),
       ])
     );
-
-    sendMessage('what is the project deadline?');
     expect(
       await screen.findByText(/From "plan.txt": The project deadline is 2026-12-01/i)
     ).toBeInTheDocument();
@@ -263,7 +290,7 @@ describe('ChatLabPage', () => {
     expect(mockedAnswer).not.toHaveBeenCalled();
   });
 
-  it('uses Python extraction for PDF documents and rejects images', async () => {
+  it('uses Python extraction for PDF documents and rejects images without posting either', async () => {
     render(<ChatLabPage />);
     await screen.findByText('Start a conversation');
 
@@ -271,16 +298,230 @@ describe('ChatLabPage', () => {
     fireEvent.change(screen.getByLabelText('Choose document'), {
       target: { files: [pdf] },
     });
-    expect(await screen.findByText(/Loaded "report.pdf"/i)).toBeInTheDocument();
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
     expect(mockedExtract).toHaveBeenCalledTimes(1);
-    expect(readThreads('demo-user-uid')[0].document?.text).toContain('2026-12-01');
+    expect(readThreads('demo-user-uid')[0].document).toBeUndefined();
+    expect(screen.queryByText(/Loaded "report.pdf"/i)).not.toBeInTheDocument();
 
     const image = new File(['image-bytes'], 'photo.png', { type: 'image/png' });
     fireEvent.change(screen.getByLabelText('Choose document'), {
       target: { files: [image] },
     });
     expect(await screen.findByRole('alert')).toHaveTextContent(/Images are not supported/i);
-    expect(readThreads('demo-user-uid')[0].document?.name).toBe('report.pdf');
+    expect(readThreads('demo-user-uid')[0].document).toBeUndefined();
     expect(mockedExtract).toHaveBeenCalledTimes(1);
+  });
+
+  it('books Graph RAG plan items through the task callback', async () => {
+    const onCreateTask = vi.fn();
+    const dueDate = tomorrowDateString();
+    mockedAnswer.mockImplementation(async (_input, onResult) => {
+      onResult?.({
+        actions: {
+          type: 'book_plans',
+          tasks: [
+            {
+              title: 'Draft spec',
+              dueDate,
+              priority: 'high',
+              category: 'work',
+            },
+          ],
+        },
+        booking: null,
+      });
+      return 'I found 1 plan item and I’m booking it now.';
+    });
+
+    render(<ChatLabPage onCreateTask={onCreateTask} />);
+    await screen.findByText('Start a conversation');
+    sendMessage('book this plan');
+
+    expect(await screen.findByText(/All set — I booked "Draft spec"/)).toBeInTheDocument();
+    expect(onCreateTask).toHaveBeenCalledTimes(1);
+    expect(onCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Draft spec',
+        dueDate,
+        priority: 'high',
+        category: 'work',
+        state: 'active',
+      })
+    );
+    expect(readThreads('demo-user-uid')[0].booking).toBeUndefined();
+  });
+
+  it('books a described task instead of answering the attachment', async () => {
+    const onCreateTask = vi.fn();
+    const dueDate = tomorrowDateString();
+    mockedAnswer.mockImplementation(async (input, onResult) => {
+      expect(input.documents).toHaveLength(1);
+      onResult?.({
+        actions: {
+          type: 'book_plans',
+          tasks: [{ title: 'morning walk', dueDate, dueTime: '04:00' }],
+        },
+        booking: null,
+      });
+      return 'Got it — I’m booking 1 task now.';
+    });
+
+    render(<ChatLabPage onCreateTask={onCreateTask} />);
+    await screen.findByText('Start a conversation');
+    fireEvent.change(screen.getByLabelText('Choose document'), {
+      target: {
+        files: [
+          new File(
+            ['Meeting Plans Handbook\nMEETING PLAN 01\nProject Kickoff Meeting'],
+            'Meeting_Plans_Handbook.txt',
+            { type: 'text/plain' }
+          ),
+        ],
+      },
+    });
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
+
+    sendMessage('hey book a task for morning walk for tomorrow at 4am');
+
+    expect(await screen.findByText(/All set — I booked "morning walk"/)).toBeInTheDocument();
+    expect(screen.queryByText(/Project Kickoff Meeting/)).not.toBeInTheDocument();
+    expect(onCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'morning walk', dueDate, dueTime: '04:00' })
+    );
+    expect(mockedLocal).not.toHaveBeenCalled();
+  });
+
+  it('asks for a task name without reading the attachment for a bare todo booking', async () => {
+    mockedAnswer.mockImplementationOnce(async (_input, onResult) => {
+      onResult?.({
+        actions: null,
+        booking: {
+          tasks: [{ title: '', dueDate: tomorrowDateString() }],
+          pending: { taskIndex: 0, field: 'title', question: 'What should I call this task?' },
+        },
+      });
+      return 'What should I call this task?';
+    });
+
+    render(<ChatLabPage onCreateTask={vi.fn()} />);
+    await screen.findByText('Start a conversation');
+    fireEvent.change(screen.getByLabelText('Choose document'), {
+      target: {
+        files: [
+          new File(['Meeting Plans Handbook\nMEETING PLAN 01\nProject Kickoff Meeting'], 'handbook.txt', {
+            type: 'text/plain',
+          }),
+        ],
+      },
+    });
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
+
+    sendMessage('hey wanted to book todo task for tomorrow');
+
+    expect(await screen.findByText('What should I call this task?')).toBeInTheDocument();
+    expect(screen.queryByText(/Project Kickoff Meeting/)).not.toBeInTheDocument();
+    expect(mockedLocal).not.toHaveBeenCalled();
+  });
+
+  it('persists Graph RAG clarification and completes booking from the reply', async () => {
+    const onCreateTask = vi.fn();
+    const dueDate = tomorrowDateString();
+    mockedAnswer
+      .mockImplementationOnce(async (_input, onResult) => {
+        onResult?.({
+          actions: null,
+          booking: {
+            tasks: [{ title: 'Draft spec', dueDate: '' }],
+            pending: {
+              taskIndex: 0,
+              field: 'dueDate',
+              question: 'What due date should I use for "Draft spec"?',
+            },
+          },
+        });
+        return 'What due date should I use for "Draft spec"?';
+      })
+      .mockImplementationOnce(async (input, onResult) => {
+        expect(input.booking).toEqual(
+          expect.objectContaining({
+            pending: expect.objectContaining({ field: 'dueDate' }),
+          })
+        );
+        onResult?.({
+          actions: {
+            type: 'book_plans',
+            tasks: [{ title: 'Draft spec', dueDate }],
+          },
+          booking: null,
+        });
+        return 'Got it.';
+      });
+
+    render(<ChatLabPage onCreateTask={onCreateTask} />);
+    await screen.findByText('Start a conversation');
+    sendMessage('book this plan');
+    expect(await screen.findByText(/What due date should I use/)).toBeInTheDocument();
+    expect(readThreads('demo-user-uid')[0].booking?.pending?.field).toBe('dueDate');
+    expect(onCreateTask).not.toHaveBeenCalled();
+
+    sendMessage(dueDate);
+    expect(await screen.findByText(/All set — I booked "Draft spec"/)).toBeInTheDocument();
+    expect(onCreateTask).toHaveBeenCalledTimes(1);
+    expect(readThreads('demo-user-uid')[0].booking).toBeUndefined();
+  });
+
+  it('routes short document booking requests to Graph RAG instead of the local task draft', async () => {
+    const booking = {
+      tasks: [{ title: 'Project Kickoff Meeting', dueDate: '' }],
+      pending: {
+        taskIndex: 0,
+        taskIndices: [0],
+        group: true,
+        field: 'dueDate' as const,
+        question: 'What due date should I use for all 8 plan items?',
+      },
+    };
+    mockedAnswer
+      .mockImplementationOnce(async (input, onResult) => {
+        expect(input.documents).toEqual([
+          expect.objectContaining({ name: 'Meeting_Plans_Handbook.pdf' }),
+        ]);
+        onResult?.({ actions: null, booking });
+        return booking.pending.question;
+      })
+      .mockImplementationOnce(async (input, onResult) => {
+        expect(input.booking).toEqual(
+          expect.objectContaining({
+            pending: expect.objectContaining({ field: 'dueDate' }),
+          })
+        );
+        onResult?.({ actions: null, booking });
+        return 'The document has no calendar due date. Give one date.';
+      });
+
+    render(<ChatLabPage onCreateTask={vi.fn()} />);
+    await screen.findByText('Start a conversation');
+
+    const file = new File(
+      ['MEETING PLAN 01\nProject Kickoff Meeting\nPURPOSE\nAlign the team.'],
+      'Meeting_Plans_Handbook.pdf',
+      { type: 'application/pdf' }
+    );
+    fireEvent.change(screen.getByLabelText('Choose document'), {
+      target: { files: [file] },
+    });
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
+    expect(mockedExtract).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Loaded "Meeting_Plans_Handbook.pdf"/i)).not.toBeInTheDocument();
+
+    sendMessage('schedule task');
+    expect(await screen.findByText(/all 8 plan items/)).toBeInTheDocument();
+    expect(screen.queryByText(/What should I call the task\?/)).not.toBeInTheDocument();
+    expect(mockedAnswer).toHaveBeenCalledTimes(1);
+
+    sendMessage('mentioned in the document');
+    expect(await screen.findByText(/no calendar due date/i)).toBeInTheDocument();
+    expect(screen.queryByText(/What due date should I use\? Try/)).not.toBeInTheDocument();
+    expect(mockedAnswer).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,0 +1,50 @@
+Atom||atom||An atom is the smallest unit of an element retaining its chemical identity, made of protons, neutrons and electrons.||protons, neutrons, electrons||Atomic number counts protons; mass number counts protons plus neutrons.
+Molecule||molecule||A molecule is a neutral group of atoms bonded together as the smallest unit of a substance.||H₂O, O₂, CO₂||Can be elemental or compound; held by covalent bonds.
+Element||element||An element is a pure substance made of atoms with the same atomic number.||Fe, O, C||Cannot be broken down chemically into simpler substances.
+Compound||compound||A compound is a substance made of two or more elements chemically combined in fixed ratios.||NaCl, H₂O||Can be decomposed chemically, not physically.
+Ion||ion,cation,anion||An ion is an atom or group with net electric charge from gaining or losing electrons.||Na⁺, Cl⁻||Cation is positive; anion is negative.
+Isotope||isotope||Isotopes are atoms of the same element with different neutron numbers and mass numbers.||Carbon-12, Carbon-14||Same chemical behaviour but different nuclear stability.
+Periodic table||periodic table,periodic law||The periodic table arranges elements by atomic number and recurring chemical properties.||groups and periods||Groups share valence electrons; periods show electron shell number.
+Chemical bond||bond,chemical bond||A chemical bond is an attractive force holding atoms together in molecules or crystals.||ionic, covalent, metallic||Formed to lower potential energy and achieve stable electron configurations.
+Ionic bond||ionic bond||Ionic bond is electrostatic attraction between oppositely charged ions formed by electron transfer.||NaCl||Usually forms between metals and nonmetals; high melting points.
+Covalent bond||covalent bond||Covalent bond is sharing of electron pairs between atoms.||H₂, H₂O||Usually between nonmetals; can be single, double or triple.
+Metallic bond||metallic bond||Metallic bond is attraction between metal cations and delocalised electrons.||Cu, Fe||Explains conductivity, malleability and ductility.
+VSEPR||vsepr,electron pair geometry||VSEPR predicts molecular shape from repulsion between electron domains around a central atom.||AX₄ tetrahedral||Lone pairs repel more strongly than bonding pairs.
+Hybridization||hybridisation,hybridization||Hybridization mixes atomic orbitals to form new orbitals for bonding and molecular geometry.||sp, sp², sp³||sp³ is tetrahedral, sp² trigonal planar, sp linear.
+Mole concept||mole,moles||A mole is the amount of substance containing Avogadro's number of particles.||1 mol = 6.022×10²³ particles||Links microscopic particles to measurable mass.
+Molar mass||molar mass||Molar mass is mass of one mole of a substance in g/mol.||H₂O = 18 g/mol||Calculate by summing atomic masses from formula.
+Avogadro number||avogadro||Avogadro's number is the number of particles in one mole.||6.022×10²³||Used to convert moles to number of particles.
+Stoichiometry||stoichiometry||Stoichiometry uses balanced equations and mole ratios to calculate reactant/product quantities.||moles = mass / molar mass||Requires a balanced chemical equation.
+Balanced equation||balancing equation,balanced chemical equation||A balanced equation has equal numbers of each atom on both sides.||2H₂+O₂→2H₂O||Mass is conserved in chemical reactions.
+Concentration||concentration||Concentration tells how much solute is present in a given amount of solution.||c=n/V||Units often mol/L.
+Molarity||molarity,M||Molarity is moles of solute per litre of solution.||M=n/V(L)||Common concentration unit in solution chemistry.
+Acid||acid||An acid donates H⁺ ions or protons; in aqueous solution it increases H₃O⁺ concentration.||HCl, H₂SO₄||Strong acids ionize completely; weak acids partially ionize.
+Base||base,alkali||A base accepts H⁺ ions or produces OH⁻ in water.||NaOH, NH₃||Strong bases dissociate completely; weak bases partially react.
+pH||ph,ph scale||pH measures acidity using the negative logarithm of hydrogen ion concentration.||pH=-log[H⁺]||pH<7 acidic, pH=7 neutral, pH>7 basic at 25°C.
+Neutralization||neutralisation,neutralization||Neutralization is reaction of acid and base to form salt and water.||acid+base→salt+water||Exothermic for strong acid-strong base reactions.
+Oxidation||oxidation||Oxidation is loss of electrons or increase in oxidation state.||Zn→Zn²⁺+2e⁻||Oxidation and reduction occur together.
+Reduction||reduction||Reduction is gain of electrons or decrease in oxidation state.||Cu²⁺+2e⁻→Cu||Reducing agent is oxidized.
+Redox||redox reaction||Redox reactions involve electron transfer and simultaneous oxidation and reduction.||Zn+Cu²⁺→Zn²⁺+Cu||Oxidation numbers track electron transfer.
+Electrochemistry||electrochemistry,galvanic cell,electrolytic cell||Electrochemistry studies reactions that produce or use electrical energy.||E°cell=E°cathode-E°anode||Galvanic cells generate electricity; electrolytic cells use it.
+Gas laws||gas laws||Gas laws relate pressure, volume, temperature and amount of gas.||PV=nRT||Assume ideal behaviour unless real-gas corrections needed.
+Ideal gas equation||pv=nrt||Ideal gas equation combines Boyle, Charles and Avogadro laws.||PV=nRT||T must be in kelvin.
+Boyle's law||boyle law||At constant temperature, gas pressure is inversely proportional to volume.||P₁V₁=P₂V₂||As volume decreases, pressure increases.
+Charles' law||charles law||At constant pressure, gas volume is proportional to absolute temperature.||V₁/T₁=V₂/T₂||Temperature must be in kelvin.
+Thermochemistry||thermochemistry||Thermochemistry studies heat changes in chemical reactions.||q=mcΔT||Exothermic releases heat; endothermic absorbs heat.
+Enthalpy||enthalpy,ΔH||Enthalpy is heat content at constant pressure; ΔH is reaction heat at constant pressure.||ΔH=H_products-H_reactants||Negative ΔH exothermic; positive ΔH endothermic.
+Chemical entropy||entropy chemistry||Chemical entropy measures disorder or energy dispersal of a system.||ΔS_universe=ΔS_sys+ΔS_surr||Spontaneous processes increase total entropy.
+Gibbs free energy||gibbs free energy,delta g||Gibbs free energy predicts spontaneity at constant temperature and pressure.||ΔG=ΔH-TΔS||ΔG<0 spontaneous; ΔG=0 equilibrium.
+Chemical equilibrium||equilibrium||Equilibrium occurs when forward and reverse reaction rates are equal and concentrations stay constant.||K=[products]/[reactants]||Dynamic equilibrium still has microscopic reaction both ways.
+Le Chatelier||le chatelier principle||A system at equilibrium shifts to oppose an applied change in concentration, pressure or temperature.||equilibrium shift||Adding reactant shifts toward products.
+Rate of reaction||reaction rate,kinetics||Reaction rate measures change in concentration per unit time.||rate=Δ[A]/Δt||Depends on concentration, temperature, surface area and catalyst.
+Catalyst||catalyst||A catalyst speeds a reaction by lowering activation energy without being consumed.||activation energy lower||Does not change equilibrium position, only rate.
+Solution||solution,solute,solvent||A solution is a homogeneous mixture of solute dissolved in solvent.||solute+solvent||Concentration can be molarity, molality or percent.
+Solubility||solubility||Solubility is maximum amount of solute that dissolves in a solvent at a given temperature.||g/100g water||Depends on temperature and pressure for gases.
+Colloid||colloid||A colloid is a mixture with particles dispersed between solution and suspension sizes.||milk, fog, gel||Shows Tyndall effect and does not settle easily.
+Organic chemistry||organic chemistry||Organic chemistry studies carbon-containing compounds, especially hydrocarbons and functional groups.||C-H compounds||Carbon forms four bonds and chains/rings.
+Hydrocarbon||hydrocarbon,alkane,alkene,alkyne||Hydrocarbons contain only hydrogen and carbon.||CH₄, C₂H₄, C₂H₂||Alkanes single bonds; alkenes double; alkynes triple.
+Alcohol||alcohol||Alcohols contain hydroxyl -OH functional group attached to carbon.||ethanol C₂H₅OH||Can form hydrogen bonds; naming uses -ol suffix.
+Aldehyde and ketone||aldehyde,ketone,carbonyl||Aldehydes and ketones contain carbonyl C=O; aldehyde at chain end, ketone internal.||formaldehyde, acetone||Aldehyde suffix -al; ketone suffix -one.
+Carboxylic acid||carboxylic acid,carboxyl||Carboxylic acids contain -COOH group and are weak acids.||acetic acid CH₃COOH||Can form esters with alcohols.
+Polymer||polymer,polymerization||Polymers are large molecules made of repeating monomer units.||plastic, protein, DNA||Addition or condensation polymerization builds them.
+Biochemistry||biochemistry||Biochemistry studies chemical processes in living organisms.||proteins, enzymes, DNA||Links chemistry with biology through biomolecules.

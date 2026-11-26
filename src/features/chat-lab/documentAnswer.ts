@@ -1,7 +1,7 @@
 /**
- * Document loading and lightweight document Q&A for Chat Lab.
+ * Document loading and lightweight document Q&A for Converse.
  *
- * Plain-text formats are read in the browser so Chat Lab still works offline.
+ * Plain-text formats are read in the browser so Converse still works offline.
  * PDF and Word files are sent to the optional Python bridge for extraction.
  * Images are deliberately never accepted.
  */

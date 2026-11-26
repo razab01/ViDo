@@ -1,150 +1,124 @@
 import React from 'react';
-import { Badge } from '../../components/ui';
-import { CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
 export const LandingPreview: React.FC = () => {
   return (
-    <section id="preview" className="px-6 max-w-6xl mx-auto py-12">
-      <div className="text-center mb-8">
-        <Badge variant="neutral" className="mb-2">
-          Dashboard Overview
-        </Badge>
-        <h2 className="text-2xl sm:text-3xl font-bold text-[var(--ink)]">
-          Designed for clarity. Built without clutter.
-        </h2>
-        <p className="text-sm text-[var(--muted)] mt-1 max-w-xl mx-auto">
+    <section id="preview" className="vdb-section">
+      <div className="vdb-section-heading">
+        <span className="vdb-section-label">Dashboard Overview</span>
+        <h2 className="vdb-section-title">Designed for clarity. Built without clutter.</h2>
+        <p className="vdb-section-copy">
           See how ViDo organizes your responsibilities into calm, section-limited views that keep you focused on what matters next.
         </p>
       </div>
 
-      {/* Desktop Window Frame */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl overflow-hidden transition-all">
-        {/* Browser Top Window Chrome */}
-        <div className="bg-[var(--canvas)] border-b border-[var(--line)] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-red-400 inline-block" />
-            <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
-            <span className="w-3 h-3 rounded-full bg-green-400 inline-block" />
-            <span className="ml-2 text-xs font-mono text-[var(--muted)]">vido.app/preview</span>
-          </div>
-          <span className="text-[11px] font-medium text-[var(--muted)] bg-[var(--surface)] px-2.5 py-0.5 rounded-full border border-[var(--line)]">
-            Today: 17 Nov 2026
-          </span>
-        </div>
-
-        {/* Dashboard Shell Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 min-h-[460px]">
-          {/* Mock Sidebar */}
-          <div className="bg-[var(--dark)] text-white p-5 hidden md:block">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-6 h-6 rounded bg-white text-[var(--dark)] flex items-center justify-center font-black text-xs">
-                V
-              </div>
-              <span className="font-bold text-sm">ViDo</span>
+      <div className="vdb-showcase">
+        <div className="vdb-showcase-inner">
+          <div className="vdb-showcase-chrome">
+            <div className="vdb-chrome-left">
+              <span className="vdb-chrome-dot" style={{ background: '#e78989' }} />
+              <span className="vdb-chrome-dot" style={{ background: '#e6bb6a' }} />
+              <span className="vdb-chrome-dot" style={{ background: '#77b596' }} />
+              <span className="vdb-chrome-url">vido.app/preview</span>
             </div>
-
-            <div className="space-y-1 text-xs font-medium text-gray-400">
-              <div className="p-2 rounded-lg bg-white/10 text-white font-semibold flex items-center justify-between">
-                <span>Home</span>
-                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded">11</span>
-              </div>
-              <div className="p-2 rounded-lg hover:bg-white/5 flex items-center justify-between">
-                <span>Today</span>
-                <span className="text-[10px] text-gray-500">4</span>
-              </div>
-              <div className="p-2 rounded-lg hover:bg-white/5 flex items-center justify-between">
-                <span>Upcoming</span>
-                <span className="text-[10px] text-gray-500">5</span>
-              </div>
-              <div className="p-2 rounded-lg hover:bg-white/5 flex items-center justify-between">
-                <span>Needs Attention</span>
-                <span className="text-[10px] text-amber-400 font-bold">2</span>
-              </div>
-              <div className="p-2 rounded-lg hover:bg-white/5 flex items-center justify-between">
-                <span>Completed</span>
-                <span className="text-[10px] text-gray-500">8</span>
-              </div>
-            </div>
+            <span className="vdb-showcase-date">Today: 17 Nov 2026</span>
           </div>
 
-          {/* Mock Dashboard Content Area */}
-          <div className="md:col-span-3 p-6 bg-[var(--canvas)] space-y-6">
-            {/* Top Bar Mock */}
-            <div className="flex items-center justify-between bg-[var(--surface)] p-3 rounded-xl border border-[var(--line)]">
-              <span className="text-xs text-[var(--faint)]">Search tasks or filter by priority...</span>
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">
-                  DU
-                </span>
+          <div className="vdb-showcase-body">
+            <aside className="vdb-mock-sidebar">
+              <div className="vdb-mock-brand">
+                <span>V</span>
+                ViDo
               </div>
-            </div>
+              <div className="vdb-mock-nav">
+                <div className="vdb-mock-nav-item active">
+                  <span>Home</span>
+                  <span>11</span>
+                </div>
+                <div className="vdb-mock-nav-item">
+                  <span>Today</span>
+                  <span>4</span>
+                </div>
+                <div className="vdb-mock-nav-item">
+                  <span>Upcoming</span>
+                  <span>5</span>
+                </div>
+                <div className="vdb-mock-nav-item">
+                  <span>Needs Attention</span>
+                  <span>2</span>
+                </div>
+                <div className="vdb-mock-nav-item">
+                  <span>Completed</span>
+                  <span>8</span>
+                </div>
+              </div>
+            </aside>
 
-            {/* Sections Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Today Section */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-[var(--accent)]" /> Today (4)
+            <div className="vdb-mock-main">
+              <div className="vdb-mock-topbar">
+                <span>Search tasks or filter by priority...</span>
+                <span className="vdb-mock-avatar">DU</span>
+              </div>
+
+              <div className="vdb-mock-grid">
+                <div className="vdb-mock-column">
+                  <div className="vdb-mock-heading">
+                    <h3>
+                      <Clock aria-hidden="true" /> Today (4)
+                    </h3>
+                    <span className="vdb-mock-link">View all</span>
+                  </div>
+                  <div className="vdb-mock-task">
+                    <div className="vdb-mock-task-title">
+                      <span>Review Q4 Budget &amp; Resource Allocations</span>
+                      <span className="vdb-mock-pill blue">High</span>
+                    </div>
+                    <span className="vdb-mock-task-meta">Due Today at 17:00</span>
+                  </div>
+                  <div className="vdb-mock-task">
+                    <div className="vdb-mock-task-title">
+                      <span>Finalize Vehicle Registration Renewal</span>
+                      <span className="vdb-mock-pill grey">Medium</span>
+                    </div>
+                    <span className="vdb-mock-task-meta">Due Today at 18:30</span>
+                  </div>
+                </div>
+
+                <div className="vdb-mock-column">
+                  <div className="vdb-mock-heading">
+                    <h3>
+                      <AlertCircle aria-hidden="true" /> Needs Attention (2)
+                    </h3>
+                    <span className="vdb-mock-link">View all</span>
+                  </div>
+                  <div className="vdb-mock-task alert">
+                    <div className="vdb-mock-task-title">
+                      <span>Submit Annual Insurance Declaration</span>
+                      <span className="vdb-mock-pill red">Overdue</span>
+                    </div>
+                    <span className="vdb-mock-task-meta red">Was due 15 Nov 2026</span>
+                  </div>
+                  <div className="vdb-mock-task warn">
+                    <div className="vdb-mock-task-title">
+                      <span>Server Security Certificate Expiry</span>
+                      <span className="vdb-mock-pill amber">Urgent</span>
+                    </div>
+                    <span className="vdb-mock-task-meta amber">Expires in 24 hours</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="vdb-mock-completed">
+                <div className="vdb-mock-heading">
+                  <h3>
+                    <CheckCircle2 aria-hidden="true" /> Recently Completed (Last 7 Days)
                   </h3>
-                  <span className="text-[11px] text-[var(--accent)] font-semibold">View all</span>
+                  <span className="vdb-mock-link">View all</span>
                 </div>
-
-                <div className="bg-[var(--surface)] p-3 rounded-lg border border-[var(--line)] shadow-xs">
-                  <div className="flex items-start justify-between">
-                    <span className="text-xs font-semibold text-[var(--ink)]">Review Q4 Budget & Resource Allocations</span>
-                    <Badge variant="accent" size="sm">High</Badge>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted)] mt-1 block">Due Today at 17:00</span>
+                <div className="vdb-mock-completed-row">
+                  <span>Complete initial workspace design review</span>
+                  <span>Completed on time</span>
                 </div>
-
-                <div className="bg-[var(--surface)] p-3 rounded-lg border border-[var(--line)] shadow-xs">
-                  <div className="flex items-start justify-between">
-                    <span className="text-xs font-semibold text-[var(--ink)]">Finalize Vehicle Registration Renewal</span>
-                    <Badge variant="neutral" size="sm">Medium</Badge>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted)] mt-1 block">Due Today at 18:30</span>
-                </div>
-              </div>
-
-              {/* Needs Attention Section */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--amber)] flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" /> Needs Attention (2)
-                  </h3>
-                  <span className="text-[11px] text-[var(--accent)] font-semibold">View all</span>
-                </div>
-
-                <div className="bg-[var(--surface)] p-3 rounded-lg border border-red-200 shadow-xs">
-                  <div className="flex items-start justify-between">
-                    <span className="text-xs font-semibold text-[var(--ink)]">Submit Annual Insurance Declaration</span>
-                    <Badge variant="danger" size="sm">Overdue</Badge>
-                  </div>
-                  <span className="text-[10px] text-[var(--red)] mt-1 block">Was due 15 Nov 2026</span>
-                </div>
-
-                <div className="bg-[var(--surface)] p-3 rounded-lg border border-[var(--line)] shadow-xs">
-                  <div className="flex items-start justify-between">
-                    <span className="text-xs font-semibold text-[var(--ink)]">Server Security Certificate Expiry</span>
-                    <Badge variant="warning" size="sm">Urgent</Badge>
-                  </div>
-                  <span className="text-[10px] text-[var(--amber)] mt-1 block">Expires in 24 hours</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Recently Completed Section */}
-            <div className="pt-2 border-t border-[var(--line)]">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--green)] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Recently Completed (Last 7 Days)
-                </h3>
-                <span className="text-[11px] text-[var(--accent)] font-semibold">View all</span>
-              </div>
-              <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--line)] flex items-center justify-between text-xs">
-                <span className="line-through text-[var(--muted)]">Complete initial workspace design review</span>
-                <span className="text-[10px] text-[var(--green)] font-medium">Completed on time</span>
               </div>
             </div>
           </div>

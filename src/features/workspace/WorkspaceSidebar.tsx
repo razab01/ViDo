@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   CheckSquare,
   CalendarDays,
   BarChart3,
-  Palette,
+  Settings,
   Plus,
   LogOut,
   Users,
@@ -17,6 +17,8 @@ import {
   FlaskConical,
   MessageSquare,
   ArrowLeft,
+  Pin,
+  PinOff,
   Trash2,
 } from 'lucide-react';
 import { Button } from '../../components/ui';
@@ -28,7 +30,13 @@ import {
   readThreads,
   selectThread,
   subscribeThreads,
+  toggleThreadPinned,
 } from '../chat-lab/chatStore';
+
+export const DEFAULT_SIDEBAR_WIDTH = 256;
+export const MIN_SIDEBAR_WIDTH = 240;
+export const MAX_SIDEBAR_WIDTH = 480;
+export const SIDEBAR_WIDTH_STORAGE_KEY = 'vido_sidebar_width';
 
 export interface WorkspaceSidebarProps {
   isPreview?: boolean;
@@ -47,8 +55,11 @@ export interface WorkspaceSidebarProps {
     archived: number;
   };
   teams?: Team[];
+  sidebarWidth?: number;
+  onSidebarWidthChange?: (width: number) => void;
   onNewTaskClick?: () => void;
   onCreateTeamClick?: () => void;
+  onOpenSettings?: () => void;
   onSignOut?: () => void;
 }
 
@@ -58,13 +69,19 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   user,
   counts,
   teams = [],
+  sidebarWidth: controlledWidth,
+  onSidebarWidthChange,
   onNewTaskClick,
   onCreateTeamClick,
+  onOpenSettings,
   onSignOut,
 }) => {
   const location = useLocation();
   const chatUserId = user?.id || 'demo-user-uid';
-  const isChatRoute = location.pathname === `${basePath}/chat-lab`;
+  const isChatRoute =
+    location.pathname === `${basePath}/converse` ||
+    location.pathname === `${basePath}/chat-zone` ||
+    location.pathname === `${basePath}/chat-lab`;
   const [chatThreads, setChatThreads] = useState(() => readThreads(chatUserId));
 
   useEffect(() => {
@@ -73,6 +90,96 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
     return subscribeThreads(chatUserId, refresh);
   }, [chatUserId]);
 
+  // Resizable width state with localStorage persistence
+  const [internalWidth, setInternalWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+      if (saved) {
+        const parsed = Number(saved);
+        if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= MAX_SIDEBAR_WIDTH) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
+
+  const width = controlledWidth ?? internalWidth;
+  const widthRef = useRef(width);
+  widthRef.current = width;
+  const [isResizing, setIsResizing] = useState(false);
+
+  const updateWidth = (newWidth: number) => {
+    const clamped = Math.min(Math.max(newWidth, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+    setInternalWidth(clamped);
+    onSidebarWidthChange?.(clamped);
+    try {
+      localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(Math.max(e.clientX, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
+      setInternalWidth(newWidth);
+      onSidebarWidthChange?.(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      try {
+        localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(widthRef.current));
+      } catch {
+        // ignore
+      }
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, onSidebarWidthChange]);
+
+  const handleDoubleClick = () => updateWidth(DEFAULT_SIDEBAR_WIDTH);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      updateWidth(width - 16);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      updateWidth(width + 16);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      updateWidth(MIN_SIDEBAR_WIDTH);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      updateWidth(MAX_SIDEBAR_WIDTH);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      updateWidth(DEFAULT_SIDEBAR_WIDTH);
+    }
+  };
+
   const totalTasks =
     counts.total ?? counts.today + counts.upcoming + counts.needsAttention;
 
@@ -80,8 +187,9 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   const tasksPath = `${basePath}/tasks`;
   const calendarPath = `${basePath}/calendar`;
   const analyticsPath = `${basePath}/analytics`;
+  const settingsPath = `${basePath}/settings`;
   const mlLabPath = `${basePath}/ml-lab`;
-  const chatLabPath = `${basePath}/chat-lab`;
+  const conversePath = `${basePath}/converse`;
 
   const isTaskRoute =
     location.pathname === tasksPath ||
@@ -139,87 +247,106 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   ];
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-      isActive
-        ? 'bg-white/15 text-white shadow-xs'
-        : 'text-gray-300 hover:bg-white/8 hover:text-white'
-    }`;
+    `vdb-rail-link${isActive ? ' vdb-rail-link-active' : ''}`;
 
-  // Chat Lab gets its own sidebar: conversation history with a way back.
+  // Converse gets its own sidebar: conversation history with a way back.
   if (isChatRoute) {
+    const sortedChatThreads = [...chatThreads].sort(
+      (a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt - a.updatedAt
+    );
+
     return (
       <aside
         aria-label="Chat history"
-        className={`w-64 bg-[var(--dark)] text-gray-200 flex flex-col shrink-0 sticky ${
-          isPreview ? 'top-[45px] h-[calc(100vh-45px)]' : 'top-0 h-screen'
-        } overflow-y-auto p-5 select-none`}
+        className={`vdb-chat-rail flex flex-col shrink-0 sticky ${
+          isPreview
+            ? 'top-[var(--preview-bar-height)] h-[calc(100vh-var(--preview-bar-height))]'
+            : 'top-0 h-screen'
+        } select-none`}
       >
-        <div className="flex items-center gap-3 mb-6 px-1">
-          <div className="w-9 h-9 rounded-xl bg-white text-[var(--dark)] flex items-center justify-center font-black text-base shadow-sm">
-            V
+        <div className="vdb-chat-brand">
+          <div className="vdb-chat-brand-mark" aria-hidden="true">
+            <MessageSquare className="w-4 h-4" strokeWidth={1.6} />
           </div>
-          <div>
-            <div className="font-bold text-base text-white tracking-tight block">Chat Lab</div>
-            <span className="text-[10px] text-amber-300/90 font-medium tracking-wide block">
-              Conversations
-            </span>
+          <div className="min-w-0">
+            <div className="vdb-chat-brand-name">Converse</div>
+            <span className="vdb-chat-brand-sub">Conversations</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-2 px-2.5">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
-            Chat history
-          </span>
+        <div className="vdb-chat-section">
+          <span className="vdb-chat-section-label">Chat history</span>
           <button
             type="button"
             aria-label="Start new chat"
             onClick={() => createThread(chatUserId)}
-            className="p-1 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white cursor-pointer"
+            className="vdb-chat-new"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
+        <div className="vdb-chat-rule" aria-hidden="true" />
 
-        <nav className="space-y-1 flex-1 overflow-y-auto">
-          {chatThreads.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-gray-400 italic">No chats yet</div>
-          ) : (
-            chatThreads.map((thread) => (
-              <div key={thread.id} className="flex items-center gap-1 group">
+        <nav className="vdb-chat-thread-list" aria-label="Chat threads">
+          {sortedChatThreads.map((thread, index) => {
+            const activeThread = thread.id === getActiveChatId(chatUserId);
+            return (
+              <div
+                key={thread.id}
+                className={`vdb-chat-thread ${
+                  activeThread ? 'vdb-chat-thread-active' : ''
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => selectThread(chatUserId, thread.id)}
-                  className={`flex-1 min-w-0 text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all truncate ${
-                    thread.id === getActiveChatId(chatUserId)
-                      ? 'bg-white/15 text-white shadow-xs'
-                      : 'text-gray-300 hover:bg-white/8 hover:text-white'
-                  }`}
-                  title={thread.title}
+                  className="vdb-chat-thread-main"
+                  title={thread.pinned ? `${thread.title} (pinned)` : thread.title}
                 >
-                  {thread.title}
+                  <span className="vdb-chat-thread-index" aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  {thread.pinned && <Pin className="vdb-chat-pin-mark w-3 h-3 shrink-0" />}
+                  <span className="truncate">{thread.title}</span>
                 </button>
-                <button
-                  type="button"
-                  aria-label={`Delete ${thread.title}`}
-                  onClick={() => deleteThread(chatUserId, thread.id)}
-                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-300 hover:bg-white/8 cursor-pointer opacity-60 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="vdb-chat-thread-actions">
+                  <button
+                    type="button"
+                    aria-label={thread.pinned ? `Unpin ${thread.title}` : `Pin ${thread.title}`}
+                    onClick={() => toggleThreadPinned(chatUserId, thread.id)}
+                    className={`vdb-chat-action ${
+                      thread.pinned ? 'vdb-chat-action-active' : ''
+                    }`}
+                  >
+                    {thread.pinned ? (
+                      <PinOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Pin className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${thread.title}`}
+                    onClick={() => deleteThread(chatUserId, thread.id)}
+                    className="vdb-chat-action vdb-chat-action-danger"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            ))
-          )}
+            );
+          })}
         </nav>
 
-        <div className="pt-4 mt-4 border-t border-white/10">
-          <Link
-            to={basePath}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
-            <span>Back to application</span>
-          </Link>
+        <div className="vdb-chat-footnote" aria-hidden="true">
+          <span>Personal index</span>
+          <span>ViDo / 2026</span>
         </div>
+
+        <Link to={basePath} className="vdb-chat-back">
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to application</span>
+        </Link>
       </aside>
     );
   }
@@ -227,30 +354,32 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
   return (
     <aside
       aria-label="Workspace navigation"
-      className={`w-64 bg-[var(--dark)] text-gray-200 flex flex-col justify-between shrink-0 sticky ${
-        isPreview ? 'top-[45px] h-[calc(100vh-45px)]' : 'top-0 h-screen'
-      } overflow-y-auto p-5 select-none`}
+      style={{
+        width: `${width}px`,
+        minWidth: `${MIN_SIDEBAR_WIDTH}px`,
+        maxWidth: `${MAX_SIDEBAR_WIDTH}px`,
+      }}
+      className={`vdb-workspace-rail relative flex flex-col justify-between shrink-0 sticky border-r ${
+        isPreview
+          ? 'top-[var(--preview-bar-height)] h-[calc(100vh-var(--preview-bar-height))]'
+          : 'top-0 h-screen'
+      } workspace-sidebar-scrollbar select-none overflow-hidden ${
+        isResizing ? 'transition-none' : 'transition-[width] duration-75'
+      }`}
     >
-      <div>
+      {/* 1. Fixed Top Header: Brand & New Task */}
+      <div className="vdb-rail-top shrink-0">
         {/* Brand Header */}
-        <div className="flex items-center gap-3 mb-6 px-1">
-          <div className="w-9 h-9 rounded-xl bg-white text-[var(--dark)] flex items-center justify-center font-black text-base shadow-sm">
+        <div className="vdb-rail-brand">
+          <div className="vdb-rail-brand-mark" aria-hidden="true">
             V
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base text-white tracking-tight block">ViDo</span>
-              {isPreview ? (
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-400 text-amber-950 shadow-xs">
-                  DEMO
-                </span>
-              ) : (
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 text-white border border-white/20">
-                  WORKSPACE
-                </span>
-              )}
+          <div className="min-w-0">
+            <div className="vdb-rail-brand-heading">
+              <span className="vdb-rail-brand-name">ViDo</span>
+              <span className="vdb-rail-badge">{isPreview ? 'DEMO' : 'WORKSPACE'}</span>
             </div>
-            <span className="text-[10px] text-amber-300/90 font-medium tracking-wide block">
+            <span className="vdb-rail-brand-sub">
               {isPreview ? 'Logged-in demo preview' : user?.name || 'Personal Workspace'}
             </span>
           </div>
@@ -258,22 +387,25 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
 
         {/* Quick New Task Button */}
         {onNewTaskClick && (
-          <div className="mb-6">
+          <div className="vdb-rail-new-wrap">
             <Button
               variant="primary"
               size="sm"
               onClick={onNewTaskClick}
-              className="w-full justify-center gap-1.5 shadow-sm"
+              className="vdb-rail-new"
             >
               <Plus className="w-4 h-4" /> New Task
             </Button>
           </div>
         )}
+      </div>
 
-        <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 px-2.5">
+      {/* 2. Scrollable Middle Navigation Area */}
+      <div className="vdb-rail-scroll workspace-sidebar-scrollbar">
+        <div className="vdb-rail-section-label">
           Workspace
         </div>
-        <nav className="space-y-1">
+        <nav className="vdb-rail-nav">
           <NavLink to={dashboardPath} end className={linkClass}>
             <div className="flex items-center gap-2.5">
               <LayoutDashboard className="w-4 h-4 text-[var(--accent)]" />
@@ -286,11 +418,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
               to={tasksPath}
               onClick={() => setIsTasksOpen(true)}
               className={() =>
-                `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                  isTaskRoute
-                    ? 'bg-white/15 text-white shadow-xs'
-                    : 'text-gray-300 hover:bg-white/8 hover:text-white'
-                }`
+                `vdb-rail-link${isTaskRoute ? ' vdb-rail-link-active' : ''}`
               }
             >
               <div className="flex items-center gap-2.5">
@@ -298,9 +426,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                 <span>Tasks</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-gray-200 font-bold">
-                  {totalTasks}
-                </span>
+                <span className="vdb-rail-count">{totalTasks}</span>
                 <button
                   type="button"
                   aria-label={isTasksOpen ? 'Collapse task views' : 'Expand task views'}
@@ -309,7 +435,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                     e.stopPropagation();
                     setIsTasksOpen((prev) => !prev);
                   }}
-                  className="p-0.5 text-gray-400 hover:text-white rounded transition-colors cursor-pointer"
+                  className="vdb-rail-toggle"
                 >
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -321,25 +447,21 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </NavLink>
 
             {isTasksOpen && (
-              <div className="space-y-0.5 mt-1 mb-1 pl-3 border-l border-white/10 ml-4.5 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="vdb-rail-subnav">
                 {taskSubItems.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
                     end
                     className={({ isActive }) =>
-                      `flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all ${
-                        isActive
-                          ? 'bg-white/12 text-white font-bold shadow-2xs'
-                          : 'text-gray-400 hover:bg-white/6 hover:text-gray-200 font-medium'
-                      }`
+                      `vdb-rail-sublink${isActive ? ' vdb-rail-sublink-active' : ''}`
                     }
                   >
                     <div className="flex items-center gap-2 truncate">
                       <item.icon className={`w-3.5 h-3.5 shrink-0 ${item.iconColor}`} />
                       <span className="truncate">{item.label}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-gray-400 font-semibold shrink-0 ml-1">
+                    <span className="vdb-rail-count-muted">
                       {item.count}
                     </span>
                   </NavLink>
@@ -349,10 +471,10 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           </div>
         </nav>
 
-        <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 mt-6 px-2.5">
+        <div className="vdb-rail-section-label">
           Planning
         </div>
-        <nav className="space-y-1">
+        <nav className="vdb-rail-nav">
           <NavLink to={calendarPath} className={linkClass}>
             <div className="flex items-center gap-2.5">
               <CalendarDays className="w-4 h-4 text-indigo-400" />
@@ -366,12 +488,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
               <span>Analytics</span>
             </div>
           </NavLink>
-        </nav>
 
-        <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 mt-6 px-2.5">
-          Intelligence
-        </div>
-        <nav className="space-y-1">
           <NavLink to={mlLabPath} className={linkClass}>
             <div className="flex items-center gap-2.5">
               <FlaskConical className="w-4 h-4 text-purple-400" />
@@ -379,32 +496,28 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
             </div>
           </NavLink>
 
-          <NavLink to={chatLabPath} className={linkClass}>
+          <NavLink to={conversePath} className={linkClass}>
             <div className="flex items-center gap-2.5">
-              <MessageSquare className="w-4 h-4 text-sky-400" />
-              <span>Chat Lab</span>
+              <MessageSquare className="w-4 h-4 text-amber-300" />
+              <span>Converse</span>
             </div>
           </NavLink>
         </nav>
 
         {/* Teams & Shared Projects Section */}
-        <div className="mt-6">
-          <div className="text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-2 px-2.5">
+        <div className="vdb-rail-team-section">
+          <div className="vdb-rail-section-label">
             Teams & Shared Projects
           </div>
 
-          <div className="space-y-1">
+          <div className="vdb-rail-nav">
             {teams && teams.length > 0 ? (
               teams.map((team) => (
                 <NavLink
                   key={team.id}
                   to={`${basePath}/team/${team.id}`}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      isActive
-                        ? 'bg-white/15 text-white shadow-xs'
-                        : 'text-gray-300 hover:bg-white/8 hover:text-white'
-                    }`
+                    `vdb-rail-link${isActive ? ' vdb-rail-link-active' : ''}`
                   }
                 >
                   <div className="flex items-center gap-2.5 truncate">
@@ -412,21 +525,19 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                     <span className="truncate">{team.name}</span>
                   </div>
                   {team.leadId === (user?.id || 'demo-user-1') && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 bg-sky-500/20 text-sky-300 rounded font-bold shrink-0">
-                      LEAD
-                    </span>
+                    <span className="vdb-rail-lead">LEAD</span>
                   )}
                 </NavLink>
               ))
             ) : (
-              <div className="px-3 py-2 text-xs text-gray-400 italic">No teams yet</div>
+              <div className="vdb-rail-muted">No teams yet</div>
             )}
 
             {onCreateTeamClick && (
               <button
                 type="button"
                 onClick={onCreateTeamClick}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:bg-white/8 hover:text-white transition-colors cursor-pointer text-left"
+                className="vdb-rail-link vdb-rail-button"
               >
                 <Plus className="w-3.5 h-3.5 text-sky-400" />
                 <span>Create Team</span>
@@ -436,12 +547,12 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Navigation */}
-      <div className="pt-4 border-t border-white/10 space-y-2 text-xs">
+      {/* 3. Fixed Bottom Footer: Profile, Settings, Sign Out */}
+      <div className="vdb-rail-footer shrink-0">
         {!isPreview && (
-          <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+          <div className="vdb-rail-profile">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white font-bold text-xs flex items-center justify-center shrink-0">
+              <div className="vdb-rail-avatar">
                 {(user?.name || 'Alex Morgan')
                   .split(' ')
                   .map((n) => n[0])
@@ -450,10 +561,10 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
                   .toUpperCase()}
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-white block truncate">
+                <span className="vdb-rail-profile-name">
                   {user?.name || 'Alex Morgan'}
                 </span>
-                <span className="text-[10px] text-gray-400 block truncate">
+                <span className="vdb-rail-profile-email">
                   {user?.email || 'alex.morgan@gmail.com'}
                 </span>
               </div>
@@ -461,24 +572,50 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = ({
           </div>
         )}
 
-        <Link
-          to="/style-lab"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        <NavLink
+          to={settingsPath}
+          onClick={(e) => {
+            e.preventDefault();
+            onOpenSettings?.();
+          }}
+          className={({ isActive }) =>
+            `vdb-rail-footer-link${isActive ? ' vdb-rail-footer-link-active' : ''}`
+          }
         >
-          <Palette className="w-4 h-4" />
-          <span>Themes</span>
-        </Link>
+          <Settings className="w-4 h-4" />
+          <span>Settings</span>
+        </NavLink>
 
         {onSignOut && (
           <button
             type="button"
             onClick={onSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:text-red-300 hover:bg-white/5 transition-colors cursor-pointer text-left"
+            className="vdb-rail-footer-link vdb-rail-signout"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </button>
         )}
+      </div>
+
+      {/* 4. Resizable Right Gutter Handle */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        aria-valuenow={width}
+        aria-valuemin={MIN_SIDEBAR_WIDTH}
+        aria-valuemax={MAX_SIDEBAR_WIDTH}
+        tabIndex={0}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
+        title="Drag to resize sidebar (Double-click to reset)"
+        className={`vdb-rail-resize ${
+          isResizing ? 'vdb-rail-resize-active' : ''
+        }`}
+      >
+        <div className="vdb-rail-resize-grip" />
       </div>
     </aside>
   );

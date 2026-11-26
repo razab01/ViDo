@@ -4,11 +4,11 @@ import { SampleTask, SAMPLE_TASKS } from '../../../data/sampleTasks';
 import {
   getHomeDashboardTasks,
   HomeDashboardTasks,
+  sortTasksPinnedFirst,
 } from '../../../data/taskFilters';
 import { BENCHMARK_DATE_STR } from '../../../data/sampleTasks';
 import { getTodayDateString, formatTopBarDate } from '../../../utils/dateUtils';
 import { TaskRow } from '../TaskRow';
-import { DashboardRagCard } from '../../ml-lab/DashboardRagCard';
 import { Button } from '../../../components/ui';
 import {
   CheckSquare,
@@ -37,6 +37,9 @@ export interface HomeViewProps {
   initialStatus?: 'today' | 'needsAttention' | 'upcoming' | 'completed' | 'all';
   onTaskClick: (task: SampleTask) => void;
   onToggleTask?: (task: SampleTask) => void;
+  onEditTask?: (task: SampleTask) => void;
+  onTogglePin?: (task: SampleTask) => void;
+  onDeleteTask?: (task: SampleTask) => void;
   onNewTaskClick?: () => void;
 }
 
@@ -50,11 +53,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
   user,
   tasks,
   dashboard,
-  userId,
   initialTab = 'dashboard',
   initialStatus = 'today',
   onTaskClick,
   onToggleTask,
+  onEditTask,
+  onTogglePin,
+  onDeleteTask,
   onNewTaskClick,
 }) => {
   const navigate = useNavigate();
@@ -104,7 +109,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   // Tasks Filtered for the "Tasks" Tab (Strictly active tasks only - no completed tasks)
-  const displayedTasks = allTasks.filter((task) => {
+  const displayedTasks = sortTasksPinnedFirst(allTasks).filter((task) => {
     // 0. Completed or archived tasks are never shown in the Tasks section
     if (task.state !== 'active' || task.isArchived) return false;
 
@@ -172,7 +177,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const activeDashboardSection = dashboardCategories[dashboardCategory];
 
   return (
-    <div className="space-y-6 p-6 sm:p-8 max-w-6xl mx-auto">
+    <div className="vdb-home space-y-6 p-6 sm:p-8 max-w-6xl mx-auto">
       {/* ======================================================== */}
       {/* TAB 1: DASHBOARD VIEW                                   */}
       {/* ======================================================== */}
@@ -181,7 +186,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Dark Navy Hero Overview Card */}
           <section
             aria-label="Overview Command Center"
-            className="bg-[var(--dark)] text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden"
+            className="vdb-home-hero bg-[var(--dark)] text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden"
           >
             <div className="relative z-10">
               {/* Header Info */}
@@ -234,7 +239,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
 
               {/* 4 Interactive Summary Tiles */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-2">
+              <div className="vdb-summary-grid grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-2">
                 {/* Tile 1: Today */}
                 <div
                   role="button"
@@ -354,8 +359,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </section>
 
-          <DashboardRagCard userId={userId} basePath={basePath} />
-
           {/* Active Category Tasks Preview on Dashboard */}
           <section className="space-y-4">
             <div className="flex items-center justify-between pb-1">
@@ -388,13 +391,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Task Rows Card Container */}
             {activeDashboardSection.items.length > 0 ? (
-              <div className="bg-[var(--surface)] border border-[var(--line)] rounded-xl divide-y divide-[var(--line)] shadow-xs overflow-hidden">
+              <div className="vdb-task-panel bg-[var(--surface)] border border-[var(--line)] rounded-xl divide-y divide-[var(--line)] shadow-xs overflow-hidden">
                 {activeDashboardSection.items.map((task) => (
                   <TaskRow
                     key={task.id}
                     task={task}
                     onClick={onTaskClick}
                     onToggle={onToggleTask}
+                    onEdit={onEditTask}
+                    onTogglePin={onTogglePin}
+                    onDelete={onDeleteTask}
                     isPreview={isPreview}
                   />
                 ))}
@@ -637,13 +643,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Task Rows Card Container */}
             {displayedTasks.length > 0 ? (
-              <div className="bg-[var(--surface)] border border-[var(--line)] rounded-xl divide-y divide-[var(--line)] shadow-xs overflow-hidden">
+              <div className="vdb-task-panel bg-[var(--surface)] border border-[var(--line)] rounded-xl divide-y divide-[var(--line)] shadow-xs overflow-hidden">
                 {displayedTasks.map((task) => (
                   <TaskRow
                     key={task.id}
                     task={task}
                     onClick={onTaskClick}
                     onToggle={onToggleTask}
+                    onEdit={onEditTask}
+                    onTogglePin={onTogglePin}
+                    onDelete={onDeleteTask}
                     isPreview={isPreview}
                   />
                 ))}

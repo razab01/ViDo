@@ -9,6 +9,7 @@ import { LandingBenefits } from './LandingBenefits';
 import { LandingFooter } from './LandingFooter';
 import { NoticeModal } from '../../components/ui';
 import { useAuth } from '../auth';
+import './landing.css';
 
 export const LandingPage: React.FC = () => {
   const [isNoticeOpen, setIsNoticeOpen] = useState(false);
@@ -51,29 +52,23 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)] flex flex-col justify-between selection:bg-[var(--accent-soft)] selection:text-[var(--accent)]">
+    <div className="vdb-page flex min-h-screen flex-col justify-between">
       <div>
         <LandingHeader onGoogleSignInClick={() => setIsNoticeOpen(true)} />
 
         {authError && (
-          <div
-            role="alert"
-            className="max-w-4xl mx-auto mt-4 px-6"
-          >
-            <div className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
-              <div className="flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-                <span>{authError}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAuthError(null)}
-                className="text-red-500 hover:text-red-700 p-0.5 rounded-md cursor-pointer shrink-0"
-                aria-label="Dismiss error"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          <div role="alert" className="vdb-auth-error">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{authError}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setAuthError(null)}
+              aria-label="Dismiss error"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         )}
 

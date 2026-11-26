@@ -17,7 +17,7 @@ const document: ChatDocument = {
   mime: 'text/plain',
 };
 
-describe('Chat Lab documents', () => {
+describe('Converse documents', () => {
   it('accepts text documents and blocks images and legacy Word files', () => {
     const text = new File(['hello'], 'notes.md', { type: 'text/markdown' });
     const image = new File(['image'], 'photo.png', { type: 'image/png' });

@@ -1,16 +1,26 @@
 import React from 'react';
 import { SampleTask } from '../../data/sampleTasks';
 import { Badge, Card } from '../../components/ui';
-import { Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle2, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import { getTodayDateString, getCurrentTimeString } from '../../utils/dateUtils';
 
 export interface TaskCardProps {
   task: SampleTask;
   onClick: (task: SampleTask) => void;
+  onTogglePin?: (task: SampleTask) => void;
+  onEdit?: (task: SampleTask) => void;
+  onDelete?: (task: SampleTask) => void;
   isPreview?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, isPreview = true }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({
+  task,
+  onClick,
+  onTogglePin,
+  onEdit,
+  onDelete,
+  isPreview = true,
+}) => {
   const todayStr = getTodayDateString();
   const currentTimeStr = getCurrentTimeString();
   const isCompleted = task.state === 'completed';
@@ -27,7 +37,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, isPreview = t
     <Card
       hoverable
       onClick={() => onClick(task)}
-      className="p-4 flex flex-col justify-between transition-all group"
+      className="vdb-task-card p-4 flex flex-col justify-between transition-all group"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -49,6 +59,60 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, isPreview = t
           </Badge>
 
           <div className="flex items-center gap-1.5">
+            {onEdit && (
+              <button
+                type="button"
+                aria-label={`Edit "${task.title}"`}
+                title="Edit task"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="p-1 rounded-md text-[var(--faint)] hover:text-[var(--accent)] hover:bg-[var(--canvas)] cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onTogglePin && (
+              <button
+                type="button"
+                aria-label={task.isPinned ? `Unpin "${task.title}"` : `Pin "${task.title}"`}
+                title={task.isPinned ? 'Unpin task' : 'Pin task'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePin(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className={`p-1 rounded-md hover:bg-[var(--canvas)] cursor-pointer ${
+                  task.isPinned
+                    ? 'text-amber-500'
+                    : 'text-[var(--faint)] hover:text-amber-500'
+                }`}
+              >
+                {task.isPinned ? (
+                  <PinOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Pin className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                aria-label={`Delete "${task.title}"`}
+                title="Delete task"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task);
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="p-1 rounded-md text-[var(--faint)] hover:text-red-500 hover:bg-[var(--canvas)] cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             {task.priority && (
               <Badge
                 size="sm"

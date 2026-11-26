@@ -1,0 +1,50 @@
+Supply and demand||supply and demand||Supply and demand describe how price is determined by the quantity producers offer and consumers want.||equilibrium where supply=demand||Price rises when demand exceeds supply and falls when supply exceeds demand.
+Elasticity||elasticity,price elasticity||Elasticity measures how strongly quantity demanded or supplied responds to price changes.||Ed=%ΔQ/%ΔP||Elastic >1, inelastic <1; necessities are usually inelastic.
+Opportunity cost||opportunity cost||Opportunity cost is the value of the next best alternative given up when making a choice.||choice cost||Central idea in economics decision-making.
+Inflation||inflation||Inflation is a sustained rise in the general price level, reducing purchasing power.||CPI, WPI||Measured by price indices; moderate inflation can accompany growth.
+GDP||gdp,gross domestic product||GDP is the total market value of final goods and services produced within a country in a period.||GDP=C+I+G+NX||Nominal GDP uses current prices; real GDP adjusts for inflation.
+GNP||gnp,gni||GNP measures output produced by a country's residents regardless of where production occurs.||GDP plus net foreign income||Now often called Gross National Income.
+Unemployment||unemployment||Unemployment occurs when people able and willing to work cannot find jobs.||unemployment rate||Types include frictional, structural and cyclical unemployment.
+Fiscal policy||fiscal policy||Fiscal policy uses government spending and taxation to influence the economy.||budget, taxes||Expansionary policy raises demand; contractionary reduces it.
+Monetary policy||monetary policy||Monetary policy uses interest rates and money supply to manage inflation and growth.||central bank||Tightening raises rates; easing lowers rates.
+Interest rate||interest rate||Interest rate is the cost of borrowing or return on saving, expressed as a percentage.||simple and compound interest||Determined by central banks, inflation and risk.
+Compound interest||compound interest||Compound interest is interest earned on both principal and previous interest.||A=P(1+r)^n||More frequent compounding grows faster.
+Market equilibrium||equilibrium price,market equilibrium||Equilibrium is where quantity demanded equals quantity supplied at a stable price.||Qd=Qs||Shortages push price up; surpluses push it down.
+Consumer surplus||consumer surplus||Consumer surplus is the difference between what buyers are willing to pay and what they actually pay.||area below demand above price||Measures benefit to consumers.
+Producer surplus||producer surplus||Producer surplus is the difference between market price and the minimum price sellers would accept.||area above supply below price||Measures benefit to producers.
+Marginal utility||marginal utility||Marginal utility is the added satisfaction from consuming one more unit.||diminishing marginal utility||Consumers allocate spending to maximize total utility.
+Diminishing returns||law of diminishing returns||As more of one input is added with others fixed, marginal output eventually falls.||marginal product||Affects short-run production decisions.
+Perfect competition||perfect competition||Perfect competition has many buyers and sellers, identical products and free entry.||price taker||Firms earn normal profit in long run.
+Monopoly||monopoly||A monopoly has one seller with significant market power and high entry barriers.||price maker||Can lead to higher prices and lower output.
+Oligopoly||oligopoly||Oligopoly is a market with few dominant firms whose decisions are interdependent.||kinked demand, game theory||Collusion can mimic monopoly behaviour.
+Monopsony||monopsony||A monopsony has a single buyer facing many sellers.||labour market example||Can push input prices below competitive levels.
+Price discrimination||price discrimination||Price discrimination charges different prices to different groups for the same good.||student discounts||Requires market segmentation and prevention of resale.
+Public goods||public good||Public goods are non-rival and non-excludable, so markets may underprovide them.||defence, lighthouse||Often provided by government.
+Externality||externality||An externality is a cost or benefit imposed on third parties not involved in a transaction.||pollution, vaccination||Negative externalities cause overproduction; positive cause underproduction.
+Market failure||market failure||Market failure occurs when free markets allocate resources inefficiently.||externalities, public goods, monopoly||Government intervention may improve outcomes.
+Tax||tax||A tax is a compulsory payment to government used to fund spending and change behaviour.||direct, indirect||Tax incidence depends on elasticity.
+Subsidy||subsidy||A subsidy is government support that lowers producer costs or raises consumer income.||fuel subsidy||Can encourage production but may create distortion.
+Budget deficit||budget deficit||A budget deficit occurs when government spending exceeds revenue in a period.||deficit=spending-revenue||Financed by borrowing.
+Public debt||public debt||Public debt is accumulated government borrowing from past deficits.||national debt||Debt-to-GDP ratio measures sustainability.
+Exchange rate||exchange rate||Exchange rate is the price of one currency in terms of another.||fixed, floating||Affected by interest rates, inflation and trade.
+Balance of payments||bop||Balance of payments records all economic transactions between a country and the rest of the world.||current account, capital account||Persistent deficit can pressure currency.
+Comparative advantage||comparative advantage||A country has comparative advantage when it can produce a good at lower opportunity cost.||David Ricardo||Basis for beneficial trade even if one country is absolutely better at everything.
+Absolute advantage||absolute advantage||Absolute advantage is producing more output with the same resources than another producer.||Adam Smith||Different from comparative advantage.
+Trade||international trade||Trade exchanges goods and services between countries based on specialization and advantage.||exports, imports||Can increase total output but create winners and losers.
+Tariff||tariff||A tariff is a tax on imports used to protect domestic industries or raise revenue.||import duty||Often raises prices and reduces trade.
+Quota||quota||A quota limits the quantity of a good that can be imported or produced.||import quota||Creates scarcity and can raise domestic prices.
+Currency||currency||Currency is money in physical or digital form used as a medium of exchange.||notes, coins, digital money||Value depends on trust and monetary policy.
+Central bank||central bank||A central bank manages currency, interest rates and financial stability.||Federal Reserve, RBI, ECB||Acts as banker to government and commercial banks.
+Money supply||money supply||Money supply is the total money available in an economy.||M0, M1, M2||Controlled through monetary policy tools.
+Quantity theory of money||quantity theory||Quantity theory links money supply, velocity, price level and output.||MV=PY||Used to explain inflation as too much money chasing too few goods.
+Phillips curve||phillips curve||Phillips curve shows a short-run trade-off between inflation and unemployment.||short-run tradeoff||Long-run Phillips curve is vertical at natural unemployment.
+Business cycle||business cycle||Business cycle describes recurring expansions and contractions in economic activity.||boom, recession, recovery||Measured using GDP and employment.
+Recession||recession||A recession is a significant decline in economic activity lasting months.||two quarters of negative growth rule of thumb||Associated with falling output and rising unemployment.
+Depression||depression economics||A depression is a severe and prolonged recession.||Great Depression||Much deeper and longer than a typical recession.
+Economic growth||economic growth||Economic growth is an increase in real output or real GDP per capita over time.||driven by capital, labour, technology||Different from development, which includes welfare and distribution.
+Development economics||development economics||Development economics studies how low-income countries improve living standards.||HDI, income, health, education||Focuses on structural change and poverty reduction.
+Poverty||poverty||Poverty is lack of sufficient income or resources to meet basic needs.||absolute and relative poverty||Measured by poverty lines and multidimensional indices.
+Income inequality||inequality||Income inequality is uneven distribution of income across people or groups.||Gini coefficient||Can affect growth, social cohesion and welfare.
+Human capital||human capital||Human capital is the skills, education and health embodied in workers.||education and training||Increases productivity and earning potential.
+Labor market||labour market||The labour market matches workers with jobs and determines wages and employment.||demand and supply for labour||Wages depend on productivity, skills and institutions.
+Behavioral economics||behavioural economics||Behavioral economics combines psychology and economics to study real-world decision-making.||bounded rationality, biases||Challenges perfect rationality assumptions.

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../../components/ui';
 import { useAuth } from '../auth';
 
 export interface LandingHeaderProps {
@@ -19,45 +18,39 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoogleSignInClic
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--surface)]/90 backdrop-blur-md border-b border-[var(--line)]">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[var(--dark)] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-xs">
-            V
-          </div>
-          <span className="font-bold text-lg tracking-tight text-[var(--ink)]">ViDo</span>
+    <header className="vdb-header">
+      <div className="vdb-header-inner">
+        <Link to="/" className="vdb-brand">
+          <span className="vdb-brand-mark">V</span>
+          <span className="vdb-brand-name">ViDo</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[var(--muted)]">
-          <a href="#preview" className="hover:text-[var(--ink)] transition-colors">
+        <nav className="vdb-nav" aria-label="Main navigation">
+          <a href="#preview" className="vdb-nav-link">
             Overview
           </a>
-          <a href="#use-cases" className="hover:text-[var(--ink)] transition-colors">
+          <a href="#use-cases" className="vdb-nav-link">
             Use Cases
           </a>
-          <a href="#benefits" className="hover:text-[var(--ink)] transition-colors">
+          <a href="#benefits" className="vdb-nav-link">
             Principles
           </a>
-          <Link to="/style-lab" className="hover:text-[var(--ink)] transition-colors">
+          <Link to="/style-lab" className="vdb-nav-link">
             Themes
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link to="/preview">
-            <Button variant="ghost" size="sm">
-              Live Preview
-            </Button>
+        <div className="vdb-header-actions">
+          <Link to="/preview" className="vdb-header-preview">
+            Live Preview
           </Link>
           {user ? (
-            <Link to="/workspace">
-              <Button variant="primary" size="sm">
-                Open Workspace
-              </Button>
+            <Link to="/workspace" className="vdb-workspace-link">
+              Open Workspace
             </Link>
           ) : (
-            <Button variant="secondary" size="sm" onClick={handleSignIn}>
-              <svg className="w-4 h-4 mr-1.5" viewBox="0 0 24 24">
+            <button type="button" onClick={handleSignIn} className="vdb-signin">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -75,8 +68,8 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoogleSignInClic
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              Sign In
-            </Button>
+              <span>Sign In</span>
+            </button>
           )}
         </div>
       </div>

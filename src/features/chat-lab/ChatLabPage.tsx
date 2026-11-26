@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  ArrowRight,
   FileText,
   Loader2,
-  MessageSquare,
   Paperclip,
   Plus,
   Send,
@@ -14,11 +14,15 @@ import { Button, Card } from '../../components/ui';
 import { buildTaskFlowchart } from '../../data/flowchart';
 import type { SampleTask } from '../../data/sampleTasks';
 import { handleTaskDraftMessage } from '../../data/taskCreation';
-import { loadChatDocument } from './documentAnswer';
+import { loadChatDocument, type ChatDocument } from './documentAnswer';
 import { FlowchartPreview } from '../workspace/FlowchartPreview';
 import { profileData } from '../ml-lab/engine';
 import type { Dataset, Profile } from '../ml-lab/engine';
-import { answerWithPython, isPythonAvailable } from '../ml-lab/pythonApi';
+import {
+  answerWithPython,
+  isPythonAvailable,
+  type PythonAnswerResult,
+} from '../ml-lab/pythonApi';
 import {
   getActiveResult,
   readSnapshot,
@@ -26,12 +30,19 @@ import {
 } from '../ml-lab/mlStore';
 import { answerLocally, resolveQuestion, type ChatTurn } from './chatBrain';
 import {
+  bookingConfirmation,
+  isGraphBookingRequest,
+  localBookingTasks,
+  plannedTaskToSampleTask,
+} from './planBooking';
+import {
   addMessage,
   createThread,
   ensureActiveThread,
   getActiveChatId,
   patchMessage,
   readThreads,
+  setThreadBooking,
   setThreadDocument,
   setThreadLastTask,
   setThreadTaskDraft,
@@ -46,10 +57,8 @@ export interface ChatLabPageProps {
 }
 
 const SUGGESTIONS = [
-  'who is president of spain',
-  'what is 2+2',
-  'Tell me about India',
-  'which tasks are completed?',
+  'Book a task for tomorrow at 9am',
+  'Book the tasks in my attachment',
 ];
 
 const id = () =>
@@ -109,16 +118,24 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
   const [busy, setBusy] = useState(false);
   const [documentBusy, setDocumentBusy] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  /** Staged in the composer; it is posted only with the next chat message. */
+  const [pendingDocument, setPendingDocument] = useState<ChatDocument | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    ensureActiveThread(userId);
     const unsubscribeChats = subscribeThreads(userId, () => {
       setThreads(readThreads(userId));
       setActiveId(getActiveChatId(userId));
     });
     const unsubscribeModel = subscribeActiveResult(userId, setActive);
+
+    // Subscribe first so a thread created on this first render is reflected in
+    // state even if someone types before the initial effect settles.
+    ensureActiveThread(userId);
+    setThreads(readThreads(userId));
+    setActiveId(getActiveChatId(userId));
+
     return () => {
       unsubscribeChats();
       unsubscribeModel();
@@ -143,20 +160,40 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
   const dataset: Dataset | null = active?.dataset ?? initialSnapshot?.dataset ?? null;
   const profile: Profile = active?.profile ?? initialSnapshot?.profile ?? profileData([], []);
   const suggestions = active?.suggestions ?? [];
-  const visibleSuggestions = onCreateTask
-    ? [...SUGGESTIONS, 'create a task to review payroll tomorrow']
-    : SUGGESTIONS;
 
   const ask = async (raw: string) => {
     const question = raw.trim();
-    if (!question || busy || !thread) return;
+    if (!question || busy) return;
+    const attachedDocument = pendingDocument;
+    setPendingDocument(null);
 
-    const currentThread = thread;
+    // A fast click can arrive before the thread effect has published state.
+    // Never drop the message silently in that case.
+    let currentThread = thread;
+    if (!currentThread) {
+      currentThread = ensureActiveThread(userId);
+      setThreads(readThreads(userId));
+      setActiveId(currentThread.id);
+    }
+
     const history = turnsFrom(messages);
     const resolved = resolveQuestion(question, history);
-    const userMessage: ChatMessage = { id: id(), role: 'user', text: question };
+    const userMessage: ChatMessage = {
+      id: id(),
+      role: 'user',
+      text: question,
+      ...(attachedDocument ? { attachment: attachedDocument } : {}),
+    };
     const pendingMessage: ChatMessage = { id: id(), role: 'assistant', text: '', pending: true };
     addMessage(userId, currentThread.id, userMessage);
+    if (attachedDocument) {
+      setThreadDocument(userId, currentThread.id, attachedDocument);
+      addMessage(userId, currentThread.id, {
+        id: id(),
+        role: 'assistant',
+        text: `Loaded "${attachedDocument.name}". Ask me anything about it.`,
+      });
+    }
     addMessage(userId, currentThread.id, pendingMessage);
     setInput('');
     setBusy(true);
@@ -180,7 +217,19 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
         return;
       }
 
-      if (onCreateTask) {
+      // A booking request belongs to Graph RAG even when an attachment is
+      // active. Clear any stale draft so follow-ups cannot be pulled back into
+      // the old "what should I call it" loop.
+      const graphBookingRequest = isGraphBookingRequest(
+        resolved,
+        Boolean(attachedDocument ?? currentThread.document)
+      );
+      const graphBookingActive = Boolean(currentThread.booking);
+      if ((graphBookingRequest || graphBookingActive) && currentThread.taskDraft) {
+        setThreadTaskDraft(userId, currentThread.id, null);
+      }
+
+      if (onCreateTask && !graphBookingRequest && !graphBookingActive) {
         const taskResult = handleTaskDraftMessage(question, currentThread.taskDraft ?? null);
         if (taskResult.handled) {
           setThreadTaskDraft(userId, currentThread.id, taskResult.draft);
@@ -198,29 +247,74 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
       }
 
       let answer = '';
+      // The callback can run inside answerWithPython; a plain `let` would be
+      // narrowed to null by TypeScript because the assignment is indirect.
+      const pythonResultRef: { current: PythonAnswerResult | null } = { current: null };
+      const pythonAvailable = await isPythonAvailable();
 
-      if (await isPythonAvailable()) {
-        try {
-          answer = await answerWithPython({
-            question: resolved,
-            rows: dataset?.rows ?? [],
-            cols: dataset?.cols ?? [],
-            profile,
-            suggestions,
-            trained: active
-              ? {
-                  best: active.best,
-                  features: active.features,
-                  target: active.target,
-                  textCol: active.textCol,
-                }
-              : null,
-            documents: currentThread.document
-              ? [{ name: currentThread.document.name, text: currentThread.document.text }]
-              : [],
+      // Offline booking keeps the same friendly flow for a single described
+      // task; document bookings still need the Python extractor.
+      if (graphBookingRequest && !pythonAvailable && !graphBookingActive) {
+        if (!onCreateTask) {
+          patchMessage(userId, currentThread.id, pendingMessage.id, {
+            text: 'I found the task details, but task creation is not available in this workspace.',
+            pending: false,
           });
+          return;
+        }
+        const localTasks = localBookingTasks(resolved);
+        if (!localTasks) {
+          patchMessage(userId, currentThread.id, pendingMessage.id, {
+            text: 'Tell me what you’d like to book and when — like `book a task for morning walk tomorrow at 4am`.',
+            pending: false,
+          });
+          return;
+        }
+        const localCreated = localTasks.map((task) => plannedTaskToSampleTask(task));
+        localCreated.forEach((task) => {
+          onCreateTask(task);
+          setThreadLastTask(userId, currentThread.id, task);
+        });
+        setThreadBooking(userId, currentThread.id, null);
+        patchMessage(userId, currentThread.id, pendingMessage.id, {
+          text: bookingConfirmation(localCreated),
+          pending: false,
+        });
+        return;
+      }
+
+      if (pythonAvailable) {
+        try {
+          answer = await answerWithPython(
+            {
+              question: resolved,
+              rows: dataset?.rows ?? [],
+              cols: dataset?.cols ?? [],
+              profile,
+              suggestions,
+              trained: active
+                ? {
+                    best: active.best,
+                    features: active.features,
+                    target: active.target,
+                    textCol: active.textCol,
+                  }
+                : null,
+              documents: (() => {
+                const activeDocument = attachedDocument ?? currentThread.document;
+                return activeDocument
+                  ? [{ name: activeDocument.name, text: activeDocument.text }]
+                  : [];
+              })(),
+              booking: currentThread.booking ?? null,
+            },
+            (result) => {
+              pythonResultRef.current = result;
+            }
+          );
         } catch {
           answer = '';
+          pythonResultRef.current = null;
         }
       }
 
@@ -230,9 +324,57 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
             dataset,
             profile,
             suggestions,
-            document: currentThread.document,
+            document: attachedDocument ?? currentThread.document,
           })) ??
           'I could not find a clear answer to that. Try asking about a task ID, your data, a loaded document, or a topic.';
+      }
+
+      const pythonResult = pythonResultRef.current;
+      if (pythonResult?.booking) {
+        setThreadBooking(userId, currentThread.id, pythonResult.booking);
+      }
+
+      // Graph RAG planned a booking. The UI owns the actual task creation, so
+      // only report "booked" after every task has been created successfully.
+      if (pythonResult?.actions?.type === 'book_plans') {
+        const actions = pythonResult.actions;
+        if (!onCreateTask) {
+          setThreadBooking(userId, currentThread.id, null);
+          patchMessage(userId, currentThread.id, pendingMessage.id, {
+            text: 'I found the plan items, but task creation is not available in this workspace.',
+            pending: false,
+          });
+          return;
+        }
+        try {
+          const created = actions.tasks.map((task) =>
+            plannedTaskToSampleTask(task)
+          );
+          created.forEach((task) => {
+            onCreateTask?.(task);
+            setThreadLastTask(userId, currentThread.id, task);
+          });
+          setThreadBooking(userId, currentThread.id, null);
+          patchMessage(userId, currentThread.id, pendingMessage.id, {
+            text: bookingConfirmation(created),
+            pending: false,
+          });
+        } catch {
+          const retryTasks = actions.tasks;
+          setThreadBooking(userId, currentThread.id, {
+            tasks: retryTasks,
+            pending: {
+              taskIndex: 0,
+              field: 'dueDate',
+              question: 'Please give a valid due date for the first plan item.',
+            },
+          });
+          patchMessage(userId, currentThread.id, pendingMessage.id, {
+            text: 'One of those plan items has dates I cannot book yet. Please give a valid due date.',
+            pending: false,
+          });
+        }
+        return;
       }
 
       patchMessage(userId, currentThread.id, pendingMessage.id, {
@@ -254,6 +396,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
     setInput('');
     setBusy(false);
     setDocumentError(null);
+    setPendingDocument(null);
     setActiveId(null);
   };
 
@@ -263,18 +406,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
     setDocumentBusy(true);
     try {
       const loaded = await loadChatDocument(file);
-      setThreadDocument(userId, thread.id, loaded);
-      addMessage(userId, thread.id, {
-        id: id(),
-        role: 'user',
-        text: `Attached "${loaded.name}"`,
-        attachment: loaded,
-      });
-      addMessage(userId, thread.id, {
-        id: id(),
-        role: 'assistant',
-        text: `Loaded "${loaded.name}". Ask me anything about it.`,
-      });
+      setPendingDocument(loaded);
     } catch (error) {
       setDocumentError(
         error instanceof Error ? error.message : 'I could not load that document.'
@@ -286,49 +418,61 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
   };
 
   const removeDocument = () => {
-    if (!thread) return;
-    setThreadDocument(userId, thread.id, null);
+    if (pendingDocument) {
+      setPendingDocument(null);
+      setDocumentError(null);
+      return;
+    }
+    if (thread) setThreadDocument(userId, thread.id, null);
     setDocumentError(null);
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[900px] mx-auto space-y-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--ink)] flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-[var(--accent)]" /> Chat Lab
-          </h1>
-          <p className="text-sm text-[var(--muted)] mt-1">
-            Ask anything — maths, world facts, your data, a loaded document, or create a task.
-          </p>
+    <div className="vdb-chat-page p-4 sm:p-6 lg:p-8 max-w-[900px] mx-auto space-y-4">
+      <Card className="vdb-chat-card flex flex-col h-[calc(100vh-136px)] min-h-[420px] overflow-hidden">
+        <div className="vdb-chat-card-top">
+          <div className="vdb-chat-card-heading">
+            <span className="vdb-chat-card-label">Conversation</span>
+            <span className="vdb-chat-card-hint">Private to this workspace</span>
+          </div>
+          <Button
+            className="vdb-chat-new-btn"
+            variant="ghost"
+            size="sm"
+            onClick={startNewChat}
+            disabled={!messages.length && !input}
+          >
+            <Plus className="w-4 h-4" /> New chat
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={startNewChat} disabled={!messages.length && !input}>
-          <Plus className="w-4 h-4" /> New chat
-        </Button>
-      </header>
-
-      <Card className="flex flex-col h-[calc(100vh-230px)] min-h-[420px] overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4" aria-label="Chat messages">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4" aria-label="Chat messages">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[var(--accent-soft)] flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-[var(--accent)]" />
+            <div className="vdb-chat-empty-state">
+              <div className="vdb-chat-empty-mark" aria-hidden="true">
+                <Sparkles className="w-7 h-7" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-[var(--ink)]">Start a conversation</p>
-                <p className="text-xs text-[var(--muted)] mt-1">
-                  Try a question below, or type your own.
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2 max-w-md">
-                {visibleSuggestions.map((suggestion) => (
+              <p className="vdb-chat-empty-eyebrow">A clear space to think</p>
+              <p className="vdb-chat-empty-title">Start a conversation</p>
+              <p className="vdb-chat-empty-copy">
+                Pick one of these, or type your own.
+              </p>
+              <div className="vdb-chat-suggestions">
+                {SUGGESTIONS.map((suggestion, index) => (
                   <button
                     key={suggestion}
                     type="button"
                     onClick={() => void ask(suggestion)}
-                    className="text-[11px] px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--muted)] hover:bg-[var(--canvas)] cursor-pointer"
+                    className="vdb-chat-prompt"
                   >
-                    {suggestion}
+                    <span className="vdb-chat-prompt-icon" aria-hidden="true">
+                      {index === 0 ? (
+                        <Sparkles className="w-4 h-4" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
+                    </span>
+                    <span>{suggestion}</span>
+                    <ArrowRight className="w-3.5 h-3.5 vdb-chat-prompt-arrow" aria-hidden="true" />
                   </button>
                 ))}
               </div>
@@ -337,7 +481,8 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
             messages.map((message) =>
               message.role === 'user' ? (
                 <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--accent-soft)] px-4 py-2.5 text-sm text-[var(--ink)]">
+                  <div className="vdb-chat-bubble-user max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--accent-soft)] px-4 py-2.5 text-sm text-[var(--ink)]">
+                    <span className="vdb-chat-bubble-label">You</span>
                     <p>{message.text}</p>
                     {message.attachment && (
                       <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
@@ -358,10 +503,11 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
                 </div>
               ) : (
                 <div key={message.id} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
+                  <div className="vdb-chat-avatar w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4" />
                   </div>
-                  <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+                  <div className="vdb-chat-bubble-assistant max-w-[85%] rounded-2xl rounded-bl-sm border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+                    <span className="vdb-chat-bubble-label">ViDo</span>
                     {message.pending ? (
                       <span className="flex items-center gap-2 text-sm text-[var(--muted)]">
                         <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
@@ -386,7 +532,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
           <div ref={endRef} />
         </div>
 
-        <div className="border-t border-[var(--line)] p-3">
+        <div className="vdb-chat-composer border-t border-[var(--line)] p-3">
           <input
             ref={documentInputRef}
             type="file"
@@ -405,16 +551,23 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
             </p>
           )}
 
-          {thread?.document && (
+          {(pendingDocument ?? thread?.document) && (
             <div className="mb-2 inline-flex max-w-full items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--canvas)] px-2.5 py-1.5 text-xs text-[var(--muted)]">
               <FileText className="w-3.5 h-3.5 shrink-0 text-[var(--accent)]" />
-              <span className="truncate max-w-[240px]" title={thread.document.name}>
-                {thread.document.name}
+              <span
+                className="truncate max-w-[240px]"
+                title={(pendingDocument ?? thread?.document)?.name}
+              >
+                {(pendingDocument ?? thread?.document)?.name}
               </span>
-              {thread.document.truncated && <span className="text-[10px]">· shortened</span>}
+              {pendingDocument ? (
+                <span className="text-[10px]">· ready to send</span>
+              ) : (
+                thread?.document?.truncated && <span className="text-[10px]">· shortened</span>
+              )}
               <button
                 type="button"
-                aria-label="Remove document"
+                aria-label={pendingDocument ? 'Remove staged document' : 'Remove document'}
                 onClick={removeDocument}
                 className="rounded p-0.5 hover:bg-[var(--surface)] text-[var(--faint)] hover:text-[var(--ink)]"
               >
@@ -433,7 +586,7 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
                 void ask(input);
               }
             }}
-            placeholder="Ask anything or create a task…"
+            placeholder="Chat, book a task, or plan one from an attachment…"
             className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg resize-none"
           />
           <div className="flex items-center justify-between gap-2 mt-2">

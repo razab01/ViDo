@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, BarChart3, CheckCircle2, Database, Search, Sparkles, Upload } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, BarChart3, CheckCircle2, Database, Sparkles, Upload } from 'lucide-react';
 import { Badge, Button, Card, Input } from '../../components/ui';
 import {
   dateNum,
@@ -11,20 +11,15 @@ import {
   predictWith,
   prepareDataset,
   profileData,
-  ragDocs,
-  runRAG,
   selectUploadSheet,
   sparkline,
   syncPredictionRow,
   trainAll,
-  USER_RAG_MODE,
 } from './engine';
 import type {
   Dataset,
   PreparedData,
   Profile,
-  RAGDoc,
-  RAGResult,
   Row,
   TrainingOptions,
   TrainingResult,
@@ -46,19 +41,14 @@ import {
   toStoredUpload,
 } from './mlStore';
 import type { StoredMLLabState } from './mlStore';
-import { polishRagAnswer } from './answerEngine';
 import {
-  answerWithPython,
   isPythonAvailable,
   pythonBackendLabel,
   pythonPredictionKey,
   trainWithPython,
   warmPythonPrediction,
 } from './pythonApi';
-import { KNOWLEDGE_DOCS } from './knowledge';
-import { enrichAnswerWithTopic } from './topicEnrichment';
-import { topicPhrase } from './topicLanguage';
-import { RagWorking, TrainingProgress } from './WorkingIndicator';
+import { TrainingProgress } from './WorkingIndicator';
 
 export interface MLLabPageProps {
   userId?: string;
@@ -116,13 +106,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
   const [backendLabel, setBackendLabel] = useState('browser engine');
   const [warmedKey, setWarmedKey] = useState('');
 
-  const [ragQuery, setRagQuery] = useState('');
-  const [ragResult, setRagResult] = useState<RAGResult | null>(null);
-  const [ragNotice, setRagNotice] = useState('');
-  const [ragBusy, setRagBusy] = useState(false);
-  const [ragStage, setRagStage] = useState('');
-  const enrichmentCancel = useRef<(() => void) | null>(null);
-  useEffect(() => () => enrichmentCancel.current?.(), []);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const hydrate = (snapshot: StoredMLLabState | null, active: TrainingResult | null) => {
@@ -145,10 +128,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setSelectedModel('');
     setDeadlineTask('');
     setDeadlineDate('');
-    setRagResult(null);
-    setRagNotice('');
-    setRagBusy(false);
-    setRagStage('');
     setSavedAt(snapshot?.savedAt ?? 0);
     setProgress({ done: 0, total: 10, label: '' });
   };
@@ -255,10 +234,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     cancelRestore(userId);
     setTraining(true);
     setError('');
-    setRagResult(null);
-    setRagNotice('');
-    setRagBusy(false);
-    setRagStage('');
     setPrediction(null);
     setProgress({ done: 0, total: 10, label: 'Starting…' });
     setStatus(startMessage);
@@ -320,7 +295,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
       setProfile(trained.profile);
       setTarget(trained.target);
       setTextCol(trained.textCol);
-      setStatus('Ready. Ask your data anything.');
+      setStatus('Ready. Predictions are available.');
       const initial: Row = {};
       Array.from(new Set([trained.textCol, ...trained.features])).forEach((column) => {
         initial[column] = String(trained.sample[column] ?? '');
@@ -352,10 +327,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setModelReady(false);
     setPredictionValues({});
     setPrediction(null);
-    setRagResult(null);
-    setRagNotice('');
-    setRagBusy(false);
-    setRagStage('');
     setProgress({ done: 0, total: 10, label: '' });
     setStatus(message);
     setError('');
@@ -414,31 +385,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     [result]
   );
 
-  // Saved suggestions carry model confidence strings; keep them out of the
-  // retrieval index until data is loaded in this session.
-  const visibleSuggestions = useMemo(
-    () => (datasetLoaded ? (result?.suggestions ?? []) : []),
-    [datasetLoaded, result]
-  );
-  const docs = useMemo<RAGDoc[]>(
-    () => [
-      ...ragDocs(result?.dataset ?? dataset, result?.profile ?? profile, visibleSuggestions),
-      ...KNOWLEDGE_DOCS,
-    ],
-    [result, dataset, profile, visibleSuggestions]
-  );
-
-  const ragExamples = useMemo(() => {
-    const t = target || profile.target || 'target';
-    const txt = textCol || profile.textCol || 'text';
-    const category = profile.cats?.[0] || 'category';
-    return [
-      `Which ${txt} records look likely to be ${t}?`,
-      `Compare ${category} and ${t} across the dataset`,
-      `What patterns predict ${t}?`,
-    ];
-  }, [target, textCol, profile]);
-
   const handlePredict = async () => {
     if (!result) return;
     const row = syncPredictionRow(result, predictionValues);
@@ -452,88 +398,12 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
     setPrediction(predictWith(result, row));
   };
 
-  const handleRAG = async () => {
-    if (!ragQuery.trim()) {
-      setRagResult(null);
-      setRagNotice('Type a question or pick an example below to search your data.');
-      return;
-    }
-    const question = ragQuery.trim();
-    setError('');
-    setRagNotice('');
-    setRagBusy(true);
-    setRagStage('');
-    setRagResult(null);
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
-    try {
-      const activeDataset = result?.dataset ?? dataset;
-      const retrieved = runRAG(
-        question,
-        USER_RAG_MODE,
-        docs,
-        result?.profile ?? profile,
-        visibleSuggestions
-      );
-
-      // Python is the primary answer engine: maths, world facts and Graph RAG
-      // are all routed there first. The browser composer is fallback only.
-      if (await isPythonAvailable()) {
-        try {
-          setRagStage('Reasoning in Python…');
-          const answer = await answerWithPython({
-            question,
-            rows: activeDataset?.rows ?? [],
-            cols: activeDataset?.cols ?? [],
-            profile: result?.profile ?? profile,
-            suggestions: visibleSuggestions,
-            trained: result
-              ? {
-                  best: result.best,
-                  features: result.features,
-                  target: result.target,
-                  textCol: result.textCol,
-                }
-              : null,
-          });
-          // The Python answer is already complete; do not let live topic
-          // enrichment replace a direct fact with a generic encyclopedia blurb.
-          enrichmentCancel.current?.();
-          setRagResult({ ...retrieved, answer });
-          return;
-        } catch (pythonError) {
-          setRagNotice('Python answer service unavailable — used the local engine.');
-          console.warn('[ViDo] Python answer failed; used browser fallback.', pythonError);
-        }
-      }
-
-      setRagStage('Connecting related ideas…');
-      const next = await polishRagAnswer({ question, rag: retrieved, onProgress: setRagStage });
-      setRagResult(next);
-      enrichmentCancel.current?.();
-      enrichmentCancel.current = enrichAnswerWithTopic(
-        { question, rag: retrieved },
-        topicPhrase(question),
-        next.answer,
-        (answer) =>
-          setRagResult((previous) => (previous?.answer === next.answer ? { ...previous, answer } : previous))
-      );
-    } finally {
-      setRagBusy(false);
-      setRagStage('');
-    }
-  };
-
   const progressPercent = Math.min(100, Math.round((progress.done / Math.max(1, progress.total)) * 100));
-  const answerLines = useMemo(() => {
-    if (!ragResult?.answer) return [];
-    const parts = ragResult.answer.split(/\.\s+/).map((part) => part.trim()).filter(Boolean);
-    return parts.map((part, index) => (index < parts.length - 1 ? `${part}.` : part));
-  }, [ragResult]);
   const savedLabel = savedAt
     ? new Date(savedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : '';
   // Model scores are only meaningful for data loaded in this session. A
-  // persisted result may be restored for instant RAG, but its percentages
+  // persisted result is restored for instant predictions, but its percentages
   // stay hidden until the user uploads a file or loads the demo dataset.
   const metricText = (value: number) => (datasetLoaded ? pct(value) : '—');
   const lossMax = result ? Math.max(0.1, ...result.history.lt, ...result.history.le) : 1;
@@ -663,7 +533,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           aria-live="polite"
           className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-xs text-[var(--muted)]"
         >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${busy || ragBusy ? 'bg-[var(--amber)] animate-pulse' : 'bg-[var(--green)]'}`} />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${busy ? 'bg-[var(--amber)] animate-pulse' : 'bg-[var(--green)]'}`} />
           <span className="truncate">{status}</span>
         </div>
       )}
@@ -893,7 +763,7 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                       {showAdvanced && result.binned && <Badge variant="accent" size="sm">Target auto-binned</Badge>}
                       {showAdvanced && result.capped && <Badge variant="warning" size="sm">Capped at 1,200 rows</Badge>}
                     </div>
-                    <h2 className="text-lg font-bold">Ready to answer questions</h2>
+                    <h2 className="text-lg font-bold">Your models are trained</h2>
                     <p className="text-xs text-[var(--muted)] mt-1">
                       Learned from {result.dataset.rows.length} rows and saved for this account.
                     </p>
@@ -1114,13 +984,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
                       {showAdvanced && suggestion.fields && (
                         <div className="text-[10px] text-[var(--faint)] mt-1 line-clamp-1">{suggestion.fields}</div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setRagQuery(`Tell me about ${suggestion.title} and why it is ${suggestion.label}`)}
-                        className="text-[11px] font-semibold text-[var(--accent)] hover:underline mt-2 cursor-pointer"
-                      >
-                        Ask about this →
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -1182,135 +1045,6 @@ export const MLLabPage: React.FC<MLLabPageProps> = ({ userId = 'demo-user-uid' }
           </>
         )}
 
-          <Card className="border-[var(--accent)]/20">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <h2 className="text-sm font-bold flex items-center gap-2">
-                  <Search className="w-4 h-4 text-[var(--accent)]" /> Ask a question
-                </h2>
-                <p className="text-[11px] text-[var(--muted)] mt-1">
-                  {upload ? (
-                    <>
-                      Ask about{' '}
-                      <strong className="text-[var(--ink)]">
-                        {upload.name}{sheetName ? ` · ${sheetName}` : ''}
-                      </strong>
-                      , or about any general topic. Your file was detected and saved automatically.
-                    </>
-                  ) : (
-                    <>No upload needed — ViDo answers from its built-in knowledge, and includes your files once you add them.</>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {showAdvanced && (
-              <p className="text-[10px] text-[var(--faint)] mb-3">
-                ViDo always uses Graph RAG — it links your question to related records and built-in knowledge, answers instantly, then quietly checks individual words with Wikipedia and caches what it finds when you are online.
-              </p>
-            )}
-
-            <textarea
-              rows={3}
-              value={ragQuery}
-              onChange={(event) => {
-                setRagQuery(event.target.value);
-                setRagNotice('');
-              }}
-              placeholder="Ask about your data or any topic…"
-              className="w-full px-3.5 py-2 text-sm bg-[var(--surface)] border border-[var(--line)] rounded-lg"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {ragExamples.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => {
-                    setRagQuery(example);
-                    setRagNotice('');
-                  }}
-                  className="text-[10px] px-2 py-1 rounded-full border border-[var(--line)] text-[var(--muted)] hover:bg-[var(--canvas)] cursor-pointer"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-3 mt-3">
-              <Button variant="secondary" size="sm" onClick={handleRAG} disabled={!docs.length || ragBusy}>
-                {ragBusy ? 'Finding…' : 'Find answer'}
-              </Button>
-              {ragNotice && <span className="text-[11px] text-[var(--muted)]">{ragNotice}</span>}
-            </div>
-
-            {ragBusy && <RagWorking stage={ragStage} />}
-
-            {ragResult && !ragBusy && (
-              <div className="mt-4 space-y-3">
-                {showAdvanced && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-[var(--accent-soft)] px-3 py-2">
-                    <Badge size="sm" variant="accent">Graph RAG</Badge>
-                    <span className="text-[11px] text-[var(--muted)]">
-                      {ragResult.why.charAt(0).toLowerCase() + ragResult.why.slice(1)}
-                    </span>
-                  </div>
-                )}
-
-                <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Answer</div>
-                  </div>
-                  {answerLines.length ? (
-                    <ul className="space-y-1.5 text-sm text-[var(--ink)]">
-                      {answerLines.map((line, index) => (
-                        <li key={`${line}-${index}`} className="flex gap-2">
-                          <span className="text-[var(--accent)] mt-1.5 text-[8px]">●</span>
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-[var(--muted)]">{ragResult.answer}</p>
-                  )}
-                </div>
-
-                {showAdvanced && (ragResult.plan.length > 0 || ragResult.trail) && (
-                  <details className="rounded-lg border border-[var(--line)] px-3 py-2 text-[11px] text-[var(--muted)]">
-                    <summary className="cursor-pointer font-semibold text-[var(--ink)]">
-                      How this answer was found
-                    </summary>
-                    {ragResult.plan.length > 0 && (
-                      <ol className="list-decimal list-inside mt-2 space-y-1">
-                        {ragResult.plan.map((step, index) => (
-                          <li key={`${step}-${index}`}>{step}</li>
-                        ))}
-                      </ol>
-                    )}
-                    {ragResult.trail && <p className="mt-2 text-[var(--faint)]">{ragResult.trail}</p>}
-                  </details>
-                )}
-
-                {showAdvanced && ragResult.ranked.length > 0 && (
-                  <div>
-                    <div className="text-[11px] font-bold text-[var(--muted)] mb-2">Most relevant sources</div>
-                    <div className="space-y-1.5">
-                      {ragResult.ranked.map((item, index) => (
-                        <div key={`${item.title}-${index}`} className="rounded-lg border border-[var(--line)] p-2.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold truncate">{item.title}</span>
-                            <span className="text-[10px] font-semibold text-[var(--muted)] whitespace-nowrap">
-                              Match score · {item.score.toFixed(1)}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-[var(--muted)] mt-1 line-clamp-2">{item.excerpt}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
         </div>
           );
         }

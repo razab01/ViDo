@@ -1,0 +1,50 @@
+Continent||continent||A continent is a large landmass on Earth, commonly Africa, Antarctica, Asia, Australia, Europe, North America and South America.||seven continents||Definitions vary slightly by culture.
+Ocean||ocean||An ocean is a vast body of salt water covering most of Earth's surface.||Pacific, Atlantic, Indian, Arctic, Southern||Pacific is the largest and deepest.
+Mountain||mountain||A mountain is a large natural elevation formed by tectonic forces, volcanism or erosion.||Everest||Higher than a hill; often has steep slopes.
+River||river||A river is a flowing body of water moving toward an ocean, lake or another river.||Nile, Amazon, Ganges||Rivers shape landscapes through erosion and deposition.
+Desert||desert||A desert is a dry region with very low precipitation, hot or cold.||Sahara, Thar, Gobi||Deserts can have extreme temperature ranges.
+Forest||forest||A forest is a dense area of trees covering large land areas.||tropical, temperate, boreal||Forests store carbon and support biodiversity.
+Climate||climate||Climate is the long-term average of weather patterns in a region.||Köppen classification||Influenced by latitude, altitude, oceans and currents.
+Weather||weather||Weather is the short-term state of the atmosphere including temperature, rain and wind.||daily forecast||Changes faster than climate.
+Atmosphere||atmosphere||The atmosphere is the layer of gases surrounding Earth, held by gravity.||troposphere, stratosphere, mesosphere, thermosphere||Contains the ozone layer and weather systems.
+Hydrosphere||hydrosphere||The hydrosphere includes all water on Earth in liquid, solid and vapour forms.||oceans, glaciers, clouds||About 71% of Earth surface is water.
+Lithosphere||lithosphere||The lithosphere is Earth's rigid outer shell made of crust and upper mantle.||tectonic plates||Broken into plates that move over the asthenosphere.
+Biosphere||biosphere||The biosphere is the zone of Earth where life exists.||land, water, lower atmosphere||Interacts with atmosphere, hydrosphere and lithosphere.
+Plate tectonics||plate tectonics||Plate tectonics explains Earth's crust as moving plates causing earthquakes, mountains and volcanoes.||convergent, divergent, transform||Continental drift is part of this theory.
+Earthquake||earthquake||An earthquake is shaking caused by sudden release of energy along a fault or volcanic activity.||Richter, moment magnitude||Measured by seismographs; strongest near epicentre.
+Volcano||volcano||A volcano is an opening where magma, gas and ash erupt from Earth's interior.||stratovolcano, shield volcano||Eruptions can be explosive or effusive.
+Tsunami||tsunami||A tsunami is a large sea wave caused by underwater earthquakes, volcanoes or landslides.||Indian Ocean 2004||Wavelength is long and speed is high in deep ocean.
+Hurricane||hurricane,cyclone,typhoon||A hurricane is a tropical storm with sustained winds over 119 km/h forming over warm oceans.||Atlantic hurricanes||Called cyclone or typhoon in other regions.
+Monsoon||monsoon||A monsoon is a seasonal wind bringing heavy rain in summer and dry conditions in winter.||Indian monsoon||Driven by differential heating of land and sea.
+Latitude||latitude||Latitude measures distance north or south of the Equator in degrees.||0° to 90° N/S||Affects climate and sunlight angle.
+Longitude||longitude||Longitude measures distance east or west of the Prime Meridian in degrees.||0° to 180° E/W||Used with latitude to locate points.
+Equator||equator||The Equator is the imaginary line at 0° latitude dividing Earth into north and south halves.||0° latitude||Receives direct sunlight around equinoxes.
+Prime Meridian||prime meridian||The Prime Meridian is the 0° longitude line through Greenwich used as reference for time zones.||Greenwich||Opposite side is the International Date Line.
+Time zone||timezone||A time zone is a region using the same standard time, usually based on longitude.||UTC+5:30 India||Internationally coordinated through UTC.
+Map||map||A map is a scaled visual representation of geographic features.||political, physical, thematic||Uses symbols, colours and legends.
+Scale||map scale||Map scale is the ratio between distance on map and distance on ground.||1:100000||Small scale shows large areas; large scale shows detail.
+Topography||topography||Topography is the study and representation of Earth's surface features.||contour lines||Shows elevation and landforms.
+River delta||delta||A delta is a landform at a river mouth formed by sediment deposition.||Nile Delta, Ganges Delta||Often fertile and fan-shaped.
+Glacier||glacier||A glacier is a large mass of moving ice formed from accumulated snow.||Alpine, continental||Shapes valleys through erosion and deposition.
+Groundwater||groundwater||Groundwater is water stored beneath Earth's surface in aquifers.||wells, springs||Over-extraction can cause land subsidence.
+Water cycle||water cycle,hydrologic cycle||The water cycle describes movement of water by evaporation, condensation, precipitation and runoff.||powered by sun||Includes transpiration and infiltration.
+Erosion||erosion||Erosion is the removal and transport of soil or rock by wind, water, ice or gravity.||river erosion||Different from weathering, which breaks rock in place.
+Weathering||weathering||Weathering is the breakdown of rocks at or near Earth's surface.||physical, chemical, biological||Prepares material for erosion.
+Soil||soil||Soil is a mixture of minerals, organic matter, water and air supporting plant growth.||horizons O, A, B, C||Formation depends on climate, parent material, organisms, relief and time.
+Natural resource||natural resource||A natural resource is something from nature used by humans.||water, minerals, forests||Can be renewable or non-renewable.
+Renewable resource||renewable||A renewable resource can replenish naturally on human timescales.||solar, wind, biomass||Sustainable use still matters.
+Nonrenewable resource||nonrenewable||A non-renewable resource forms much slower than it is consumed.||coal, oil, natural gas||Finite and often environmentally costly.
+Population density||population density||Population density is number of people per unit area.||people per km²||High in cities and fertile river valleys.
+Urbanization||urbanisation,urbanization||Urbanization is the growth of cities as people move from rural areas.||driven by jobs and migration||Can strain infrastructure and services.
+Migration||migration||Migration is movement of people from one place to another to settle temporarily or permanently.||push and pull factors||Can be internal or international.
+Country||country||A country is a political entity with defined territory and government.||sovereign state||May include multiple nations or regions.
+Capital city||capital||A capital city is the seat of government of a country or region.||Tokyo, Paris, New Delhi||Sometimes administrative and legislative capitals differ.
+Border||border||A border is a line separating political territories.||boundary||Can follow rivers, mountains or agreed coordinates.
+Sovereignty||sovereignty geography||Sovereignty is supreme authority of a state over its territory.||not dependent on another state||Central concept in political geography.
+Region||region||A region is an area with shared physical, cultural or economic characteristics.||formal, functional, perceptual||Used to divide space for analysis.
+Biome||biome||A biome is a large ecological region with characteristic climate and organisms.||desert, forest, grassland||Defined mainly by climate and vegetation.
+Tundra||tundra||Tundra is a cold biome with low temperatures, short growing seasons and permafrost.||Arctic tundra||Low biodiversity and slow decomposition.
+Savanna||savanna||Savanna is a tropical grassland with scattered trees and seasonal rainfall.||African savanna||Supports large herbivores and predators.
+Rainforest||rainforest||Rainforest is a dense forest with high rainfall, common in tropical regions.||Amazon rainforest||Highest biodiversity of terrestrial biomes.
+Coral reef||coral reef||A coral reef is a marine ecosystem built by coral polyps with calcium carbonate skeletons.||Great Barrier Reef||Sensitive to warming and ocean acidification.
+GIS||gis,geographic information system||GIS is a system for capturing, storing, analysing and displaying geographic data.||maps, layers, spatial analysis||Used in planning, disaster management and research.

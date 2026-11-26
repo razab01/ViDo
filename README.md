@@ -126,7 +126,7 @@ Chat Lab is a separate conversational surface (`/preview/chat-lab`) that keeps i
 
 1. **Normalise and resolve** — conversational fillers are stripped, common typos are corrected, and pronouns such as `he`, `she`, or `it` are resolved against earlier turns.
 2. **Special intents first** — `process graph for this` reuses the last task created in chat; task-creation messages parse titles, relative dates/times, ask for a flowchart when needed, collect steps, and call the workspace task creator.
-3. **Python-first answers** — when the optional Python service is running, questions go through maths/SymPy, curated smart answers, world facts, Graph-RAG over the dataset, loaded-document context, and Wikipedia topic selection.
+3. **Python-first answers** — when the optional Python service is running, questions go through maths/SymPy, curated smart answers, world facts, loaded-document context, subject classification, applied Math/Physics/Chemistry solvers, pilot subject cards, Wikipedia topic selection, and dataset Graph-RAG. Wikipedia evidence can be checked in parallel without adding a badge to the reply.
 4. **Browser fallback** — if Python is unavailable, the same common paths run locally: arithmetic (Shunting Yard), maths concepts, dataset answers, document answers, and Wikipedia lookups.
 5. **Render cleanly** — answers are shown without engine/source badges, and flowcharts render inline as SVG.
 
@@ -141,6 +141,20 @@ Chat Lab is a separate conversational surface (`/preview/chat-lab`) that keeps i
 - **Attach document** accepts TXT, MD, CSV, JSON, PDF, and DOCX. PDF/DOCX extraction uses the Python bridge; text formats are read in-browser.
 - Images and legacy `.doc` files are rejected with a clear message. Files are capped at 5 MB and extracted text at 200,000 characters.
 - An attached file is posted into the conversation as an attachment card and stays active for follow-up questions in that thread. Questions are answered from the document before generic Wikipedia/dataset fallback.
+
+**Pilot subject cards (Python-only):**
+
+- The first ten subjects are Mathematics, Physics, Chemistry, Biology, Economics, Computer Science, History, Geography, Politics and Law, and Psychology.
+- Each subject has 50 curated topic cards in `python/subject_data/`; one shared router classifies the subject and topic from aliases, subject signals, and exact phrase matches.
+- High-confidence card answers stay offline. Wikipedia remains the fallback for topics outside the pilot set, and the browser fallback is unchanged in this phase.
+- Basic questions get the concise card answer. Questions that ask for an advanced/graduate explanation use `python/subject_advanced.py` to expand the same card into definition, formal core, mechanism, framing and limits, with topic-specific notes for the 250 advanced sweep topics. The advanced route runs before short curated answers so deep questions such as Schur complements and nilpotent matrices get the full explanation, while loaded documents still win for document questions.
+
+**Applied solvers and evaluation (Python-only):**
+
+- Numeric questions routed to Mathematics, Physics, or Chemistry are solved before the definition cards answer: equations/simplification, kinematics, Newton's second law, work/energy/power, ideal gas law, Ohm's law, molar mass/moles, pH, and stoichiometry ratios.
+- Wikipedia evidence checks record whether an article supports a card, solver, or fallback answer. The checks are internal metadata only; chat replies stay free of `Python`, `Local`, `Wikipedia`, and other engine/source badges.
+- `python python/evaluation.py` runs a scored offline sweep across concept, solver, task, document, and out-of-scope questions. The default corpus is local, so evaluation never needs the network.
+- `npm run sweep:python` generates a deterministic 1,000-question breadth sweep (500 Basic, 200 Intermediate, 250 Advanced, 50 Graduate). Every question and exact response is written to `python/chat_sweep_report.md` and `python/chat_sweep_report.jsonl`, together with the passing unittest/evaluation names and per-level counts. `npm run xlsx:python` converts that JSONL into a formatted Excel workbook at `python/chat_sweep_report.xlsx` plus a CSV copy. If Excel has the workbook open, the converter writes `python/chat_sweep_report_v2.xlsx` instead of failing.
 
 ---
 
@@ -264,8 +278,11 @@ For teams preferring a managed PostgreSQL BaaS:
 | `npm run build` | Compiles an optimized production frontend build into `dist/`. |
 | `npm run preview` | Locally previews the compiled production build from `dist/`. |
 | `npm run python:api` | Starts the optional Python ML/Graph-RAG API on `127.0.0.1:8000`. |
-| `npm run dev:python` / `npm run preview:python` | Runs the frontend together with the Python API for the full Chat Lab answer path. |
+| `npm run dev:python` / `npm run preview:python` | Runs the frontend while Vite auto-starts the bundled Python API on `127.0.0.1:8000` for the full Chat Lab answer path. |
 | `npm run test:python` | Runs the Python answer-engine checks. |
+| `npm run eval:python` | Runs the scored offline answer sweep and Wikipedia evidence checks. |
+| `npm run sweep:python` | Generates the 1,000-question Chat Lab response report with per-level pass/fail counts. |
+| `npm run xlsx:python` | Converts the sweep report into `python/chat_sweep_report.xlsx` and a CSV copy. |
 | `npm run emulators` / `npm run emu` | Starts the Firebase emulator suite for `demo-vido` (Auth + Firestore + UI). |
 | `npm run emu:export` | Exports emulator data to `./firebase-export-local`. |
 | `npm run emu:import` | Starts emulators importing/exporting local data. |
@@ -273,7 +290,7 @@ For teams preferring a managed PostgreSQL BaaS:
 ### Mandatory Pre-Commit Check
 
 ```bash
-npm run typecheck && npm test && npm run build
+npm run test:python && npm run eval:python && npm run typecheck && npm test && npm run build
 ```
 
 ---
@@ -338,7 +355,7 @@ Please review **[CONTRIBUTING.md](./CONTRIBUTING.md)** for the full workflow and
 2. **UI redesigns/features**: start a discussion first to align on scope and design.
 3. **Branch, implement, and verify**:
    ```bash
-   npm run typecheck && npm test && npm run build
+   npm run test:python && npm run eval:python && npm run typecheck && npm test && npm run build
    ```
 4. **Open a PR** with issue/discussion links and before/after evidence for UI changes.
 

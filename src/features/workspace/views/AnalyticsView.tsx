@@ -104,7 +104,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const daily = period === 'week' ? getWeekDays(cursor) : [];
 
   return (
-    <div className="p-6 sm:p-8 max-w-6xl mx-auto space-y-5">
+    <div className="vdb-analytics p-6 sm:p-8 max-w-6xl mx-auto space-y-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-[var(--ink)]">Completion Analytics</h2>

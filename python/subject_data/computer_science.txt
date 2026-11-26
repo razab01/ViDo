@@ -1,0 +1,50 @@
+Algorithm||algorithm||An algorithm is a finite sequence of steps to solve a problem or perform a task.||input, process, output||Correctness and efficiency are key properties.
+Data structure||data structure||A data structure organizes and stores data for efficient access and modification.||array, stack, tree, graph||Choice depends on operations needed.
+Array||array||An array stores elements in contiguous memory with index-based access.||O(1) random access||Insertion/deletion can be costly due to shifting.
+Linked list||linked list||A linked list stores nodes where each node points to the next node.||singly, doubly, circular||Efficient insertion/deletion if node known; no random access.
+Stack||stack||A stack is a LIFO structure where the last element added is removed first.||push, pop||Used in recursion, expression evaluation and undo operations.
+Queue||queue||A queue is a FIFO structure where the first element added is removed first.||enqueue, dequeue||Used in scheduling and breadth-first search.
+Tree||tree||A tree is a hierarchical structure with nodes connected by edges and one root.||parent, child, leaf||No cycles; subtree is a tree.
+Binary tree||binary tree||A binary tree has at most two children per node.||left, right||Binary search tree keeps left<root<right.
+Graph||graph||A graph is a set of vertices connected by edges, modelling relationships.||directed, undirected, weighted||Used in networks, maps and dependencies.
+Hash table||hash table,hashmap||A hash table maps keys to values using a hash function for fast lookup.||average O(1) lookup||Collisions handled by chaining or open addressing.
+Sorting||sorting algorithm||Sorting arranges elements in a defined order.||quick sort, merge sort, bubble sort||Comparison sorts have Ω(n log n) lower bound.
+Searching||searching algorithm||Searching finds an item in a data structure.||linear search, binary search||Binary search needs sorted data.
+Binary search||binary search||Binary search repeatedly halves a sorted array to find a target.||O(log n)||Requires random access and sorted order.
+Recursion||recursion||Recursion solves a problem by a function calling itself on smaller subproblems.||base case, recursive case||Needs a base case to stop.
+Complexity||time complexity,space complexity||Complexity measures how algorithm resource use grows with input size.||O(n), O(log n), O(n²)||Big O describes upper growth bound.
+Big O||big o notation||Big O notation describes asymptotic upper bound of algorithm growth.||O(1), O(n), O(n log n)||Ignores constants and lower-order terms.
+Object-oriented programming||oop,object oriented programming||OOP organizes code around objects that combine state and behaviour.||encapsulation, inheritance, polymorphism||Promotes modularity and reuse.
+Class||class||A class is a blueprint for creating objects with attributes and methods.||instance||Defines structure and behaviour.
+Inheritance||inheritance||Inheritance lets a class derive properties and methods from a parent class.||base class, derived class||Supports code reuse and hierarchy.
+Polymorphism||polymorphism||Polymorphism lets different classes respond to the same interface in their own way.||overriding, overloading||Enables flexible code.
+Encapsulation||encapsulation||Encapsulation hides internal details and exposes controlled interfaces.||private, public||Protects invariants and reduces coupling.
+Database||database,db||A database is an organized collection of data managed by a database system.||relational, NoSQL||Supports storage, query and integrity.
+SQL||sql||SQL is a language for querying and managing relational databases.||SELECT, INSERT, JOIN||WHERE filters rows; JOIN combines tables.
+Relational model||relational model||The relational model stores data in tables with rows and columns.||primary key, foreign key||Normalization reduces redundancy.
+Indexing||database index||Indexing creates auxiliary structures to speed up database queries.||B-tree index||Speeds reads but slows writes and uses space.
+Operating system||os,operating system||An operating system manages hardware and provides services to applications.||process, memory, file system||Examples include Linux, Windows and macOS.
+Process||process||A process is a program in execution with its own memory space.||process state||Different from a thread, which shares memory.
+Thread||thread||A thread is a lightweight unit of execution within a process.||multithreading||Threads share process resources but have separate stacks.
+Memory management||memory management||Memory management allocates and reclaims memory for programs.||paging, segmentation||Prevents leaks and fragmentation.
+File system||filesystem||A file system organizes how files are stored and retrieved on storage devices.||directories, inodes||Defines naming and permissions.
+Computer network||network||A computer network connects devices to share data and resources.||LAN, WAN, internet||Uses protocols for communication.
+TCP/IP||tcp ip||TCP/IP is the core protocol suite of the internet providing reliable packet delivery.||TCP, IP, UDP||IP addresses packets; TCP ensures ordered delivery.
+HTTP||http,https||HTTP is the application protocol for web request-response communication.||GET, POST, 404||HTTPS adds TLS encryption.
+DNS||dns||DNS translates human-readable domain names into IP addresses.||A record, CNAME||Distributed and hierarchical.
+Encryption||encryption||Encryption converts data into unreadable form using a key so only authorized parties can read it.||symmetric, asymmetric||AES and RSA are common examples.
+Cryptographic hashing||hashing crypto,hash function||Cryptographic hashing maps data to fixed-size digest that is hard to reverse.||SHA-256||Used for integrity, passwords and signatures.
+Machine learning||ml,machine learning||Machine learning lets systems learn patterns from data without explicit programming for every rule.||supervised, unsupervised, reinforcement||Generalization to new data is the goal.
+Neural network||neural network,deep learning||A neural network is layered functions inspired by biological neurons that learn weights from data.||input, hidden, output layers||Backpropagation adjusts weights using gradients.
+Overfitting||overfitting||Overfitting occurs when a model memorizes training data and performs poorly on unseen data.||high train accuracy, low validation accuracy||Regularization and more data help.
+Training validation test||train validation test split||Data is split into training for fitting, validation for tuning and test for final evaluation.||70/15/15 example||Test set should stay untouched until final.
+Compiler||compiler||A compiler translates source code into lower-level code before execution.||lexing, parsing, code generation||C and C++ commonly use compilers.
+Interpreter||interpreter||An interpreter executes source code or bytecode directly, line by step or via VM.||Python, JavaScript||Usually easier debugging, sometimes slower execution.
+Programming language||programming language||A programming language is a formal language for writing instructions that machines can execute.||syntax, semantics||Can be high-level or low-level.
+Java||java language||Java is a high-level object-oriented language designed to run bytecode on a JVM, giving write-once-run-anywhere portability.||JVM, bytecode||Syntax is similar to C++ with fewer low-level features.
+Python||python language||Python is a high-level interpreted language known for readable syntax and broad libraries.||indentation, dynamic typing||Widely used in data science, automation and backend development.
+JavaScript||javascript||JavaScript is a language for web page interactivity and also runs on servers via Node.js.||DOM, async, ES modules||Single-threaded event loop with async callbacks.
+Web browser||browser||A web browser fetches and renders web pages using HTML, CSS and JavaScript.||Chrome, Firefox, Safari||Contains rendering engine and JavaScript engine.
+API||api||An API is a defined interface that lets software systems communicate.||REST, GraphQL, RPC||Endpoints define available operations.
+Cloud computing||cloud||Cloud computing delivers computing resources over the internet on demand.||IaaS, PaaS, SaaS||Scalable and pay-as-you-go.
+Cybersecurity||cybersecurity basics||Cybersecurity protects systems, networks and data from unauthorized access and attacks.||CIA triad||Confidentiality, integrity and availability are core goals.

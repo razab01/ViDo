@@ -1,0 +1,50 @@
+Ancient Egypt||ancient egypt||Ancient Egypt was a civilization along the Nile known for pyramids, pharaohs and hieroglyphics.||c. 3100-30 BCE||Nile floods supported agriculture and state formation.
+Mesopotamia||mesopotamia||Mesopotamia was the cradle of civilization between the Tigris and Euphrates, home to Sumer, Babylon and Assyria.||cuneiform, city-states||Known for writing, law codes and irrigation.
+Indus Valley||indus valley,harappa,mohenjo daro||The Indus Valley Civilization was an ancient urban culture in South Asia known for planned cities and drainage.||c. 2600-1900 BCE||Script remains undeciphered.
+Ancient China||ancient china||Ancient China saw dynasties such as Shang, Zhou, Qin and Han that shaped statecraft, writing and philosophy.||Confucius, Qin dynasty||Civil service and infrastructure developed early.
+Ancient Greece||ancient greece||Ancient Greece was a collection of city-states known for philosophy, democracy, theatre and the Olympics.||Athens, Sparta||Greek thought influenced Rome and later Europe.
+Roman Empire||rome,roman empire||The Roman Empire ruled much of the Mediterranean and Europe, known for law, roads and engineering.||27 BCE-476 CE western fall||Latin and Roman law left lasting legacies.
+Maurya Empire||maurya||The Maurya Empire was a large ancient Indian empire founded by Chandragupta Maurya and expanded by Ashoka.||c. 322-185 BCE||Ashoka promoted Buddhism and non-violence after Kalinga.
+Gupta Empire||gupta||The Gupta Empire was an Indian dynasty often called a golden age of science, art and mathematics.||c. 320-550 CE||Aryabhata and Kalidasa lived in this era.
+Mughal Empire||mughal||The Mughal Empire ruled much of India from the 16th to 18th centuries, known for architecture and administration.||Akbar, Shah Jahan, Aurangzeb||Taj Mahal was built under Shah Jahan.
+Byzantine Empire||byzantine||The Byzantine Empire was the eastern continuation of the Roman Empire centered on Constantinople.||330-1453 CE||Preserved Roman law and Greek learning.
+Islamic Golden Age||islamic golden age||The Islamic Golden Age was a period of advances in science, medicine, math and philosophy in the Islamic world.||8th-13th centuries||Scholars preserved and expanded Greek and Indian knowledge.
+Renaissance||renaissance||The Renaissance was a European revival of art, learning and classical culture from the 14th to 17th centuries.||Leonardo da Vinci, Michelangelo||Humanism and printing spread ideas.
+Industrial Revolution||industrial revolution||The Industrial Revolution shifted production from handcrafts to machines and factories, starting in Britain.||late 18th century||Steam power, textiles and urbanization transformed society.
+French Revolution||french revolution||The French Revolution overthrew the absolute monarchy and feudal privileges in France from 1789.||Bastille, Declaration of Rights||Led to Napoleon and spread nationalism.
+American Revolution||american revolution||The American Revolution was the colonial revolt that created the United States from British rule.||1775-1783||Declaration of Independence in 1776.
+Russian Revolution||russian revolution||The Russian Revolution of 1917 overthrew the Tsar and brought the Bolsheviks to power.||Lenin, October Revolution||Led to the Soviet Union.
+World War I||ww1,first world war||World War I was a global conflict from 1914 to 1918 involving major powers and trench warfare.||central powers, allies||Ended with Treaty of Versailles.
+World War II||ww2,second world war||World War II was a global conflict from 1939 to 1945 involving the Allies and Axis powers.||Holocaust, D-Day, Hiroshima||Reshaped global order and created the UN.
+Cold War||cold war||The Cold War was a geopolitical rivalry between the US-led bloc and Soviet-led bloc after WWII.||1947-1991||Included proxy wars, arms race and space race.
+Decolonization||decolonization||Decolonization was the process by which colonies gained independence after WWII.||Asia, Africa||Created many new nation-states.
+Partition of India||partition||The 1947 Partition divided British India into India and Pakistan, causing mass migration and violence.||India, Pakistan||One of the largest forced migrations in history.
+Napoleon Bonaparte||napoleon||Napoleon was a French military leader and emperor who dominated Europe in the early 19th century.||Battle of Waterloo||Napoleonic Code influenced civil law.
+Alexander the Great||alexander||Alexander the Great was a Macedonian king who built a vast empire across Greece, Egypt and Asia.||334-323 BCE||Spread Greek culture through conquest.
+Julius Caesar||julius caesar||Julius Caesar was a Roman general and statesman whose rise ended the Republic and led to the Empire.||Ides of March||Crossing the Rubicon was a turning point.
+Cleopatra||cleopatra||Cleopatra was the last active ruler of Ptolemaic Egypt, allied with Julius Caesar and Mark Antony.||Egypt||Her defeat led to Roman control of Egypt.
+Mahatma Gandhi||gandhi||Gandhi led India's non-violent independence movement against British rule.||Satyagraha, Salt March||Influenced civil rights movements worldwide.
+Nelson Mandela||mandela||Nelson Mandela was a South African anti-apartheid leader and president who promoted reconciliation.||27 years imprisoned||Won Nobel Peace Prize in 1993.
+Martin Luther King Jr.||mlk,martin luther king||Martin Luther King Jr. was a US civil rights leader who advocated non-violent resistance.||I Have a Dream||Helped pass the Civil Rights Act 1964.
+Silk Road||silk road||The Silk Road was a network of trade routes connecting East Asia, Central Asia, the Middle East and Europe.||silk, spices, ideas||Facilitated cultural and technological exchange.
+Feudalism||feudalism history||Feudalism was a medieval European system of landholding, loyalty and military service.||lords, vassals, serfs||Declined with trade, cities and centralized states.
+Capitalism history||capitalism history||Capitalism developed from trade, mercantilism and industrialization with private ownership and markets.||Industrial Revolution||Adam Smith described market mechanisms in 1776.
+Socialism history||socialism history||Socialism emerged as a critique of industrial capitalism, advocating social ownership and equality.||Marx, utopian socialists||Influenced labor movements and revolutions.
+Colonialism||colonialism||Colonialism is the control of one territory by another power, often involving settlement and resource extraction.||British, French, Spanish empires||Had lasting political and economic effects.
+Imperialism||imperialism||Imperialism is expansion of state power through colonies or influence.||19th century scramble for Africa||Driven by economics, politics and strategy.
+Nation-state||nation state||A nation-state is a political unit where a nation and state largely coincide.||France, Japan||Became prominent after treaties and nationalism.
+Constitution history||constitution history||Constitutions codify government structure and rights, developing from ancient codes to modern documents.||US Constitution 1787||Indian Constitution 1950 is the longest written constitution.
+Human rights history||human rights history||Human rights ideas developed through revolutions, abolitionism and postwar documents.||Universal Declaration 1948||Changed global legal and political norms.
+Slavery history||slavery,abolitionism||Slavery existed in many ancient societies and became central to Atlantic plantation economies before abolitionism.||Transatlantic slave trade||Abolition movements changed law and society.
+Civil rights movement||civil rights||The US civil rights movement fought racial segregation and discrimination in the 1950s and 1960s.||Brown v Board, March on Washington||Led to major civil rights legislation.
+Women's suffrage||womens suffrage,suffragette||Women's suffrage movements fought for the right of women to vote.||19th and 20th centuries||New Zealand granted women the vote in 1893.
+Printing press||printing press||The printing press, developed by Gutenberg in Europe around 1450, enabled mass production of books.||spread of ideas||Accelerated Reformation and scientific exchange.
+Agricultural revolution||agricultural revolution||The Agricultural Revolution introduced new farming methods that increased food production and population.||enclosure, crop rotation||Helped fuel industrialization.
+Bronze Age||bronze age||The Bronze Age was a period when bronze tools and weapons were widely used.||c. 3300-1200 BCE||Marked by metalworking and early states.
+Iron Age||iron age||The Iron Age followed the Bronze Age with widespread iron tools and weapons.||c. 1200 BCE onward||Iron was cheaper and more available than bronze.
+Middle Ages||medieval||The Middle Ages in Europe ran from the fall of Rome to the Renaissance, marked by feudalism and the Church.||500-1500 CE||Also called the medieval period.
+Reformation||protestant reformation||The Reformation was a 16th-century religious reform movement that split Western Christianity.||Martin Luther, Calvin||Led to Protestant churches and religious wars.
+Enlightenment||enlightenment||The Enlightenment was an 18th-century intellectual movement emphasizing reason, science and individual rights.||Voltaire, Rousseau, Locke||Influenced modern democracy and human rights.
+Treaty of Versailles||versailles||The Treaty of Versailles formally ended World War I and imposed penalties on Germany.||1919||Economic resentment contributed to WWII.
+United Nations||un||The United Nations is an international organization founded in 1945 to promote peace, security and cooperation.||General Assembly, Security Council||Successor to the League of Nations.
+Ancient Rome||ancient rome,roman republic||Ancient Rome grew from a city-state into a republic and then an empire shaping law, language, engineering and governance.||753 BCE-476 CE||Roman law and Latin influenced later European institutions.

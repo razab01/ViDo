@@ -23,6 +23,10 @@ export const HOME_LIMITS = {
   recentlyCompleted: 3,
 } as const;
 
+/** Stable sort that keeps pinned tasks ahead of everything else. */
+export const sortTasksPinnedFirst = <T extends { isPinned?: boolean }>(tasks: T[]): T[] =>
+  [...tasks].sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)));
+
 /**
  * Filter tasks by view relative to deterministic benchmark date and optional today date.
  */
@@ -35,8 +39,9 @@ export function getFilteredTasks(
   const benchmarkTime = new Date(benchmarkDateTime).getTime();
   const sevenDaysAgoTime = benchmarkTime - 7 * 24 * 60 * 60 * 1000;
 
-  const nonArchived = tasks.filter((t) => !t.isArchived);
-  const archived = tasks.filter((t) => !!t.isArchived);
+  const orderedTasks = sortTasksPinnedFirst(tasks);
+  const nonArchived = orderedTasks.filter((t) => !t.isArchived);
+  const archived = orderedTasks.filter((t) => !!t.isArchived);
 
   // Active tasks
   const activeTasks = nonArchived.filter((t) => t.state === 'active');

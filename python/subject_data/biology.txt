@@ -1,0 +1,50 @@
+Cell||cell||The cell is the basic structural and functional unit of living organisms.||prokaryotic, eukaryotic||All organisms are made of one or more cells; cells arise from existing cells.
+Cell membrane||cell membrane,plasma membrane||The cell membrane is a selectively permeable lipid bilayer controlling movement in and out of the cell.||fluid mosaic model||Contains proteins for transport and signalling.
+Nucleus||nucleus||The nucleus is the membrane-bound organelle containing most eukaryotic DNA.||controls cell activities||Contains nucleolus where ribosomal RNA is made.
+Mitochondria||mitochondrion,mitochondria||Mitochondria are organelles that produce ATP by aerobic respiration.||powerhouse of the cell||Have their own DNA and double membrane.
+Photosynthesis||photosynthesis||Photosynthesis converts light energy into chemical energy using CO₂ and water, producing glucose and oxygen.||6CO₂+6H₂O→C₆H₁₂O₆+6O₂||Occurs in chloroplasts; chlorophyll captures light.
+Respiration||cellular respiration||Cellular respiration breaks down glucose to release ATP using oxygen in aerobic conditions.||C₆H₁₂O₆+6O₂→6CO₂+6H₂O+ATP||Glycolysis, Krebs cycle and electron transport chain are main stages.
+DNA||dna,deoxyribonucleic acid||DNA is the molecule storing genetic instructions in most living organisms.||double helix||Made of nucleotides with bases A, T, C and G; A pairs with T, C with G.
+RNA||rna,ribonucleic acid||RNA carries genetic information for protein synthesis and can catalyse reactions in some cases.||mRNA, tRNA, rRNA||Usually single-stranded; uses U instead of T.
+Protein synthesis||protein synthesis,translation,transcription||Protein synthesis uses DNA instructions to build amino acid chains.||DNA→RNA→protein||Transcription makes mRNA; translation at ribosomes makes protein.
+Gene||gene||A gene is a DNA segment that encodes a functional product such as a protein or RNA.||unit of heredity||Alleles are different versions of a gene.
+Chromosome||chromosome||A chromosome is a DNA molecule with proteins that carries genetic material.||humans have 46 chromosomes||Genes are located at specific positions called loci.
+Mitosis||mitosis||Mitosis is nuclear division producing two genetically identical daughter cells.||PMAT phases||Used for growth, repair and asexual reproduction.
+Meiosis||meiosis||Meiosis is reduction division producing four haploid gametes with genetic variation.||meiosis I and II||Crossing over occurs in prophase I.
+Natural selection||natural selection||Natural selection is differential survival and reproduction of individuals with heritable advantages.||survival of the fittest||Drives adaptation and evolution over generations.
+Evolution||evolution||Evolution is change in inherited characteristics of populations over generations.||descent with modification||Evidence includes fossils, DNA, anatomy and biogeography.
+Genetics||genetics||Genetics is the study of genes, heredity and variation.||Mendelian and molecular genetics||Genotype is genetic makeup; phenotype is observable traits.
+Mendelian inheritance||mendelian genetics||Mendelian inheritance describes trait transmission via dominant and recessive alleles.||law of segregation||Law of independent assortment applies to unlinked genes.
+Punnett square||punnett square||A Punnett square predicts genotype probabilities from parental alleles.||Aa × Aa gives 1:2:1 genotype ratio||Phenotype ratio depends on dominance.
+Ecosystem||ecosystem||An ecosystem is a community of organisms interacting with their physical environment.||biotic and abiotic factors||Energy flows and nutrients cycle through ecosystems.
+Food chain||food chain,food web||A food chain shows who eats whom and how energy moves through trophic levels.||producer→consumer→decomposer||Food webs are interconnected food chains.
+Biodiversity||biodiversity||Biodiversity is the variety of life at genetic, species and ecosystem levels.||species richness and evenness||High biodiversity often increases ecosystem stability.
+Classification||taxonomy,classification||Biological classification organizes organisms into hierarchical groups.||kingdom, phylum, class, order, family, genus, species||Binomial nomenclature uses genus and species.
+Bacteria||bacteria||Bacteria are single-celled prokaryotes with peptidoglycan cell walls.||E. coli, Streptococcus||Can be beneficial or pathogenic; reproduce by binary fission.
+Virus||virus||Viruses are non-cellular infectious particles requiring host cells to reproduce.||DNA or RNA genome||Not considered living by many definitions; antibiotics do not kill viruses.
+Fungi||fungi||Fungi are eukaryotic decomposers with chitin cell walls.||mushrooms, yeast, moulds||Absorb nutrients and reproduce by spores.
+Plant tissue||plant tissue,xylem,phloem||Plant tissues include meristematic and permanent tissues; xylem transports water, phloem transports food.||xylem, phloem||Xylem mostly dead at maturity; phloem living.
+Animal tissue||animal tissue,epithelial,connective,muscle,nervous||Animal tissues group specialized cells into epithelial, connective, muscle and nervous types.||four basic tissue types||Structure relates to function.
+Digestive system||digestive system||The digestive system breaks food into nutrients that can be absorbed into the blood.||mouth to anus||Enzymes and pH changes digest carbohydrates, proteins and fats.
+Circulatory system||circulatory system,cardiovascular||The circulatory system transports blood, nutrients, gases and wastes through the body.||heart, blood vessels, blood||Arteries carry blood away; veins carry blood toward the heart.
+Respiratory system||respiratory system,lungs||The respiratory system exchanges oxygen and carbon dioxide between air and blood.||alveoli||Gas exchange occurs by diffusion in alveoli.
+Nervous system||nervous system||The nervous system detects stimuli, processes information and coordinates responses.||brain, spinal cord, neurons||Neurons transmit electrical and chemical signals.
+Endocrine system||endocrine system,hormones||The endocrine system uses hormones from glands to regulate body processes slowly and persistently.||insulin, thyroid hormone||Hormones travel through blood to target organs.
+Immune system||immune system||The immune system defends the body against pathogens using innate and adaptive responses.||antibodies, white blood cells||Vaccines stimulate adaptive immune memory.
+Enzyme||enzyme||Enzymes are biological catalysts, usually proteins, that speed reactions by lowering activation energy.||lock and key, induced fit||Activity depends on temperature and pH; denaturation destroys function.
+Hormone||hormone||Hormones are chemical messengers produced by endocrine glands.||insulin, adrenaline||Small changes can produce large regulatory effects.
+Blood||blood||Blood is a fluid tissue transporting gases, nutrients, hormones and wastes.||RBCs, WBCs, platelets, plasma||Red cells carry oxygen using haemoglobin.
+Heart||heart||The heart is a muscular pump that circulates blood through pulmonary and systemic circuits.||four chambers||Right side pumps to lungs; left side pumps to body.
+Kidney||kidney||Kidneys filter blood to remove wastes and regulate water, salts and pH.||nephron||Nephrons are the functional filtering units.
+Reproduction||reproduction||Reproduction produces offspring, either sexually with gamete fusion or asexually from one parent.||sexual, asexual||Sexual reproduction increases genetic variation.
+Embryology||embryology||Embryology studies development from fertilised egg to fetus.||zygote, embryo, fetus||Development involves cleavage, gastrulation and organogenesis.
+Ecology||ecology||Ecology studies interactions among organisms and their environment.||population, community, ecosystem||Field experiments and models are common methods.
+Population||population biology||A population is a group of individuals of the same species in one area.||population density||Growth can be exponential or logistic.
+Adaptation||adaptation||An adaptation is a heritable trait that improves survival or reproduction in a particular environment.||camel hump, cactus spines||Adaptations arise through evolution.
+Speciation||speciation||Speciation is the formation of new species from existing populations.||allopatric, sympatric||Reproductive isolation is key.
+Fossil||fossil||Fossils are preserved remains or traces of ancient organisms.||bones, footprints, amber||Provide evidence for evolution and past environments.
+Stem cell||stem cell||Stem cells are undifferentiated cells that can divide and become specialized cells.||embryonic, adult stem cells||Potency describes possible cell fates.
+Biotechnology||biotechnology||Biotechnology uses biological systems to make products or solve problems.||insulin production, PCR||Combines biology, chemistry and engineering.
+Genetic engineering||genetic engineering,recombinant dna||Genetic engineering deliberately alters DNA using molecular tools.||CRISPR, plasmids||Used in medicine, agriculture and research.
+Microbiology||microbiology||Microbiology studies microorganisms such as bacteria, viruses, fungi and protozoa.||microbes||Includes pathogenic and beneficial organisms.
+Anatomy||anatomy||Anatomy studies the structure of body parts and their relationships.||gross anatomy, microscopic anatomy||Physiology studies their functions.
