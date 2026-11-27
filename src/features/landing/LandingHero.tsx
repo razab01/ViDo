@@ -74,31 +74,6 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onGoogleSignInClick })
 
           <p className="vdb-hero-note">Free to use. Simple, focused, and distraction-free.</p>
         </div>
-
-        <div className="vdb-hero-visual" aria-hidden="true">
-          <div className="vdb-hero-orbit">
-            <span className="vdb-orbit-dot vdb-orbit-dot--one" />
-            <span className="vdb-orbit-dot vdb-orbit-dot--two" />
-          </div>
-          <div className="vdb-hero-core">
-            <span>ViDo</span>
-            <span>one calm workspace</span>
-          </div>
-          <div className="vdb-float-card vdb-float-card--top">
-            <span className="vdb-float-label">Today</span>
-            <strong className="vdb-float-value">4 priorities in focus</strong>
-            <div className="vdb-float-meta">
-              <i /> Nothing urgent yet
-            </div>
-          </div>
-          <div className="vdb-float-card vdb-float-card--bottom">
-            <span className="vdb-float-label">Domains</span>
-            <strong className="vdb-float-value">3 areas in balance</strong>
-            <div className="vdb-float-meta">
-              <i /> Personal, home, and work
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

@@ -56,6 +56,21 @@ describe('LandingPage Integration', () => {
     expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
   });
 
+  it('renders the landing hero without the framed scene window', () => {
+    render(<App />);
+
+    expect(document.querySelector('.vdb-hero-grid')).toBeInTheDocument();
+    expect(document.querySelector('.vdb-hero-stage')).not.toBeInTheDocument();
+    expect(document.querySelector('.vdb-hero-stage-frame')).not.toBeInTheDocument();
+    expect(document.querySelector('.vdb-hero-visual')).not.toBeInTheDocument();
+    expect(screen.queryByText('Living workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Theme atelier')).not.toBeInTheDocument();
+    expect(screen.queryByText('one calm workspace')).not.toBeInTheDocument();
+    expect(screen.queryByText('4 priorities in focus')).not.toBeInTheDocument();
+    expect(screen.queryByText('3 areas in balance')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Preview Winter night' })).not.toBeInTheDocument();
+  });
+
   it('opens and closes sign in modal on Google sign in click', () => {
     render(<App />);
 
@@ -90,15 +105,12 @@ describe('LandingPage Integration', () => {
     expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
   });
 
-  it('shows the back-to-dashboard ribbon link only on Converse', () => {
+  it('does not show a back-to-dashboard ribbon on Converse', () => {
     window.history.pushState({}, '', '/preview/converse');
     render(<App />);
 
     expect(screen.getByRole('link', { name: /back to landing page/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back to dashboard/i })).toHaveAttribute(
-      'href',
-      '/preview'
-    );
+    expect(screen.queryByRole('link', { name: /back to dashboard/i })).not.toBeInTheDocument();
   });
 
   it('navigates to the live user workspace dashboard after successful login and allows sign out', async () => {

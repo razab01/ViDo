@@ -172,6 +172,29 @@ _TITLE_HEADER_RE = re.compile(
     re.I,
 )
 
+# Calendar-table planners keep the date in one cell, the time range in the
+# next, and wrap titles/details across several lines. The generic line parser
+# would turn every cell into a separate task, so these documents get a small
+# table-aware reader before the fallback.
+_MONTHLY_PLANNER_RE = re.compile(r"\bMONTHLY\s+TASK\s+PLANNER\b", re.I)
+_MONTH_YEAR_RE = re.compile(
+    r"\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})\b",
+    re.I,
+)
+_MONTHLY_DATE_LINE_RE = re.compile(
+    rf"^(?:(?:mon|tue|wed|thu|fri|sat|sun)\w*)?\s*,?\s*(\d{{1,2}})\s+({_MONTH_TOKEN})\b(?:\s+\d{{4}})?$",
+    re.I,
+)
+_MONTHLY_TIME_RANGE_RE = re.compile(r"^(\d{1,2}:\d{2})\s*-\s*\d{1,2}:\d{2}$")
+_MONTHLY_STOP_RE = re.compile(
+    r"^(?:week\s+\d+\b|page\s+\d+\b|tip\b|date$|time$|task\s+title$|details$|"
+    r"priority$|status$|total\s+tasks\b|high\s+priority\b|medium\s+priority\b|"
+    r"low\s+priority\b|mark\s+the\s+status\b|monthly\s+task\s+planner|"
+    r"\w+\s+\d{4}\s*\|\s*monthly\s+task\s+planner|"
+    r"professional\s+to-?do\s+schedule)",
+    re.I,
+)
+
 _METADATA_CONTINUATION_RE = re.compile(
     r"^(?:due|start|deadline|end|time|at|priority|category|steps?|flowchart)\b",
     re.I,
@@ -219,7 +242,7 @@ _LEADING_CONNECTOR_RE = re.compile(
     re.I,
 )
 _DANGLING_PREPOSITION_RE = re.compile(
-    r"\s+\b(?:for|about|as|on|at|to|from|in|of)\s*$",
+    r"\s+\b(?:for|about|as|on|at|to|from|in|of)\b[\s.,;:!-]*$",
     re.I,
 )
 _DOCUMENT_HINT_RE = re.compile(
@@ -709,9 +732,130 @@ def _parse_entry(entry: str, now: date) -> Optional[Dict[str, Any]]:
     return task if title or task["dueDate"] else None
 
 
+def _monthly_planner_tasks(text: str, now: date) -> List[Dict[str, Any]]:
+    """Read a calendar-table monthly planner as one task per dated row."""
+    source = str(text or "")
+    if not _MONTHLY_PLANNER_RE.search(source):
+        return []
+
+    year_match = _MONTH_YEAR_RE.search(source[:800])
+    year = int(year_match.group(2)) if year_match else now.year
+
+    blocks: List[List[str]] = []
+    current: List[str] = []
+    for raw_line in source.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if _MONTHLY_DATE_LINE_RE.match(line):
+            if current:
+                blocks.append(current)
+            current = [line]
+            continue
+        if not current:
+            continue
+        if _MONTHLY_STOP_RE.match(line):
+            blocks.append(current)
+            current = []
+            continue
+        current.append(line)
+    if current:
+        blocks.append(current)
+
+    tasks: List[Dict[str, Any]] = []
+    for block in blocks:
+        date_match = _MONTHLY_DATE_LINE_RE.match(block[0])
+        if not date_match:
+            continue
+        day, month = date_match.group(1), date_match.group(2).lower()
+        if month not in _MONTHS:
+            continue
+        due_date = _parse_date(f"{day} {month} {year}", now)
+        if not due_date:
+            continue
+
+        lines = block[1:]
+        due_time = ""
+        for index, line in enumerate(list(lines)):
+            time_match = _MONTHLY_TIME_RANGE_RE.match(line)
+            if time_match:
+                due_time = _parse_time(time_match.group(1)) or ""
+                lines.pop(index)
+                break
+
+        priority = ""
+        for index in range(len(lines) - 1, -1, -1):
+            if lines[index].lower() in {"high", "medium", "low"}:
+                priority = lines[index].lower()
+                lines.pop(index)
+                break
+
+        lines = [
+            line
+            for line in lines
+            if line and line.lower() not in {"status", "priority", "details", "task title", "time", "date"}
+        ]
+        if not lines:
+            continue
+
+        # Titles are title-cased noun phrases; details are sentence-cased.
+        # Once the first sentence-cased line appears, the rest of the cell is
+        # the description, even when it wraps over several extracted lines.
+        def title_cell(value: str) -> bool:
+            words = re.findall(r"[A-Za-z][A-Za-z'-]*", value)
+            if not words:
+                return False
+            small_words = {
+                "a", "an", "and", "as", "at", "by", "for", "from", "in", "into",
+                "of", "on", "or", "the", "to", "via", "with",
+            }
+            return all(
+                word.isupper() or word[0].isupper() or word.lower() in small_words
+                for word in words[1:]
+            )
+
+        detail_start = next(
+            (index for index, line in enumerate(lines) if not title_cell(line)),
+            None,
+        )
+        if detail_start is None:
+            detail_start = next(
+                (
+                    index
+                    for index, line in enumerate(lines)
+                    if re.search(r"[.!?][\"')]?$", line)
+                ),
+                len(lines),
+            )
+        title_lines, detail_lines = lines[:detail_start], lines[detail_start:]
+        if not title_lines and detail_lines:
+            title_lines, detail_lines = detail_lines[:1], detail_lines[1:]
+
+        title = _clean_title(" ".join(title_lines))
+        if not title:
+            continue
+        description = re.sub(r"\s+", " ", " ".join(detail_lines)).strip(" .;:-")
+        tasks.append(
+            {
+                "title": title,
+                "description": description,
+                "startDate": due_date,
+                "dueDate": due_date,
+                "dueTime": due_time,
+                "priority": priority,
+                "category": "",
+                "flowchartSteps": [],
+            }
+        )
+    return tasks
+
+
 def extract_plan_tasks(text: str, now: Optional[date] = None) -> List[Dict[str, Any]]:
     """Extract plan items from a plan document or pasted list."""
     today = _today(now)
+    monthly_tasks = _monthly_planner_tasks(text, today)
+    if monthly_tasks:
+        return monthly_tasks
     handbook_tasks = _meeting_handbook_tasks(text, today)
     if handbook_tasks:
         return handbook_tasks

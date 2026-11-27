@@ -8,7 +8,7 @@ import {
   Navigate,
   useParams,
 } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import {
   BENCHMARK_DATE_STR,
   BENCHMARK_DATE_TIME,
@@ -107,10 +107,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
       : location.pathname.startsWith('/preview');
   const isLive = !isPreview;
   const basePath = isPreview ? '/preview' : '/workspace';
-  const isConverseRoute =
-    location.pathname === `${basePath}/converse` ||
-    location.pathname === `${basePath}/chat-zone` ||
-    location.pathname === `${basePath}/chat-lab`;
   const referenceDate = isPreview ? BENCHMARK_DATE_STR : todayISO();
 
   const user = isPreview
@@ -464,15 +460,6 @@ export const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Landing Page</span>
               </Link>
-              {isConverseRoute && (
-                <Link
-                  to={basePath}
-                  className="vdb-ribbon-dashboard inline-flex items-center justify-center gap-1.5 px-3.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
-                >
-                  <LayoutDashboard className="w-3 h-3" />
-                  <span>Back to Dashboard</span>
-                </Link>
-              )}
             </div>
 
             <span className="h-4 w-px bg-white/20 hidden sm:inline-block" />

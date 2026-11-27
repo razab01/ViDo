@@ -5,6 +5,7 @@ import { NotificationBell } from '../teams/NotificationBell';
 import { getTeamRepository } from '../teams/teamRepository';
 import { TeamInvitation } from '../teams/types';
 import { formatTopBarDate } from '../../utils/dateUtils';
+import { ThemeSwitcher } from '../theme/ThemeSwitcher';
 
 export interface WorkspaceTopBarProps {
   title: string;
@@ -145,6 +146,8 @@ export const WorkspaceTopBar: React.FC<WorkspaceTopBarProps> = ({
 
       {/* Right Controls: Search, Filter, and User Profile */}
       <div className="flex items-center gap-3">
+        <ThemeSwitcher compact />
+
         {/* Search */}
         <div className="relative hidden sm:block w-56 lg:w-64">
           <Search className="w-4 h-4 text-[var(--faint)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />

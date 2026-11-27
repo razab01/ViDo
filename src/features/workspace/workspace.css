@@ -431,8 +431,8 @@
   flex-shrink: 0;
   margin-top: 0;
   padding: 12px 18px 16px !important;
-  border-top: 1px solid var(--line) !important;
-  background: linear-gradient(180deg, rgba(255, 253, 248, 0), rgba(247, 244, 237, 0.9));
+  border-top: 1px solid rgba(255, 255, 255, 0.24) !important;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -441,8 +441,8 @@
 .vdb-rail-profile {
   padding: 10px 12px !important;
   border-radius: 10px !important;
-  border: 1px solid var(--line) !important;
-  background: rgba(255, 253, 248, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 .vdb-rail-avatar {
@@ -491,16 +491,16 @@
 }
 
 .vdb-rail-footer-link:hover {
-  background: rgba(245, 234, 214, 0.5);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--accent) !important;
 }
 
 .vdb-rail-footer-link-active {
-  background: #fffefa !important;
-  border: 1px solid rgba(176, 138, 69, 0.28);
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   color: var(--ink) !important;
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(23, 26, 32, 0.05);
+  box-shadow: none;
 }
 
 .vdb-rail-footer-link svg {
@@ -1000,6 +1000,16 @@
   outline: none;
   border-color: rgba(176, 138, 69, 0.55);
   box-shadow: 0 0 0 3px rgba(232, 201, 141, 0.2);
+}
+
+.vdb-workspace .vdb-voice-btn {
+  color: var(--muted);
+}
+
+.vdb-workspace .vdb-voice-btn.is-listening {
+  color: var(--red);
+  background: var(--red-soft);
+  border-color: var(--red);
 }
 
 /* Chat sidebar ------------------------------------------------------------ */

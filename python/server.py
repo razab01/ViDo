@@ -6,7 +6,8 @@ import base64
 import binascii
 import os
 import sys
-from typing import Dict, Optional
+import tempfile
+from typing import Dict, Optional, Tuple
 
 # Keep a local math.py from shadowing Python's standard library module.
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -66,6 +67,49 @@ class AnswerBody(BaseModel):
 class DocumentBody(BaseModel):
     name: str
     content: str
+
+
+class TranscribeBody(BaseModel):
+    name: str = "voice.webm"
+    content: str
+    language: Optional[str] = None
+
+
+MAX_AUDIO_BYTES = 12 * 1024 * 1024
+_ASR_CACHE: Dict[str, object] = {}
+
+
+def _asr_suffix(name: str) -> str:
+    lowered = name.lower()
+    for suffix in (".webm", ".ogg", ".m4a", ".mp4", ".wav", ".mp3"):
+        if lowered.endswith(suffix):
+            return suffix
+    return ".webm"
+
+
+def _asr_model() -> Tuple[str, object]:
+    """Load a tiny CPU speech model lazily so the app starts without it."""
+    model_name = os.environ.get("VIDO_ASR_MODEL", "tiny").strip() or "tiny"
+    cached = _ASR_CACHE.get(model_name)
+    if cached is not None:
+        return model_name, cached
+    try:
+        from faster_whisper import WhisperModel
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Offline voice is not installed on this device yet.",
+        ) from exc
+    try:
+        # CPU int8 keeps transcription local and avoids any browser GPU work.
+        model = WhisperModel(model_name, device="cpu", compute_type="int8")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The offline speech model could not be started.",
+        ) from exc
+    _ASR_CACHE[model_name] = model
+    return model_name, model
 
 
 @app.get("/api/python/health")
@@ -135,6 +179,49 @@ def document(body: DocumentBody):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"name": body.name, "text": text, "truncated": truncated}
+
+
+@app.post("/api/python/transcribe")
+def transcribe(body: TranscribeBody):
+    """Turn a recorded voice note into text for the normal Converse pipeline."""
+    try:
+        audio = base64.b64decode(body.content, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="That voice note could not be decoded.") from exc
+    if not audio:
+        raise HTTPException(status_code=400, detail="That voice note was empty.")
+    if len(audio) > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="That voice note is too long.")
+
+    model_name, model = _asr_model()
+    temp_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=_asr_suffix(body.name), delete=False) as handle:
+            handle.write(audio)
+            temp_path = handle.name
+        segments, info = model.transcribe(
+            temp_path,
+            language=(body.language or None),
+            beam_size=5,
+            vad_filter=True,
+        )
+        text = " ".join(segment.text.strip() for segment in segments).strip()
+        return {
+            "text": text,
+            "language": getattr(info, "language", None),
+            "duration": getattr(info, "duration", None),
+            "model": model_name,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        if temp_path:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { ThemeSwitcher } from '../theme/ThemeSwitcher';
 
 export interface LandingHeaderProps {
   onGoogleSignInClick?: () => void;
@@ -41,6 +42,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoogleSignInClic
         </nav>
 
         <div className="vdb-header-actions">
+          <ThemeSwitcher />
           <Link to="/preview" className="vdb-header-preview">
             Live Preview
           </Link>

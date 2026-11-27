@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Badge, Card, Input } from '../../components/ui';
 import { CheckCircle2, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { SeasonalGallery } from '../theme/SeasonalGallery';
 
 export type AccentCandidate = 'blue' | 'indigo' | 'green';
 
@@ -38,7 +39,7 @@ export const StyleLab: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)] p-6 md:p-12">
-      <div className="max-w-5xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-10">
         {/* Navigation & Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[var(--line)]">
           <div>
@@ -57,12 +58,17 @@ export const StyleLab: React.FC = () => {
                 Go to Preview
               </Link>
             </div>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--accent)]">
+              ViDo / Theme Atelier
+            </p>
             <h1 className="text-3xl font-bold tracking-tight">ViDo Theme & Accent Lab</h1>
             <p className="text-sm text-[var(--muted)] mt-1">
-              Select and preview your preferred accent palette across all workspace components.
+              Explore six animated seasonal worlds, then refine the workspace accent palette.
             </p>
           </div>
         </div>
+
+        <SeasonalGallery />
 
         {/* Accent Selection Panel */}
         <section className="space-y-4">

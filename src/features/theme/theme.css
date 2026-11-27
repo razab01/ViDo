@@ -1,0 +1,2059 @@
+/* ViDo themes: General (default) and Seasonal (locale/time driven). */
+
+/* --------------------------------------------------------------------------
+   Seasonal palettes
+   -------------------------------------------------------------------------- */
+
+:root[data-theme='seasonal'],
+.vdb-art {
+  color-scheme: light;
+  --season-ink: #17233a;
+  --season-muted: #56657c;
+  --season-faint: #8a98aa;
+  --season-line: rgba(23, 35, 58, 0.13);
+  --season-surface: rgba(255, 255, 255, 0.9);
+  --season-glass: rgba(255, 255, 255, 0.18);
+  --season-glass-strong: rgba(255, 255, 255, 0.3);
+  --season-glass-border: rgba(255, 255, 255, 0.42);
+  --season-accent-glass: rgba(47, 111, 159, 0.16);
+  --season-on-accent: #fffdf8;
+  --season-positive: #2f6f5b;
+  --season-caution: #7a5a27;
+  --season-negative: #a3424b;
+  --season-negative-glass: rgba(163, 66, 75, 0.14);
+  --season-canvas: #eef4fb;
+  --season-accent: #2f6f9f;
+  --season-accent-soft: #e4f1fb;
+  --season-bg: linear-gradient(180deg, rgba(234, 244, 255, 0.38) 0%, rgba(245, 250, 255, 0.26) 58%, rgba(255, 248, 236, 0.12) 100%);
+  --season-header: rgba(239, 247, 255, 0.84);
+  --season-rail: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(234, 244, 253, 0.94));
+  --particle-color: rgba(255, 255, 255, 0.94);
+  --sky: linear-gradient(180deg, #dceeff 0%, #f4fbff 70%, rgba(255, 249, 235, 0.4) 100%);
+  --scene-color: #4c7198;
+
+  --ink: var(--season-ink);
+  --muted: var(--season-muted);
+  --faint: var(--season-faint);
+  --line: var(--season-line);
+  --surface: var(--season-surface);
+  --canvas: var(--season-canvas);
+  --accent: var(--season-accent);
+  --accent-soft: var(--season-accent-soft);
+}
+
+:root[data-theme='seasonal'][data-scene='winter-day'],
+.vdb-art[data-scene='winter-day'] {
+  --season-accent: #3d709f;
+  --season-accent-soft: #e7f1fa;
+  --season-accent-glass: rgba(61, 112, 159, 0.16);
+  --season-on-accent: #fffdf8;
+  --season-positive: #2f6f5b;
+  --season-caution: #7a5a27;
+  --season-negative: #a3424b;
+  --season-negative-glass: rgba(163, 66, 75, 0.14);
+  --season-bg: linear-gradient(180deg, rgba(230, 241, 251, 0.4) 0%, rgba(243, 248, 253, 0.27) 58%, rgba(255, 255, 255, 0.12) 100%);
+  --sky: linear-gradient(180deg, #b9d8ef 0%, #e4f3fc 58%, #fffdf7 100%);
+  --art-glow: rgba(151, 205, 236, 0.4);
+  --scene-color: #52779d;
+}
+
+:root[data-theme='seasonal'][data-scene='winter-night'],
+.vdb-art[data-scene='winter-night'] {
+  color-scheme: dark;
+  --season-ink: #edf4ff;
+  --season-muted: #afc2da;
+  --season-faint: #8298b4;
+  --season-line: rgba(206, 228, 255, 0.18);
+  --season-surface: rgba(18, 40, 66, 0.92);
+  --season-glass: rgba(12, 32, 56, 0.16);
+  --season-glass-strong: rgba(15, 39, 66, 0.28);
+  --season-glass-border: rgba(178, 214, 255, 0.22);
+  --season-canvas: #0d2038;
+  --season-accent: #9de8c8;
+  --season-accent-soft: rgba(124, 224, 192, 0.22);
+  --season-accent-glass: rgba(157, 232, 200, 0.18);
+  --season-on-accent: #0b1728;
+  --season-positive: #9de8c8;
+  --season-caution: #ffd58c;
+  --season-negative: #ff9aa8;
+  --season-negative-glass: rgba(255, 154, 168, 0.14);
+  --season-bg: radial-gradient(circle at 18% 6%, rgba(124, 224, 192, 0.2), transparent 34%), radial-gradient(circle at 78% 12%, rgba(142, 197, 255, 0.18), transparent 32%), linear-gradient(180deg, rgba(8, 23, 44, 0.46) 0%, rgba(16, 44, 72, 0.32) 62%, rgba(21, 66, 78, 0.16) 100%);
+  --season-header: rgba(10, 26, 46, 0.9);
+  --season-rail: linear-gradient(180deg, rgba(18, 43, 70, 0.96), rgba(10, 26, 46, 0.96));
+  --sky: linear-gradient(180deg, #020812 0%, #08182f 55%, #0f3038 100%);
+  --art-glow: rgba(124, 224, 192, 0.28);
+  --scene-color: #c5d8f0;
+}
+
+:root[data-theme='seasonal'][data-scene='summer-day'],
+.vdb-art[data-scene='summer-day'] {
+  --season-ink: #2a2118;
+  --season-muted: #6e604f;
+  --season-faint: #9c8c76;
+  --season-line: rgba(80, 58, 30, 0.14);
+  --season-surface: rgba(255, 252, 244, 0.92);
+  --season-glass: rgba(255, 251, 239, 0.18);
+  --season-glass-strong: rgba(255, 252, 244, 0.3);
+  --season-glass-border: rgba(255, 250, 226, 0.46);
+  --season-canvas: #fff8e9;
+  --season-accent: #9a561e;
+  --season-accent-soft: #fbeed6;
+  --season-accent-glass: rgba(154, 86, 30, 0.16);
+  --season-on-accent: #fffdf8;
+  --season-positive: #2f7355;
+  --season-caution: #8f511a;
+  --season-negative: #a34242;
+  --season-negative-glass: rgba(163, 66, 66, 0.14);
+  --season-bg: linear-gradient(180deg, rgba(255, 244, 216, 0.38) 0%, rgba(255, 250, 240, 0.25) 58%, rgba(243, 251, 255, 0.11) 100%);
+  --season-header: rgba(255, 248, 229, 0.86);
+  --season-rail: linear-gradient(180deg, rgba(255, 252, 244, 0.96), rgba(255, 244, 220, 0.94));
+  --particle-color: rgba(255, 242, 178, 0.9);
+  --sky: linear-gradient(180deg, #7fc8e6 0%, #d9f2f4 54%, #fff1cd 100%);
+  --art-glow: rgba(255, 207, 129, 0.44);
+  --scene-color: #a86b3b;
+}
+
+:root[data-theme='seasonal'][data-scene='summer-night'],
+.vdb-art[data-scene='summer-night'] {
+  color-scheme: dark;
+  --season-ink: #f3ece2;
+  --season-muted: #d6c8bd;
+  --season-faint: #ad9d91;
+  --season-line: rgba(255, 200, 150, 0.2);
+  --season-surface: rgba(18, 16, 30, 0.92);
+  --season-glass: rgba(10, 8, 18, 0.16);
+  --season-glass-strong: rgba(18, 16, 30, 0.28);
+  --season-glass-border: rgba(255, 200, 150, 0.24);
+  --season-canvas: #05070f;
+  --season-accent: #ffc890;
+  --season-accent-soft: rgba(255, 150, 70, 0.2);
+  --season-accent-glass: rgba(255, 150, 70, 0.18);
+  --season-on-accent: #1a0f08;
+  --season-positive: #a8dfc0;
+  --season-caution: #ffc890;
+  --season-negative: #ff9f9f;
+  --season-negative-glass: rgba(255, 120, 120, 0.14);
+  --season-bg: radial-gradient(circle at 50% 6%, rgba(170, 196, 255, 0.16), transparent 28%), radial-gradient(circle at 50% 70%, rgba(255, 138, 58, 0.12), transparent 34%), linear-gradient(180deg, rgba(5, 7, 15, 0.52) 0%, rgba(20, 26, 48, 0.3) 58%, rgba(10, 8, 18, 0.22) 100%);
+  --season-header: rgba(10, 8, 18, 0.9);
+  --season-rail: linear-gradient(180deg, rgba(18, 16, 30, 0.96), rgba(5, 7, 15, 0.96));
+  --particle-color: #ffc890;
+  --sky: linear-gradient(180deg, #05070f 0%, #141a30 58%, #05070f 100%);
+  --art-glow: rgba(255, 150, 70, 0.34);
+  --scene-color: #ffc890;
+}
+
+:root[data-theme='seasonal'][data-scene='rainy-day'],
+.vdb-art[data-scene='rainy-day'] {
+  --season-ink: #173126;
+  --season-muted: #4f6a58;
+  --season-faint: #7c9483;
+  --season-line: rgba(23, 49, 38, 0.14);
+  --season-surface: rgba(247, 252, 245, 0.9);
+  --season-glass: rgba(239, 250, 239, 0.18);
+  --season-glass-strong: rgba(243, 252, 241, 0.3);
+  --season-glass-border: rgba(206, 242, 215, 0.46);
+  --season-canvas: #eaf4e9;
+  --season-accent: #2f7a4f;
+  --season-accent-soft: #e2f3e5;
+  --season-accent-glass: rgba(47, 122, 79, 0.16);
+  --season-on-accent: #fffdf2;
+  --season-positive: #2f7a4f;
+  --season-caution: #8a641d;
+  --season-negative: #a34242;
+  --season-negative-glass: rgba(163, 66, 66, 0.14);
+  --season-bg: radial-gradient(circle at 16% 4%, rgba(255, 210, 60, 0.2), transparent 30%), radial-gradient(circle at 84% 10%, rgba(47, 122, 79, 0.16), transparent 32%), linear-gradient(180deg, rgba(234, 244, 233, 0.4) 0%, rgba(243, 249, 239, 0.26) 58%, rgba(255, 246, 214, 0.12) 100%);
+  --season-header: rgba(232, 244, 232, 0.86);
+  --season-rail: linear-gradient(180deg, rgba(247, 252, 245, 0.95), rgba(226, 240, 224, 0.94));
+  --particle-color: rgba(255, 224, 120, 0.82);
+  --sky: linear-gradient(180deg, #9fc7b0 0%, #d6e8d2 58%, #fff2c8 100%);
+  --art-glow: rgba(255, 210, 92, 0.4);
+  --scene-color: #2f7a4f;
+}
+
+:root[data-theme='seasonal'][data-scene='rainy-night'],
+.vdb-art[data-scene='rainy-night'] {
+  color-scheme: dark;
+  --season-ink: #f3fff5;
+  --season-muted: #b9d0c0;
+  --season-faint: #88a592;
+  --season-line: rgba(210, 255, 225, 0.18);
+  --season-surface: rgba(11, 30, 20, 0.92);
+  --season-glass: rgba(7, 26, 16, 0.16);
+  --season-glass-strong: rgba(11, 34, 22, 0.28);
+  --season-glass-border: rgba(159, 243, 191, 0.24);
+  --season-canvas: #0b1a12;
+  --season-accent: #ffd23c;
+  --season-accent-soft: rgba(47, 158, 91, 0.26);
+  --season-accent-glass: rgba(255, 210, 60, 0.18);
+  --season-on-accent: #102414;
+  --season-positive: #9ff3bf;
+  --season-caution: #ffd23c;
+  --season-negative: #ff9aa8;
+  --season-negative-glass: rgba(255, 154, 168, 0.14);
+  --season-bg: radial-gradient(circle at 18% 6%, rgba(47, 158, 91, 0.24), transparent 34%), radial-gradient(circle at 82% 12%, rgba(255, 210, 60, 0.14), transparent 30%), linear-gradient(180deg, rgba(7, 26, 16, 0.48) 0%, rgba(11, 34, 22, 0.34) 62%, rgba(19, 45, 29, 0.18) 100%);
+  --season-header: rgba(7, 26, 16, 0.9);
+  --season-rail: linear-gradient(180deg, rgba(11, 34, 22, 0.96), rgba(7, 26, 16, 0.96));
+  --particle-color: #fff0a0;
+  --sky: linear-gradient(180deg, #06100b 0%, #0b1a12 58%, #24432d 100%);
+  --art-glow: rgba(159, 243, 191, 0.28);
+  --scene-color: #d8ffe6;
+}
+
+/* --------------------------------------------------------------------------
+   Apply seasonal tokens to the app shells
+   -------------------------------------------------------------------------- */
+
+:root[data-theme='seasonal'] body {
+  background: var(--season-canvas) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-page {
+  z-index: 1;
+  color: var(--season-ink) !important;
+  background: transparent !important;
+}
+
+:root[data-theme='seasonal'] .vdb-header {
+  border-color: var(--season-line) !important;
+  background: var(--season-header) !important;
+}
+
+:root[data-theme='seasonal'] :is(.vdb-brand-name, .vdb-nav-link, .vdb-page h1, .vdb-page h2, .vdb-page h3, .vdb-page p) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'] :is(.vdb-workspace, .vdb-workspace-rail, .vdb-chat-rail) {
+  --ink: var(--season-ink) !important;
+  --muted: var(--season-muted) !important;
+  --faint: var(--season-faint) !important;
+  --line: var(--season-line) !important;
+  --surface: var(--season-surface) !important;
+  --canvas: var(--season-canvas) !important;
+  --accent: var(--season-accent) !important;
+  --accent-soft: var(--season-accent-soft) !important;
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace {
+  z-index: 1;
+  background: transparent !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-card {
+  background: transparent !important;
+  border-color: var(--season-line) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-card > div[aria-label='Chat messages'] {
+  background: var(--season-bg) !important;
+}
+
+:root[data-theme='seasonal'] :is(.vdb-workspace-rail, .vdb-workspace .vdb-chat-rail) {
+  background: var(--season-rail) !important;
+}
+
+/* Converse's chat rail uses the same seasonal palette as the rest of the shell. */
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-rail::before {
+  background: linear-gradient(180deg, var(--season-accent), transparent 55%) !important;
+  opacity: 0.72;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace :is(
+  .vdb-chat-brand-mark,
+  .vdb-chat-brand-sub,
+  .vdb-chat-brand-index,
+  .vdb-chat-section-label,
+  .vdb-chat-thread-index,
+  .vdb-chat-pin-mark,
+  .vdb-chat-action-active,
+  .vdb-chat-back svg
+) {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-brand-mark {
+  border-color: var(--season-line) !important;
+  background: var(--season-surface) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-brand-mark::after {
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-rule {
+  background: linear-gradient(90deg, var(--season-accent), var(--season-line) 32%, transparent) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-new {
+  border-color: var(--season-line) !important;
+  background: var(--season-surface) !important;
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace :is(.vdb-chat-new:hover, .vdb-chat-action:hover) {
+  background: var(--season-accent-soft) !important;
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace :is(.vdb-chat-thread:hover, .vdb-chat-back:hover) {
+  background: var(--season-accent-soft) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-thread-active {
+  border-color: var(--season-line) !important;
+  background: var(--season-surface) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-thread-active::before {
+  background: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace :is(.vdb-chat-thread-main, .vdb-chat-back) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace :is(.vdb-chat-action, .vdb-chat-footnote) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-back:hover {
+  color: var(--season-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Theme switcher
+   -------------------------------------------------------------------------- */
+
+.vdb-theme-switcher {
+  position: relative;
+  z-index: 70;
+  flex-shrink: 0;
+}
+
+.vdb-theme-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.vdb-theme-trigger:hover {
+  background: var(--canvas);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.vdb-theme-trigger--compact {
+  padding: 0 7px;
+}
+
+.vdb-theme-trigger-icon,
+.vdb-theme-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.vdb-theme-chevron {
+  width: 11px;
+  height: 11px;
+  opacity: 0.6;
+}
+
+.vdb-theme-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 372px;
+  max-height: min(78vh, 580px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(18, 26, 40, 0.18);
+  backdrop-filter: blur(18px);
+  scrollbar-width: thin;
+}
+
+.vdb-theme-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.vdb-theme-option:hover {
+  background: var(--canvas);
+}
+
+.vdb-theme-option.is-active {
+  border-color: var(--line);
+  background: var(--accent-soft);
+}
+
+.vdb-theme-option-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.vdb-theme-option-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.vdb-theme-option-icon--general {
+  color: #8a682f;
+  background: #f5ead6;
+}
+
+.vdb-theme-option-icon--seasonal {
+  color: #3d709f;
+  background: #e4f1fb;
+}
+
+.vdb-theme-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vdb-theme-option-copy strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.vdb-theme-option-copy small {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.vdb-theme-check {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.vdb-theme-menu-heading {
+  margin: 5px 9px 3px;
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.vdb-theme-menu-heading--scenes {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.vdb-theme-scene-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 0 2px 2px;
+}
+
+.vdb-theme-option--scene {
+  min-width: 0;
+  gap: 8px;
+  padding: 6px;
+  align-items: center;
+}
+
+.vdb-theme-scene-thumb {
+  position: relative;
+  display: block;
+  width: 62px;
+  height: 38px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.vdb-theme-option--scene.is-active .vdb-theme-scene-thumb {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.vdb-theme-option--scene .vdb-theme-option-copy strong {
+  font-size: 11px;
+}
+
+.vdb-theme-option--scene .vdb-theme-option-copy small {
+  font-size: 9px;
+}
+
+.vdb-theme-option--scene .vdb-theme-check {
+  width: 12px;
+  height: 12px;
+}
+
+.vdb-theme-menu-note {
+  margin: 8px 9px 2px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* --------------------------------------------------------------------------
+   Seasonal gallery
+   -------------------------------------------------------------------------- */
+
+.vdb-gallery {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(18px, 3vw, 32px);
+  border: 1px solid rgba(232, 206, 153, 0.22);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 8% -12%, rgba(220, 177, 96, 0.22), transparent 30rem),
+    radial-gradient(circle at 95% 115%, rgba(70, 120, 168, 0.24), transparent 28rem),
+    linear-gradient(160deg, #10151f 0%, #0a0e16 62%, #121a27 100%);
+  box-shadow:
+    0 40px 100px rgba(6, 10, 18, 0.46),
+    inset 0 1px rgba(255, 255, 255, 0.06);
+  color: #f7f1e6;
+}
+
+.vdb-gallery::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+.vdb-gallery::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 9%;
+  right: 9%;
+  z-index: 2;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 206, 153, 0.8), transparent);
+  animation: vdb-gallery-rule 7s ease-in-out infinite;
+}
+
+.vdb-gallery-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.vdb-gallery-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e5c47c;
+}
+
+.vdb-gallery-kicker svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vdb-gallery h2 {
+  max-width: 22ch;
+  margin: 0;
+  font-family: 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  font-size: clamp(26px, 3.4vw, 42px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: #fff7e8;
+}
+
+.vdb-gallery-intro {
+  max-width: 72ch;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(240, 233, 219, 0.7);
+}
+
+.vdb-gallery-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.vdb-gallery-pill {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 248, 234, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.vdb-gallery-pill:hover {
+  border-color: #e5c47c;
+  color: #fff7e8;
+}
+
+.vdb-gallery-pill.is-active {
+  border-color: #e5c47c;
+  background: #e5c47c;
+  color: #151922;
+}
+
+.vdb-gallery-stage {
+  --spot-x: 50%;
+  --spot-y: 50%;
+  position: relative;
+  margin: 4px 0 18px;
+  padding: 10px;
+  border: 1px solid rgba(232, 206, 153, 0.24);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.36);
+}
+
+.vdb-gallery-stage::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: 3;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--spot-x) var(--spot-y),
+    rgba(240, 207, 140, 0.5),
+    transparent 26%
+  );
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.vdb-gallery-stage:hover::before {
+  opacity: 0.9;
+}
+
+.vdb-gallery-stage-orbit {
+  position: absolute;
+  top: -150px;
+  right: -90px;
+  z-index: 0;
+  width: 360px;
+  height: 360px;
+  border: 1px solid rgba(232, 206, 153, 0.22);
+  border-radius: 50%;
+  animation: vdb-gallery-orbit 24s linear infinite;
+  pointer-events: none;
+}
+
+.vdb-gallery-stage-orbit::before,
+.vdb-gallery-stage-orbit::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: #e5c47c;
+  box-shadow: 0 0 18px rgba(229, 196, 124, 0.8);
+}
+
+.vdb-gallery-stage-orbit::before {
+  top: 44px;
+  right: 46px;
+  width: 7px;
+  height: 7px;
+}
+
+.vdb-gallery-stage-orbit::after {
+  bottom: 58px;
+  left: 28px;
+  width: 4px;
+  height: 4px;
+  opacity: 0.6;
+}
+
+.vdb-gallery-stage-frame {
+  position: relative;
+  z-index: 1;
+  min-height: 320px;
+  overflow: hidden;
+  aspect-ratio: 21 / 9;
+  border-radius: 18px;
+  background: #0a0f18;
+}
+
+.vdb-gallery-stage-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: vdb-gallery-reveal 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.vdb-gallery-stage-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(5, 9, 15, 0.78) 0%,
+      rgba(5, 9, 15, 0.24) 44%,
+      rgba(5, 9, 15, 0.04) 72%,
+      rgba(5, 9, 15, 0.4) 100%
+    ),
+    linear-gradient(0deg, rgba(5, 9, 15, 0.76), transparent 58%);
+  pointer-events: none;
+}
+
+.vdb-gallery-stage-glint {
+  position: absolute;
+  inset: -35%;
+  z-index: 3;
+  background: radial-gradient(
+    circle at var(--spot-x) var(--spot-y),
+    rgba(255, 231, 178, 0.17),
+    transparent 20%
+  );
+  mix-blend-mode: screen;
+  animation: vdb-gallery-glint 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.vdb-gallery-stage-top {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  left: 22px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f0dcae;
+}
+
+.vdb-gallery-stage-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid rgba(240, 220, 174, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 13, 22, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.vdb-gallery-stage-live span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f2c978;
+  box-shadow: 0 0 12px rgba(242, 201, 120, 0.9);
+  animation: vdb-gallery-pulse 2s ease-in-out infinite;
+}
+
+.vdb-gallery-stage-copy {
+  position: absolute;
+  bottom: clamp(22px, 4vw, 42px);
+  left: clamp(22px, 4vw, 46px);
+  z-index: 4;
+  max-width: min(470px, 62%);
+}
+
+.vdb-gallery-stage-season {
+  margin: 0 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #e5c47c;
+}
+
+.vdb-gallery-stage-copy h3 {
+  margin: 0;
+  font-family: 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  color: #fff8e9;
+  text-shadow: 0 8px 34px rgba(0, 0, 0, 0.5);
+}
+
+.vdb-gallery-stage-note {
+  max-width: 44ch;
+  margin: 12px 0 18px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 248, 234, 0.82);
+}
+
+.vdb-gallery-stage-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 1px solid rgba(229, 196, 124, 0.66);
+  border-radius: 999px;
+  background: rgba(229, 196, 124, 0.14);
+  color: #fff2d3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.vdb-gallery-stage-apply:hover {
+  transform: translateY(-2px);
+  background: rgba(229, 196, 124, 0.28);
+}
+
+.vdb-gallery-stage-apply svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The desert night stage is the artwork only, matching the reference file. */
+.vdb-gallery-stage[data-scene='summer-night'] :is(
+  .vdb-gallery-stage-scrim,
+  .vdb-gallery-stage-glint,
+  .vdb-gallery-stage-top,
+  .vdb-gallery-stage-copy
+),
+.vdb-gallery-card[data-scene='summer-night'] .vdb-gallery-card-preview {
+  display: none !important;
+}
+
+.vdb-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vdb-gallery-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #f7f1e6;
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  animation: vdb-gallery-rise 620ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i) * 70ms);
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.vdb-gallery-card:hover,
+.vdb-gallery-card.is-spotlit {
+  transform: translateY(-5px);
+  border-color: rgba(229, 196, 124, 0.52);
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.vdb-gallery-card.is-active {
+  border-color: #e5c47c;
+  box-shadow:
+    0 0 0 1px rgba(229, 196, 124, 0.46),
+    0 18px 40px rgba(0, 0, 0, 0.32);
+}
+
+.vdb-gallery-card-index {
+  position: absolute;
+  top: 15px;
+  left: 16px;
+  z-index: 2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #f6e2b8;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+.vdb-gallery-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+}
+
+.vdb-gallery-card-preview {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(8, 13, 22, 0.64);
+  color: #fff3d8;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.vdb-gallery-card:hover .vdb-gallery-card-preview,
+.vdb-gallery-card.is-spotlit .vdb-gallery-card-preview {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.vdb-gallery-active {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(8, 14, 26, 0.68);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+}
+
+.vdb-gallery-active svg {
+  width: 10px;
+  height: 10px;
+}
+
+.vdb-gallery-copy {
+  display: grid;
+  gap: 3px;
+  padding: 10px 4px 4px;
+}
+
+.vdb-gallery-label {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
+  color: #fff7e9;
+}
+
+.vdb-gallery-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(238, 231, 219, 0.66);
+}
+
+.vdb-gallery-status {
+  margin: 16px 2px 0;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: rgba(238, 231, 219, 0.58);
+}
+
+@keyframes vdb-gallery-rule {
+  0%, 100% { opacity: 0.35; transform: scaleX(0.72); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes vdb-gallery-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes vdb-gallery-reveal {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vdb-gallery-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vdb-gallery-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+@keyframes vdb-gallery-glint {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 1000px) {
+  .vdb-gallery-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .vdb-gallery-stage-frame {
+    min-height: 280px;
+    aspect-ratio: 16 / 9;
+  }
+
+  .vdb-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .vdb-gallery {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .vdb-gallery-actions {
+    flex-wrap: wrap;
+  }
+
+  .vdb-gallery-stage {
+    padding: 7px;
+    border-radius: 18px;
+  }
+
+  .vdb-gallery-stage-frame {
+    min-height: 320px;
+    aspect-ratio: 4 / 3;
+    border-radius: 13px;
+  }
+
+  .vdb-gallery-stage-copy {
+    max-width: 86%;
+  }
+
+  .vdb-gallery-stage-copy h3 {
+    font-size: clamp(32px, 9vw, 44px);
+  }
+
+  .vdb-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Real-time WebGL seasonal artwork
+   -------------------------------------------------------------------------- */
+
+.vdb-app-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+
+.vdb-season {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Reusable WebGL artwork: backdrop, picker thumbnails, gallery, and hero. */
+.vdb-art {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--sky);
+  pointer-events: none;
+}
+
+.vdb-scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.vdb-scene-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--sky);
+}
+
+.vdb-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 82% 6%, rgba(255, 255, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, transparent 58%, rgba(8, 14, 26, 0.12) 100%);
+  pointer-events: none;
+}
+
+.vdb-art[data-scene$='-night']::before {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(190, 214, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 84% 24%, rgba(255, 226, 170, 0.1), transparent 26%),
+    linear-gradient(180deg, transparent 58%, rgba(3, 7, 14, 0.18) 100%);
+}
+
+/* Let the WebGL aurora own the color; this layer is only a quiet vignette. */
+.vdb-art[data-scene='winter-night']::before {
+  background: linear-gradient(180deg, transparent 68%, rgba(4, 14, 26, 0.18) 100%);
+}
+
+.vdb-art[data-scene='summer-night']::before {
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(2, 4, 10, 0.55));
+}
+
+.vdb-art[data-scene='rainy-night']::before {
+  background:
+    radial-gradient(circle at 26% 12%, rgba(159, 243, 191, 0.16), transparent 34%),
+    radial-gradient(circle at 76% 22%, rgba(255, 210, 60, 0.1), transparent 30%),
+    linear-gradient(180deg, transparent 60%, rgba(3, 12, 8, 0.2) 100%);
+}
+
+.vdb-art--compact .vdb-scene-canvas {
+  filter: saturate(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .vdb-season *,
+  .vdb-art *,
+  .vdb-art::before {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Night scenes: keep page typography and surfaces in sync with the palette
+   -------------------------------------------------------------------------- */
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-page,
+  .vdb-workspace,
+  .vdb-workspace-rail,
+  .vdb-chat-rail
+) {
+  --ink: var(--season-ink) !important;
+  --muted: var(--season-muted) !important;
+  --faint: var(--season-faint) !important;
+  --line: var(--season-line) !important;
+  --surface: var(--season-surface) !important;
+  --canvas: var(--season-canvas) !important;
+  --accent: var(--season-accent) !important;
+  --accent-soft: var(--season-accent-soft) !important;
+  color: var(--season-ink) !important;
+}
+
+/* Landing accents and secondary controls */
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-eyebrow,
+  .vdb-section-label,
+  .vdb-hero-accent
+) {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-eyebrow {
+  background: var(--season-accent-soft) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-eyebrow svg,
+  .vdb-section-label::before,
+  .vdb-section-label::after
+) {
+  background: var(--season-accent) !important;
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-hero-lede,
+  .vdb-hero-note,
+  .vdb-section-copy
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-cta-secondary,
+  .vdb-header-preview
+) {
+  color: var(--season-ink) !important;
+  background: var(--season-surface) !important;
+  border-color: var(--season-line) !important;
+}
+
+/* Landing cards and the dashboard mock */
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-showcase-inner,
+  .vdb-showcase-date,
+  .vdb-mock-topbar,
+  .vdb-mock-task,
+  .vdb-mock-completed,
+  .vdb-mock-completed-row,
+  .vdb-usecase-card,
+  .vdb-principle-card
+) {
+  color: var(--season-ink) !important;
+  background: var(--season-surface) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-mock-main {
+  color: var(--season-ink) !important;
+  background: var(--season-canvas) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-mock-heading h3,
+  .vdb-mock-task-title,
+  .vdb-mock-completed-row span:first-child,
+  .vdb-usecase-title,
+  .vdb-principle-title
+) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-mock-task-meta,
+  .vdb-usecase-desc,
+  .vdb-mock-nav-item
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-mock-link {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-usecase-icon {
+  color: var(--season-accent) !important;
+  background: var(--season-accent-soft) !important;
+}
+
+/* Workspace, Converse, and the demo ribbon */
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace > aside[aria-label='Demo environment announcement'] a {
+  color: var(--season-ink) !important;
+  background: var(--season-accent-soft) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-rail-brand-mark,
+  .vdb-rail-new,
+  .vdb-rail-link-active,
+  .vdb-rail-link:hover,
+  .vdb-rail-footer-link-active,
+  .vdb-workspace .vdb-chat-brand-mark,
+  .vdb-workspace .vdb-chat-new,
+  .vdb-workspace .vdb-task-panel,
+  .vdb-workspace .vdb-task-card,
+  .vdb-workspace .vdb-rag-card,
+  .vdb-workspace .vdb-empty,
+  .vdb-workspace .vdb-chat-bubble-assistant,
+  .vdb-workspace .vdb-chat-composer,
+  .vdb-workspace .vdb-chat-composer textarea,
+  .vdb-workspace .vdb-chat-thread-active,
+  .vdb-workspace .vdb-chat-prompt:hover,
+  .vdb-workspace > div[role='dialog'] > div,
+  .vdb-workspace .vdb-shell-body > div > header input[type='search']
+) {
+  color: var(--season-ink) !important;
+  background: var(--season-surface) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-rail-link,
+  .vdb-rail-muted,
+  .vdb-rail-lead
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace [class*='bg-[var(--surface)]'] {
+  background-color: var(--season-surface) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace [class*='bg-[var(--canvas)]'] {
+  background-color: var(--season-canvas) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace .vdb-chat-card {
+  background: transparent !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace .vdb-chat-card > div[aria-label='Chat messages'] {
+  background: var(--season-bg) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-workspace .vdb-home section:not(.vdb-home-hero) h2,
+  .vdb-workspace .vdb-list .vdb-list-header h2,
+  .vdb-workspace .vdb-chat-card-label,
+  .vdb-workspace .vdb-chat-empty-title,
+  .vdb-workspace .vdb-list .vdb-filter-pills button[class*='shadow-xs']
+) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-workspace .vdb-chat-card-hint,
+  .vdb-workspace .vdb-chat-empty-copy,
+  .vdb-workspace .vdb-chat-footnote
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace .vdb-chat-empty-eyebrow {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace .vdb-chat-empty-mark {
+  color: var(--season-accent) !important;
+  background: var(--season-accent-soft) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace button[class*='bg-[var(--accent)]'] {
+  color: var(--season-canvas) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-workspace .vdb-shell-body > div > header h1 {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-workspace .vdb-shell-body > div > header span.font-mono,
+  .vdb-workspace [class*='bg-amber-100'],
+  .vdb-workspace [class*='bg-amber-500/15'],
+  .vdb-workspace [class*='text-amber-700'],
+  .vdb-workspace [class*='text-amber-800'],
+  .vdb-workspace [class*='border-amber-200'],
+  .vdb-workspace [class*='border-amber-500/30']
+) {
+  color: var(--season-accent) !important;
+  background: var(--season-accent-soft) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-workspace .vdb-chat-card-top,
+  .vdb-workspace .vdb-chat-new-btn,
+  .vdb-workspace .vdb-chat-new-btn:hover
+) {
+  color: var(--season-ink) !important;
+  background: var(--season-surface) !important;
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] .vdb-usecase-card {
+  --vdb-card-accent: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-usecase-list li,
+  .vdb-usecase-list svg,
+  .vdb-usecase-example
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene$='-night'] :is(
+  .vdb-usecase-list svg,
+  .vdb-usecase-example
+) {
+  color: var(--season-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Seasonal glass: a clear water tint, not frosted panels. The live scene is
+   meant to remain visible through every shell surface; blur only softens the
+   motion underneath so type stays readable.
+   -------------------------------------------------------------------------- */
+
+:root[data-theme='seasonal'] :is(
+  .vdb-workspace-rail,
+  .vdb-workspace .vdb-chat-rail
+) {
+  background: var(--season-glass) !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'] :is(
+  .vdb-header,
+  .vdb-theme-trigger,
+  .vdb-theme-menu
+) {
+  background: var(--season-glass-strong) !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 1px rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'] :is(
+  .vdb-workspace .vdb-task-panel,
+  .vdb-workspace .vdb-task-card,
+  .vdb-workspace .vdb-rag-card,
+  .vdb-workspace .vdb-empty,
+  .vdb-workspace .vdb-chat-card,
+  .vdb-workspace .vdb-chat-card-top,
+  .vdb-workspace .vdb-chat-bubble-assistant,
+  .vdb-workspace .vdb-chat-composer,
+  .vdb-workspace .vdb-chat-composer textarea,
+  .vdb-workspace .vdb-chat-new-btn,
+  .vdb-workspace .vdb-chat-prompt,
+  .vdb-workspace .vdb-chat-thread-active,
+  .vdb-workspace .vdb-chat-thread:hover,
+  .vdb-workspace .vdb-chat-action:hover,
+  .vdb-workspace .vdb-chat-back:hover,
+  .vdb-rail-new,
+  .vdb-rail-link-active,
+  .vdb-rail-link:hover,
+  .vdb-rail-footer,
+  .vdb-rail-profile,
+  .vdb-rail-footer-link-active,
+  .vdb-rail-footer-link:hover,
+  .vdb-rail-brand-mark,
+  .vdb-workspace .vdb-chat-brand-mark,
+  .vdb-workspace .vdb-chat-new,
+  .vdb-workspace .vdb-shell-body > div > header input[type='search'],
+  .vdb-workspace > div[role='dialog'] > div,
+  .vdb-showcase-inner,
+  .vdb-usecase-card,
+  .vdb-principle-card
+) {
+  background: var(--season-glass-strong) !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 1px rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'] .vdb-workspace .vdb-chat-card > div[aria-label='Chat messages'] {
+  background: var(--season-bg) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'] .vdb-workspace [class*='bg-[var(--surface)]'] {
+  background-color: var(--season-glass-strong) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'] :is(
+  .vdb-workspace .vdb-chat-prompt,
+  .vdb-workspace .vdb-chat-prompt-icon,
+  .vdb-workspace .vdb-chat-prompt-arrow,
+  .vdb-rail-profile-name
+) {
+  color: var(--season-ink) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Water-clear final pass. This runs after the night palette overrides so the
+   same low-alpha glass and scene-derived typography apply to every scene.
+   The selectors intentionally include [data-scene] to match the specificity
+   of the night-only rules above.
+   -------------------------------------------------------------------------- */
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace {
+  --green: var(--season-positive) !important;
+  --green-soft: var(--season-accent-glass) !important;
+  --amber: var(--season-caution) !important;
+  --amber-soft: var(--season-accent-glass) !important;
+  --red: var(--season-negative) !important;
+  --red-soft: var(--season-negative-glass) !important;
+  --dark: var(--season-glass-strong) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(
+  .vdb-header,
+  .vdb-header-preview,
+  .vdb-cta-secondary,
+  .vdb-theme-trigger,
+  .vdb-theme-menu,
+  .vdb-theme-option:hover,
+  .vdb-theme-option.is-active,
+  .vdb-gallery-pill:hover,
+  .vdb-gallery-pill.is-active,
+  .vdb-workspace-rail,
+  .vdb-workspace .vdb-chat-rail,
+  .vdb-rail-footer,
+  .vdb-rail-profile,
+  .vdb-rail-new,
+  .vdb-rail-link-active,
+  .vdb-rail-link:hover,
+  .vdb-rail-footer-link-active,
+  .vdb-rail-footer-link:hover,
+  .vdb-rail-brand-mark,
+  .vdb-workspace .vdb-chat-brand-mark,
+  .vdb-workspace .vdb-chat-new,
+  .vdb-workspace .vdb-chat-bubble-assistant,
+  .vdb-workspace .vdb-chat-composer,
+  .vdb-workspace .vdb-chat-composer textarea,
+  .vdb-workspace .vdb-chat-prompt,
+  .vdb-workspace .vdb-chat-thread-active,
+  .vdb-workspace .vdb-chat-card-top,
+  .vdb-workspace .vdb-chat-new-btn,
+  .vdb-workspace .vdb-task-panel,
+  .vdb-workspace .vdb-task-card,
+  .vdb-workspace .vdb-rag-card,
+  .vdb-workspace .vdb-empty,
+  .vdb-workspace .vdb-shell-body > div > header,
+  .vdb-workspace .vdb-shell-body > div > header input[type='search'],
+  .vdb-workspace > div[role='dialog'] > div,
+  .vdb-showcase-inner,
+  .vdb-showcase-date,
+  .vdb-mock-main,
+  .vdb-mock-topbar,
+  .vdb-mock-task,
+  .vdb-mock-completed,
+  .vdb-mock-completed-row,
+  .vdb-usecase-card,
+  .vdb-principle-card
+) {
+  color: var(--season-ink) !important;
+  background-color: var(--season-glass-strong) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 1px rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class*='bg-[var(--surface)]'],
+  [class*='bg-[var(--canvas)]'],
+  [class*='bg-white'],
+  [class*='bg-slate-'],
+  [class*='bg-gray-'],
+  [class*='bg-zinc-'],
+  [class*='bg-neutral-'],
+  [class*='bg-stone-'],
+  input[type='search']
+) {
+  background-color: var(--season-glass-strong) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class*='bg-[var(--accent-soft)]'],
+  [class*='bg-[var(--green-soft)]'],
+  [class*='bg-[var(--red-soft)]'],
+  [class*='bg-amber-'],
+  [class*='bg-emerald-'],
+  [class*='bg-indigo-'],
+  [class*='bg-blue-'],
+  [class*='bg-sky-'],
+  [class*='bg-teal-'],
+  [class*='bg-violet-'],
+  [class*='bg-purple-'],
+  [class*='bg-red-50'],
+  .vdb-rail-badge
+) {
+  color: var(--season-accent) !important;
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] :is(
+  .vdb-workspace > aside[aria-label='Demo environment announcement'] a,
+  .vdb-eyebrow,
+  .vdb-usecase-icon,
+  .vdb-theme-option-icon--general,
+  .vdb-theme-option-icon--seasonal
+) {
+  color: var(--season-accent) !important;
+  background-color: var(--season-accent-glass) !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-home-hero,
+  [class*='bg-[var(--dark)]'],
+  [role='status'],
+  .vdb-chat-bubble-user
+) {
+  color: var(--season-ink) !important;
+  background-color: var(--season-glass-strong) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 1px rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-home-hero [class*='bg-white/'] {
+  background-color: var(--season-glass) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class~='bg-amber-400'],
+  [class~='bg-amber-500']
+) {
+  color: var(--season-on-accent) !important;
+  background-color: var(--season-caution) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace [class~='bg-amber-700'] {
+  background-color: var(--season-on-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class~='bg-emerald-500'],
+  [class~='bg-green-500']
+) {
+  color: var(--season-on-accent) !important;
+  background-color: var(--season-positive) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class~='bg-indigo-500'],
+  [class~='bg-blue-500'],
+  [class~='bg-sky-500'],
+  [class~='bg-[var(--accent)]']
+) {
+  color: var(--season-on-accent) !important;
+  background-color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class~='bg-red-500'],
+  [class~='bg-rose-500']
+) {
+  color: var(--season-on-accent) !important;
+  background-color: var(--season-negative) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-chat-new:hover,
+  .vdb-chat-action:hover,
+  .vdb-chat-back:hover,
+  .vdb-rail-new:hover,
+  .vdb-rail-link:hover,
+  .vdb-rail-footer-link:hover,
+  .vdb-chat-prompt:hover,
+  .vdb-task-row:hover,
+  [class*='hover:bg-[var(--canvas)]']:hover,
+  [class*='hover:bg-[var(--surface)]']:hover
+) {
+  color: var(--season-ink) !important;
+  background-color: var(--season-accent-glass) !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-chat-action-danger:hover,
+  [class*='hover:text-red']:hover,
+  [class*='hover:bg-red-50']:hover
+) {
+  color: var(--season-negative) !important;
+  background-color: var(--season-negative-glass) !important;
+  border-color: var(--season-glass-border) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class*='border-amber'],
+  [class*='border-emerald'],
+  [class*='border-indigo'],
+  [class*='border-red'],
+  [class*='border-blue'],
+  [class*='border-sky'],
+  [class*='border-white'],
+  [class*='border-black']
+) {
+  border-color: var(--season-glass-border) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-rail-link-active::before {
+  background: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-rail-section-label::before {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-rail-avatar,
+  .vdb-chat-avatar,
+  .vdb-chat-empty-mark
+) {
+  color: var(--season-accent) !important;
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-chat-empty-mark::after {
+  border-color: var(--season-line) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace [role='status'] > div:first-child {
+  color: var(--season-positive) !important;
+  background-color: var(--season-accent-glass) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-amber'],
+  [class*='text-yellow'],
+  [class*='text-orange']
+) {
+  color: var(--season-caution) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-indigo'],
+  [class*='text-blue'],
+  [class*='text-sky'],
+  [class*='text-violet'],
+  [class*='text-purple']
+) {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-emerald'],
+  [class*='text-green'],
+  [class*='text-teal']
+) {
+  color: var(--season-positive) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-red'],
+  [class*='text-rose']
+) {
+  color: var(--season-negative) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-gray'],
+  [class*='text-slate'],
+  [class*='text-zinc'],
+  [class*='text-neutral'],
+  [class*='text-stone']
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] :is(.vdb-workspace, .vdb-page) :is(
+  [class*='text-white'],
+  [class*='text-black']
+) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-rail-link,
+  .vdb-chat-thread-main,
+  .vdb-chat-back,
+  .vdb-chat-card-label,
+  .vdb-chat-empty-title,
+  .vdb-chat-prompt,
+  .vdb-rail-profile-name,
+  .vdb-list .vdb-filter-pills button[class*='shadow-xs']
+) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-rail-muted,
+  .vdb-rail-lead,
+  .vdb-rail-section-label,
+  .vdb-rail-profile-email,
+  .vdb-chat-section-label,
+  .vdb-chat-card-hint,
+  .vdb-chat-empty-copy,
+  .vdb-chat-footnote,
+  .vdb-chat-action,
+  .vdb-chat-bubble-label
+) {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-rail-badge,
+  .vdb-chat-brand-sub,
+  .vdb-chat-brand-index,
+  .vdb-chat-thread-index,
+  .vdb-chat-pin-mark,
+  .vdb-chat-action-active,
+  .vdb-chat-back svg,
+  .vdb-chat-empty-eyebrow,
+  .vdb-chat-prompt-arrow
+) {
+  color: var(--season-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  [class~='bg-[var(--accent)]'],
+  [class~='bg-amber-400'],
+  [class~='bg-emerald-500'],
+  [class~='bg-indigo-500']
+) {
+  color: var(--season-on-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene][data-scene$='-night'] .vdb-workspace button[class*='bg-[var(--accent)]'] {
+  color: var(--season-on-accent) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(input, textarea)::placeholder {
+  color: var(--season-faint) !important;
+  opacity: 1;
+}
+
+/* Last closure: hard-coded workspace declarations that a generic token sweep
+   cannot match. These keep every remaining card, pill, badge and heading on
+   the same water-clear glass and scene-derived text palette. */
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-shell-body > div > header h1,
+  .vdb-home .vdb-home-hero h1,
+  .vdb-home section:not(.vdb-home-hero) h2,
+  .vdb-list .vdb-list-header h2,
+  .vdb-calendar h2,
+  .vdb-analytics h2
+) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-home .vdb-home-hero > div > div > p {
+  color: var(--season-muted) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-shell-body > div > header span.font-mono:not([class*='text-']) {
+  color: var(--season-ink) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-rail-count,
+  .vdb-rail-lead,
+  .vdb-rail-sublink-active,
+  .vdb-chat-prompt-icon
+) {
+  color: var(--season-accent) !important;
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-shell-body > div > header span.font-mono {
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-list .vdb-filter-pills {
+  background-color: var(--season-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-list .vdb-filter-pills button[class*='shadow-xs'] {
+  color: var(--season-ink) !important;
+  background-color: var(--season-glass-strong) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 6px 18px rgba(8, 18, 32, 0.08) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-home .vdb-summary-grid > [role='button']:not([class*='ring-2']) {
+  color: var(--season-ink) !important;
+  background-color: var(--season-glass-strong) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 1px rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-home .vdb-summary-grid > [role='button'][class*='ring-2'] {
+  color: var(--season-ink) !important;
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 8px 24px rgba(8, 18, 32, 0.08), inset 0 0 0 1px var(--season-glass-border) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace :is(
+  .vdb-chat-new-btn:hover,
+  .vdb-rail-sublink:hover,
+  .vdb-home .vdb-summary-grid > [role='button']:hover
+) {
+  color: var(--season-ink) !important;
+  background-color: var(--season-accent-glass) !important;
+  background-image: none !important;
+  border-color: var(--season-glass-border) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-rail-toggle:hover {
+  color: var(--season-accent) !important;
+  background-color: var(--season-accent-glass) !important;
+  border-color: var(--season-glass-border) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-rail-subnav {
+  border-left-color: var(--season-glass-border) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-chat-composer textarea:focus {
+  border-color: var(--season-glass-border) !important;
+  box-shadow: 0 0 0 3px var(--season-accent-glass) !important;
+}
+
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-rail-brand-mark::after,
+:root[data-theme='seasonal'][data-scene] .vdb-workspace .vdb-chat-brand-mark::after {
+  border-color: var(--season-glass-border) !important;
+}
+
+/* Daytime nav controls: clear glass, matching the bar above them. Night scenes
+   keep their darker seasonal glass so the moonlit UI stays readable. */
+:root:not([data-theme='seasonal'][data-scene$='-night']) .vdb-workspace :is(
+  .vdb-shell-body > div > header,
+  .vdb-theme-trigger,
+  .vdb-theme-menu
+) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(8, 18, 32, 0.06), inset 0 1px rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+/* The Settings rail option sits in the footer, which had its own warm-white
+   gradient and solid active fill. Make that whole strip genuinely see-through. */
+/* Daytime rail: lower than the 0.18 white glass used elsewhere, so the whole
+   strip — including the Settings/Logout corner — reads as clear as night. */
+:root:not([data-theme='seasonal'][data-scene$='-night']) :is(
+  .vdb-workspace-rail,
+  .vdb-workspace .vdb-chat-rail
+) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root:not([data-theme='seasonal'][data-scene$='-night']) .vdb-workspace .vdb-rail-footer {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+
+:root:not([data-theme='seasonal'][data-scene$='-night']) .vdb-workspace :is(
+  .vdb-rail-profile,
+  .vdb-rail-footer-link-active,
+  .vdb-rail-footer-link:hover
+) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}

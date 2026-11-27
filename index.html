@@ -7,6 +7,27 @@
     <title>ViDo — Simple enough for anyone. Structured enough for serious work.</title>
   </head>
   <body class="bg-[var(--canvas)] text-[var(--ink)] antialiased">
+    <script>
+      try {
+        var root = document.documentElement;
+        var choice = localStorage.getItem('vido-theme') === 'seasonal' ? 'seasonal' : 'general';
+        root.dataset.theme = choice;
+
+        var scenes = ['winter-day', 'winter-night', 'summer-day', 'summer-night', 'rainy-day', 'rainy-night'];
+        var scene = localStorage.getItem('vido-season-scene');
+        if (choice === 'seasonal' && scenes.indexOf(scene) !== -1) {
+          var parts = scene.split('-');
+          root.dataset.scene = scene;
+          root.dataset.season = parts[0];
+          root.dataset.daypart = parts[1];
+          root.dataset.weather = parts[0] === 'rainy' ? 'rain' : 'clear';
+          root.dataset.scenePreview = 'true';
+          root.style.colorScheme = parts[1] === 'night' ? 'dark' : 'light';
+        }
+      } catch (_) {
+        document.documentElement.dataset.theme = 'general';
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

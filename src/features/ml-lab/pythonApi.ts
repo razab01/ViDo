@@ -239,6 +239,13 @@ export interface PythonDocumentResponse {
   truncated: boolean;
 }
 
+export interface PythonTranscription {
+  text: string;
+  language?: string | null;
+  duration?: number | null;
+  model?: string;
+}
+
 const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';
   const chunkSize = 0x8000;
@@ -254,6 +261,18 @@ export async function extractDocumentWithPython(file: File): Promise<PythonDocum
     '/document',
     { name: file.name, content: toBase64(new Uint8Array(await file.arrayBuffer())) },
     60000
+  );
+}
+
+/** Transcribe a recorded voice note locally for the normal chat pipeline. */
+export async function transcribeAudioWithPython(
+  blob: Blob,
+  name: string
+): Promise<PythonTranscription> {
+  return post<PythonTranscription>(
+    '/transcribe',
+    { name, content: toBase64(new Uint8Array(await blob.arrayBuffer())) },
+    90000
   );
 }
 

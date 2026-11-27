@@ -4,10 +4,12 @@ import {
   ArrowRight,
   FileText,
   Loader2,
+  Mic,
   Paperclip,
   Plus,
   Send,
   Sparkles,
+  Square,
   X,
 } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
@@ -21,6 +23,7 @@ import type { Dataset, Profile } from '../ml-lab/engine';
 import {
   answerWithPython,
   isPythonAvailable,
+  transcribeAudioWithPython,
   type PythonAnswerResult,
 } from '../ml-lab/pythonApi';
 import {
@@ -65,6 +68,24 @@ const id = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const VOICE_MIME_TYPES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/ogg;codecs=opus',
+  'audio/mp4',
+];
+
+const voiceMimeType = (): string => {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+  return VOICE_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? '';
+};
+
+const voiceFileExtension = (mime: string): string => {
+  if (mime.includes('ogg')) return 'ogg';
+  if (mime.includes('mp4')) return 'm4a';
+  return 'webm';
+};
 
 const turnsFrom = (messages: ChatMessage[]): ChatTurn[] => {
   const turns: ChatTurn[] = [];
@@ -118,10 +139,16 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
   const [busy, setBusy] = useState(false);
   const [documentBusy, setDocumentBusy] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   /** Staged in the composer; it is posted only with the next chat message. */
   const [pendingDocument, setPendingDocument] = useState<ChatDocument | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     const unsubscribeChats = subscribeThreads(userId, () => {
@@ -151,6 +178,20 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
     endRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [threads, activeId]);
 
+  useEffect(
+    () => () => {
+      const recorder = mediaRecorderRef.current;
+      if (recorder) {
+        recorder.onstop = null;
+        if (recorder.state !== 'inactive') recorder.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current = null;
+    },
+    []
+  );
+
   const thread = useMemo(
     () => threads.find((item) => item.id === (activeId ?? threads[0]?.id)) ?? null,
     [threads, activeId]
@@ -178,6 +219,10 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
 
     const history = turnsFrom(messages);
     const resolved = resolveQuestion(question, history);
+    const graphBookingRequest = isGraphBookingRequest(
+      resolved,
+      Boolean(attachedDocument ?? currentThread.document)
+    );
     const userMessage: ChatMessage = {
       id: id(),
       role: 'user',
@@ -188,11 +233,15 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
     addMessage(userId, currentThread.id, userMessage);
     if (attachedDocument) {
       setThreadDocument(userId, currentThread.id, attachedDocument);
-      addMessage(userId, currentThread.id, {
-        id: id(),
-        role: 'assistant',
-        text: `Loaded "${attachedDocument.name}". Ask me anything about it.`,
-      });
+      // A booking turn should go straight to the plan; the "Loaded…" aside is
+      // only useful when the user is asking about the document itself.
+      if (!graphBookingRequest) {
+        addMessage(userId, currentThread.id, {
+          id: id(),
+          role: 'assistant',
+          text: `Loaded "${attachedDocument.name}". Ask me anything about it.`,
+        });
+      }
     }
     addMessage(userId, currentThread.id, pendingMessage);
     setInput('');
@@ -220,10 +269,6 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
       // A booking request belongs to Graph RAG even when an attachment is
       // active. Clear any stale draft so follow-ups cannot be pulled back into
       // the old "what should I call it" loop.
-      const graphBookingRequest = isGraphBookingRequest(
-        resolved,
-        Boolean(attachedDocument ?? currentThread.document)
-      );
       const graphBookingActive = Boolean(currentThread.booking);
       if ((graphBookingRequest || graphBookingActive) && currentThread.taskDraft) {
         setThreadTaskDraft(userId, currentThread.id, null);
@@ -427,6 +472,87 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
     setDocumentError(null);
   };
 
+  const submitVoiceNote = async (blob: Blob, name: string) => {
+    setVoiceError(null);
+    setTranscribing(true);
+    try {
+      const result = await transcribeAudioWithPython(blob, name);
+      const transcript = result.text.trim();
+      if (!transcript) {
+        setVoiceError('I did not catch that. Try your voice note again.');
+        return;
+      }
+      setInput(transcript);
+      await ask(transcript);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '';
+      setVoiceError(
+        detail.includes('not installed') || detail.includes('could not be started')
+          ? 'Offline voice is not ready on this device yet.'
+          : 'I could not transcribe that voice note. Try again.'
+      );
+    } finally {
+      setListening(false);
+      setTranscribing(false);
+    }
+  };
+
+  const stopVoiceNote = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
+
+  const startVoiceNote = async () => {
+    if (listening) {
+      stopVoiceNote();
+      return;
+    }
+    if (busy || transcribing) return;
+    setVoiceError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setVoiceError('Voice capture is not available in this browser.');
+      return;
+    }
+    const available = await isPythonAvailable();
+    if (!available) {
+      setVoiceError('Offline voice is not ready on this device yet.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const mime = voiceMimeType();
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks: Blob[] = [];
+      audioChunksRef.current = chunks;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null;
+        mediaStreamRef.current = null;
+        const type = recorder.mimeType || mime || 'audio/webm';
+        const blob = new Blob(chunks, { type });
+        const name = `voice-${Date.now()}.${voiceFileExtension(type)}`;
+        void submitVoiceNote(blob, name);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setListening(true);
+    } catch {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      setListening(false);
+      setVoiceError('Microphone access was not granted.');
+    }
+  };
+
   return (
     <div className="vdb-chat-page p-4 sm:p-6 lg:p-8 max-w-[900px] mx-auto space-y-4">
       <Card className="vdb-chat-card flex flex-col h-[calc(100vh-136px)] min-h-[420px] overflow-hidden">
@@ -551,6 +677,15 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
             </p>
           )}
 
+          {voiceError && (
+            <p
+              role="alert"
+              className="mb-2 flex items-center gap-1.5 text-xs text-[var(--red)]"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {voiceError}
+            </p>
+          )}
+
           {(pendingDocument ?? thread?.document) && (
             <div className="mb-2 inline-flex max-w-full items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--canvas)] px-2.5 py-1.5 text-xs text-[var(--muted)]">
               <FileText className="w-3.5 h-3.5 shrink-0 text-[var(--accent)]" />
@@ -591,6 +726,31 @@ export const ChatLabPage: React.FC<ChatLabPageProps> = ({
           />
           <div className="flex items-center justify-between gap-2 mt-2">
             <div className="flex items-center gap-2 min-w-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={`vdb-voice-btn ${listening ? 'is-listening' : ''}`}
+                onClick={() => void startVoiceNote()}
+                disabled={busy || transcribing}
+                aria-label={listening ? 'Stop voice note' : 'Record voice note'}
+                title={
+                  listening
+                    ? 'Tap to stop and send your voice note.'
+                    : 'Record a voice note. Tap again to send it.'
+                }
+              >
+                {transcribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : listening ? (
+                  <Square className="w-3.5 h-3.5" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {transcribing ? 'Listening back' : listening ? 'Stop' : 'Voice'}
+                </span>
+              </Button>
               <Button
                 type="button"
                 variant="ghost"

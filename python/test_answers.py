@@ -985,6 +985,23 @@ def _sample_handbook() -> str:
     return "\n".join(blocks)
 
 
+def _sample_monthly_planner() -> str:
+    """A compact stand-in for the calendar-table monthly task planner PDF."""
+    return (
+        "December 2030 | Monthly Task Planner\n"
+        "Page 1\n"
+        " MONTHLY TASK PLANNER\n"
+        " December 2030 | Professional To-Do Schedule\n"
+        "Week 1: 1 - 6 December\n"
+        "Date\nTime\nTask Title\nDetails\nPriority\nStatus\n"
+        "Tue, 01 Dec\n09:00 - 10:00\nMonthly Goal Setting & Planning\n"
+        "Define objectives and key results\nfor December.\nHigh\n"
+        "Wed, 02 Dec\n10:00 - 11:30\nInbox Cleanup & Email\nFollow-ups\n"
+        "Clear pending emails and send\noverdue replies.\nMedium\n"
+        "December 2030 | Monthly Task Planner\nPage 2\n"
+    )
+
+
 class PlanBookingTests(unittest.TestCase):
     def test_document_plan_is_booked_as_canonical_task_actions(self):
         documents = [
@@ -1016,6 +1033,36 @@ class PlanBookingTests(unittest.TestCase):
         self.assertEqual(second["category"], "home")
         for badge in ("Python", "Local", "Wikipedia", "arXiv", "source:"):
             self.assertNotIn(badge, result["answer"])
+
+    def test_monthly_calendar_planner_books_dated_rows_without_clarification(self):
+        documents = [
+            {
+                "name": "Monthly_Task_Planner_December_2030.pdf",
+                "text": _sample_monthly_planner(),
+            }
+        ]
+
+        result = graph_rag.answer_with_booking(
+            "book the task in my attachment", [], [], documents=documents
+        )
+
+        self.assertNotIn("booking", result)
+        self.assertEqual(result["actions"]["type"], "book_plans")
+        tasks = result["actions"]["tasks"]
+        self.assertEqual(len(tasks), 2)
+        first, second = tasks
+        self.assertEqual(first["title"], "Monthly Goal Setting & Planning")
+        self.assertEqual(first["description"], "Define objectives and key results for December")
+        self.assertEqual(first["dueDate"], "2030-12-01")
+        self.assertEqual(first["dueTime"], "09:00")
+        self.assertEqual(first["priority"], "high")
+        self.assertEqual(second["title"], "Inbox Cleanup & Email Follow-ups")
+        self.assertEqual(second["description"], "Clear pending emails and send overdue replies")
+        self.assertEqual(second["dueDate"], "2030-12-02")
+        self.assertEqual(second["dueTime"], "10:00")
+        self.assertEqual(second["priority"], "medium")
+        self.assertNotIn("one date", result["answer"].lower())
+        self.assertNotIn("plan items", result["answer"].lower())
 
     def test_meeting_handbook_sections_extract_eight_detailed_plans(self):
         tasks = plan_booking.extract_plan_tasks(
@@ -1131,6 +1178,16 @@ class PlanBookingTests(unittest.TestCase):
         self.assertNotIn("booking", result)
         for badge in ("Python", "Local", "Wikipedia", "arXiv", "source:", "Meeting Plans Handbook"):
             self.assertNotIn(badge, result["answer"])
+
+    def test_spoken_booking_transcript_keeps_a_clean_title(self):
+        result = graph_rag.answer_with_booking(
+            "Book a task for morning walk tomorrow at 4am.", [], []
+        )
+        self.assertEqual(result["actions"]["type"], "book_plans")
+        task = result["actions"]["tasks"][0]
+        self.assertEqual(task["title"], "morning walk")
+        self.assertEqual(task["dueDate"], (date.today() + timedelta(days=1)).isoformat())
+        self.assertEqual(task["dueTime"], "04:00")
 
     def test_book_a_plan_without_details_asks_for_the_plan(self):
         result = graph_rag.answer_with_booking("book a plan", [], [])

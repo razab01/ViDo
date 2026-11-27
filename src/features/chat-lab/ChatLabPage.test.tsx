@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ChatLabPage } from './ChatLabPage';
 import {
   extractDocumentWithPython,
   isPythonAvailable,
   answerWithPython,
+  transcribeAudioWithPython,
 } from '../ml-lab/pythonApi';
 import { answerLocally } from './chatBrain';
 import { getActiveChatId, readThreads, resetChatStore } from './chatStore';
@@ -20,6 +21,7 @@ vi.mock('../ml-lab/pythonApi', () => ({
   isPythonAvailable: vi.fn(),
   answerWithPython: vi.fn(),
   extractDocumentWithPython: vi.fn(),
+  transcribeAudioWithPython: vi.fn(),
 }));
 
 vi.mock('./chatBrain', async () => {
@@ -34,12 +36,16 @@ const mockedAvailable = vi.mocked(isPythonAvailable);
 const mockedAnswer = vi.mocked(answerWithPython);
 const mockedLocal = vi.mocked(answerLocally);
 const mockedExtract = vi.mocked(extractDocumentWithPython);
+const mockedTranscribe = vi.mocked(transcribeAudioWithPython);
 
 describe('ChatLabPage', () => {
+  let originalMediaDevices: PropertyDescriptor | undefined;
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
     resetChatStore();
+    originalMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
     mockedAvailable.mockResolvedValue(true);
     mockedAnswer.mockResolvedValue('Spain has no president; the head of state is King Felipe VI.');
     mockedLocal.mockResolvedValue('India is a country in South Asia.');
@@ -48,6 +54,19 @@ describe('ChatLabPage', () => {
       text: 'The project deadline is 2026-12-01.',
       truncated: false,
     });
+    mockedTranscribe.mockResolvedValue({
+      text: 'who is president of spain',
+      model: 'tiny',
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (originalMediaDevices) {
+      Object.defineProperty(navigator, 'mediaDevices', originalMediaDevices);
+    } else {
+      Reflect.deleteProperty(navigator, 'mediaDevices');
+    }
   });
 
   const sendMessage = (value: string) => {
@@ -351,6 +370,68 @@ describe('ChatLabPage', () => {
     expect(readThreads('demo-user-uid')[0].booking).toBeUndefined();
   });
 
+  it('transcribes a voice note and books a task through the normal chat pipeline', async () => {
+    const transcript = 'book a task for morning walk tomorrow at 4am';
+    const dueDate = tomorrowDateString();
+    const onCreateTask = vi.fn();
+    mockedTranscribe.mockResolvedValue({ text: transcript, model: 'tiny' });
+    mockedAnswer.mockImplementation(async (input, onResult) => {
+      expect(input.question).toBe(transcript);
+      onResult?.({
+        actions: {
+          type: 'book_plans',
+          tasks: [{ title: 'morning walk', dueDate, dueTime: '04:00' }],
+        },
+        booking: null,
+      });
+      return 'Got it — I’m booking 1 task now.';
+    });
+
+    class MockMediaRecorder {
+      static isTypeSupported = () => true;
+      state: 'inactive' | 'recording' = 'inactive';
+      mimeType = 'audio/webm';
+      ondataavailable: ((event: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+
+      start() {
+        this.state = 'recording';
+      }
+
+      stop() {
+        this.state = 'inactive';
+        this.ondataavailable?.({ data: new Blob(['voice'], { type: this.mimeType }) });
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal('MediaRecorder', MockMediaRecorder);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop: vi.fn() }],
+        }),
+      },
+    });
+
+    render(<ChatLabPage onCreateTask={onCreateTask} />);
+    await screen.findByText('Start a conversation');
+
+    fireEvent.click(screen.getByRole('button', { name: /record voice note/i }));
+    const stopButton = await screen.findByRole('button', { name: /stop voice note/i });
+    fireEvent.click(stopButton);
+
+    await waitFor(() => expect(mockedTranscribe).toHaveBeenCalledTimes(1));
+    expect(mockedTranscribe.mock.calls[0][1]).toMatch(/^voice-.*\.webm$/);
+    expect(await screen.findByText(transcript)).toBeInTheDocument();
+    expect(await screen.findByText(/All set — I booked "morning walk"/)).toBeInTheDocument();
+    expect(onCreateTask).toHaveBeenCalledTimes(1);
+    expect(onCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'morning walk', dueDate, dueTime: '04:00' })
+    );
+    expect(screen.queryByText('tiny')).not.toBeInTheDocument();
+  });
+
   it('books a described task instead of answering the attachment', async () => {
     const onCreateTask = vi.fn();
     const dueDate = tomorrowDateString();
@@ -421,6 +502,53 @@ describe('ChatLabPage', () => {
     expect(await screen.findByText('What should I call this task?')).toBeInTheDocument();
     expect(screen.queryByText(/Project Kickoff Meeting/)).not.toBeInTheDocument();
     expect(mockedLocal).not.toHaveBeenCalled();
+  });
+
+  it('books an attachment without posting the loaded-document aside', async () => {
+    mockedAnswer.mockImplementationOnce(async (_input, onResult) => {
+      onResult?.({
+        actions: {
+          type: 'book_plans',
+          tasks: [
+            {
+              title: 'Monthly Goal Setting & Planning',
+              description: 'Define objectives and key results for December',
+              startDate: tomorrowDateString(),
+              dueDate: tomorrowDateString(),
+              dueTime: '09:00',
+              priority: 'high',
+            },
+          ],
+        },
+        booking: null,
+      });
+      return 'Got it — I’m booking 1 task now.';
+    });
+
+    render(<ChatLabPage onCreateTask={vi.fn()} />);
+    await screen.findByText('Start a conversation');
+    fireEvent.change(screen.getByLabelText('Choose document'), {
+      target: {
+        files: [
+          new File(
+            ['December 2026 | Monthly Task Planner'],
+            'Monthly_Task_Planner_December_2026.pdf',
+            { type: 'application/pdf' }
+          ),
+        ],
+      },
+    });
+    expect(await screen.findByText(/ready to send/i)).toBeInTheDocument();
+
+    sendMessage('book the task in my attachment');
+
+    expect(
+      await screen.findByText(/All set — I booked "Monthly Goal Setting & Planning"/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Loaded "Monthly_Task_Planner_December_2026\.pdf"/i)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/one date for all/i)).not.toBeInTheDocument();
   });
 
   it('persists Graph RAG clarification and completes booking from the reply', async () => {
